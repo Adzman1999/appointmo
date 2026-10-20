@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Calendar, Sparkles, Shield, Clock, CheckCircle2, ChevronRight, UserCheck, ArrowRight } from 'lucide-react';
+import { Calendar, Sparkles, Shield, Clock, CheckCircle2, ChevronRight, UserCheck, ArrowRight, KeyRound } from 'lucide-react';
 import { AccessGateModal } from '../components/AccessGateModal';
 
 export const LandingPage: React.FC = () => {
@@ -61,6 +61,13 @@ export const LandingPage: React.FC = () => {
           </nav>
 
           <div className="flex items-center space-x-3">
+            <Link
+              to="/admin/login"
+              className="text-stone-300 hover:text-stone-500 transition-colors p-1"
+              title="Staff Access"
+            >
+              <KeyRound className="w-4 h-4 opacity-40 hover:opacity-100" />
+            </Link>
             <button
               onClick={openRequestAccess}
               className="text-xs sm:text-sm font-semibold bg-stone-900 text-white px-4 py-2 rounded-lg hover:bg-stone-800 transition shadow-sm"
