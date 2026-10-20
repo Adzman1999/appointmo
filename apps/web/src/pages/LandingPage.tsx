@@ -43,7 +43,7 @@ export const LandingPage: React.FC = () => {
             <div>
               <span className="font-semibold text-xl tracking-tight text-stone-900">Appointmo</span>
               <span className="hidden sm:inline-block ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
-                Studio Experience
+                Salon &amp; Studio Suite
               </span>
             </div>
           </div>
@@ -75,14 +75,14 @@ export const LandingPage: React.FC = () => {
       <section className="py-20 px-4 text-center max-w-4xl mx-auto">
         <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold mb-6">
           <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-          <span>Interactive Appointment Studio Demo</span>
+          <span>Next-Generation Studio Scheduling</span>
         </div>
         <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-stone-900 mb-6 leading-tight">
           Appointments, <br className="hidden sm:block" />
           <span className="text-stone-700">made simpler.</span>
         </h1>
         <p className="text-lg sm:text-xl text-stone-600 max-w-2xl mx-auto mb-10 leading-relaxed font-normal">
-          Find the right service, discover available times, and book with confidence. Appointmo combines frictionless guest booking with an intelligent natural-language concierge.
+          Find the right service, discover genuinely available times, and book with confidence. Appointmo combines frictionless guest booking with an intelligent natural-language concierge.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -106,10 +106,10 @@ export const LandingPage: React.FC = () => {
       <section id="preview" className="py-16 max-w-6xl mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900">
-            Interactive Portfolio Architecture
+            Intelligent Booking Experience
           </h2>
           <p className="text-stone-600 text-sm mt-2">
-            Showcasing Lumière Beauty Studio (Quezon City, PH) with genuine real-time database scheduling.
+            Showcasing Lumière Beauty Studio with genuine real-time database scheduling and live staff rosters.
           </p>
         </div>
 
@@ -298,10 +298,10 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
             <span className="font-semibold text-stone-900">Appointmo</span>
-            <span>— Intelligent Appointment Platform. Portfolio demonstration.</span>
+            <span>— The smarter way to book. Powered by intelligent scheduling.</span>
           </div>
           <div className="flex space-x-6">
-            <span>Demo Business: Lumière Beauty Studio (Quezon City, PH)</span>
+            <span>Featured Business: Lumière Beauty Studio (Quezon City, PH)</span>
           </div>
         </div>
       </footer>
