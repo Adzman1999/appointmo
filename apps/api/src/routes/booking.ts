@@ -257,6 +257,124 @@ router.post('/bookings/:reference/cancel', async (req: Request, res: Response) =
   }
 });
 
+// 8b. Secure Customer Self-Service Rescheduling
+router.post('/bookings/:reference/reschedule', async (req: Request, res: Response) => {
+  const { pool } = await import('../db');
+  const client = await pool.connect();
+  try {
+    const { reference } = req.params;
+    const { token, newStartTime, reason } = req.body;
+
+    if (!token) {
+      return res.status(401).json({ error: 'Management token required' });
+    }
+    if (!newStartTime) {
+      return res.status(400).json({ error: 'New start time is required' });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    await client.query('BEGIN');
+
+    // 1. Fetch current appointment details
+    const apptRes = await client.query(`
+      SELECT a.id, a.business_id, a.booking_reference, a.status, a.staff_id, a.start_time, a.end_time,
+             s.id AS service_id, s.name AS service_name, s.duration_minutes,
+             c.name AS customer_name, c.email AS customer_email
+      FROM appointments a
+      JOIN services s ON a.service_id = s.id
+      JOIN customers c ON a.customer_id = c.id
+      WHERE a.booking_reference = $1 AND a.management_token_hash = $2
+    `, [reference, tokenHash]);
+
+    if (apptRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Appointment not found or unauthorized' });
+    }
+
+    const appt = apptRes.rows[0];
+    if (appt.status === 'cancelled') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Cannot reschedule a cancelled appointment' });
+    }
+
+    const start = new Date(newStartTime);
+    const end = new Date(start.getTime() + appt.duration_minutes * 60 * 1000);
+
+    // Concurrency Lock: Check for conflict
+    const conflictRes = await client.query(`
+      SELECT id FROM appointments
+      WHERE staff_id = $1 AND id != $2 AND status NOT IN ('cancelled')
+        AND start_time < $3 AND end_time > $4
+      FOR UPDATE
+    `, [appt.staff_id, appt.id, end, start]);
+
+    if (conflictRes.rows.length > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'The selected time slot is no longer available. Please choose another time.' });
+    }
+
+    // Update appointment schedule
+    await client.query(`
+      UPDATE appointments
+      SET start_time = $1, end_time = $2, status = 'confirmed', updated_at = NOW()
+      WHERE id = $3
+    `, [start, end, appt.id]);
+
+    // Audit status history
+    await client.query(`
+      INSERT INTO appointment_status_history (appointment_id, previous_status, new_status, reason, changed_by)
+      VALUES ($1, $2, 'confirmed', $3, 'customer')
+    `, [appt.id, appt.status, reason || `Rescheduled by customer to ${start.toISOString()}`]);
+
+    // Format readable date
+    const formattedDate = start.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    // Notify Customer
+    await client.query(`
+      INSERT INTO notifications (
+        business_id, appointment_id, recipient_type, recipient_identifier, type, title, message
+      ) VALUES ($1, $2, 'customer', $3, 'booking_rescheduled', $4, $5)
+    `, [
+      appt.business_id,
+      appt.id,
+      appt.booking_reference,
+      'Appointment rescheduled successfully',
+      `Your ${appt.service_name} appointment has been rescheduled to ${formattedDate}.`
+    ]);
+
+    // Notify Admin
+    await client.query(`
+      INSERT INTO notifications (
+        business_id, appointment_id, recipient_type, recipient_identifier, type, title, message
+      ) VALUES ($1, $2, 'admin', 'admin', 'booking_rescheduled', $3, $4)
+    `, [
+      appt.business_id,
+      appt.id,
+      `Rescheduled: ${appt.booking_reference}`,
+      `Customer ${appt.customer_name} rescheduled appointment ${appt.booking_reference} to ${formattedDate}.`
+    ]);
+
+    await client.query('COMMIT');
+
+    res.json({
+      message: 'Appointment rescheduled successfully',
+      newStartTime: start.toISOString(),
+      newEndTime: end.toISOString()
+    });
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'Failed to reschedule appointment: ' + err.message });
+  } finally {
+    client.release();
+  }
+});
+
 // 9. Customer Notifications Endpoint (Securely verified via token)
 router.get('/bookings/:reference/notifications', async (req: Request, res: Response) => {
   try {

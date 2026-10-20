@@ -407,7 +407,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
         {/* Dashboard Title & Quick Insight */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-stone-900">Salon Operations &amp; Appointments</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-stone-900">Business Operations &amp; Appointments</h1>
             <p className="text-xs text-stone-500 mt-0.5">
               Appointments sorted by <strong>creation date (newest first)</strong>. Auto-refreshes every 5 seconds.
             </p>

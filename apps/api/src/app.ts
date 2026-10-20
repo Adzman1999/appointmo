@@ -11,6 +11,14 @@ import adminRoutes from './routes/admin';
 import ownerRoutes from './routes/owner';
 import accessRoutes from './routes/access';
 import demoAdminRoutes from './routes/demoAdmin';
+import { runMigrations } from './db/migrate';
+
+// Automatically ensure database schema is up-to-date on cold-start (non-blocking)
+if (config.env !== 'test') {
+  runMigrations()
+    .then(() => console.log('✅ Server auto-migration initialized'))
+    .catch((err) => console.error('⚠️ Server auto-migration warning:', err.message));
+}
 
 export const createApp = () => {
   const app = express();

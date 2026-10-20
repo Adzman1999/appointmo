@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Calendar, Clock, User, AlertCircle, CheckCircle2, XCircle, Bell, Check } from 'lucide-react';
+import { Calendar, Clock, User, AlertCircle, CheckCircle2, XCircle, Bell, Check, CalendarDays, RefreshCw } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 export const ManageBookingPage: React.FC = () => {
@@ -15,9 +15,23 @@ export const ManageBookingPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Cancellation state
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  // Rescheduling state
+  const [showReschedule, setShowReschedule] = useState(false);
+  const [targetDate, setTargetDate] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  });
+  const [availableSlots, setAvailableSlots] = useState<any[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<any | null>(null);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [rescheduleReason, setRescheduleReason] = useState('');
+  const [rescheduling, setRescheduling] = useState(false);
 
   const fetchNotifications = async (currentRef: string, currentToken: string) => {
     try {
@@ -64,6 +78,23 @@ export const ManageBookingPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [booking, ref, token]);
 
+  // Load available slots when Reschedule section opens or date changes
+  useEffect(() => {
+    if (!showReschedule || !booking) return;
+
+    setLoadingSlots(true);
+    apiFetch<any>(`/availability?serviceId=${booking.serviceId}&staffId=${booking.staffId}&date=${targetDate}`)
+      .then((res) => {
+        setAvailableSlots(res.slots || []);
+        setSelectedSlot(null);
+      })
+      .catch((err) => {
+        console.error('Failed to load slots:', err);
+        setAvailableSlots([]);
+      })
+      .finally(() => setLoadingSlots(false));
+  }, [showReschedule, targetDate, booking]);
+
   const handleMarkNotificationRead = async (notifId: number) => {
     try {
       await apiFetch(`/bookings/${ref.trim()}/notifications/${notifId}/read`, {
@@ -73,6 +104,32 @@ export const ManageBookingPage: React.FC = () => {
       setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, isRead: true } : n));
     } catch (err) {
       // ignore
+    }
+  };
+
+  const handleRescheduleBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSlot) return;
+
+    setRescheduling(true);
+    setError(null);
+    try {
+      await apiFetch(`/bookings/${ref.trim()}/reschedule`, {
+        method: 'POST',
+        body: JSON.stringify({
+          token: token.trim(),
+          newStartTime: selectedSlot.startTime,
+          reason: rescheduleReason || 'Customer requested reschedule via portal'
+        })
+      });
+
+      setActionSuccess('Your appointment has been rescheduled successfully.');
+      setShowReschedule(false);
+      handleLookup();
+    } catch (err: any) {
+      setError(err.message || 'Failed to reschedule appointment. The slot may be taken.');
+    } finally {
+      setRescheduling(false);
     }
   };
 
@@ -89,7 +146,6 @@ export const ManageBookingPage: React.FC = () => {
       });
 
       setActionSuccess('Your appointment has been cancelled.');
-      // Refresh
       handleLookup();
     } catch (err: any) {
       setError(err.message || 'Failed to cancel appointment.');
@@ -100,10 +156,10 @@ export const ManageBookingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 py-12 px-4 flex items-center justify-center">
-      <div className="max-w-md w-full bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
+      <div className="max-w-lg w-full bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 shadow-sm">
         <h1 className="text-xl font-bold text-stone-900 mb-1 text-center">Manage Appointment</h1>
         <p className="text-xs text-stone-500 mb-6 text-center">
-          Private lookup using your unique booking reference and secret management token.
+          Self-service portal: view details, reschedule to new open slots, cancel, and track updates in real-time.
         </p>
 
         {error && (
@@ -173,14 +229,14 @@ export const ManageBookingPage: React.FC = () => {
               </div>
 
               <div className="flex justify-between">
-                <span className="text-stone-400">Therapist</span>
+                <span className="text-stone-400">Specialist</span>
                 <span className="font-medium text-stone-900">{booking.staffName}</span>
               </div>
 
               <div className="flex justify-between">
                 <span className="text-stone-400">Scheduled Time</span>
                 <span className="font-medium text-stone-900">
-                  {new Date(booking.startTime).toLocaleString()}
+                  {new Date(booking.startTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
                 </span>
               </div>
 
@@ -201,7 +257,7 @@ export const ManageBookingPage: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-1.5 text-xs font-semibold text-stone-800">
                     <Bell className="w-3.5 h-3.5 text-stone-600" />
-                    <span>Appointment Updates</span>
+                    <span>Appointment Updates &amp; Alerts</span>
                   </div>
                   <span className="text-[10px] font-medium text-stone-500">
                     {notifications.filter(n => !n.isRead).length} new
@@ -237,6 +293,88 @@ export const ManageBookingPage: React.FC = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Rescheduling Panel */}
+            {booking.status !== 'cancelled' && (
+              <div className="border border-stone-200 rounded-2xl p-4 bg-white space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-1.5 text-xs font-semibold text-stone-900">
+                    <CalendarDays className="w-4 h-4 text-stone-600" />
+                    <span>Reschedule Appointment</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowReschedule(!showReschedule)}
+                    className="text-xs font-semibold text-stone-700 hover:text-stone-900 underline"
+                  >
+                    {showReschedule ? 'Close' : 'Choose New Time'}
+                  </button>
+                </div>
+
+                {showReschedule && (
+                  <form onSubmit={handleRescheduleBooking} className="space-y-3 pt-2 text-xs">
+                    <div>
+                      <label className="block font-semibold text-stone-700 mb-1">New Target Date</label>
+                      <input
+                        type="date"
+                        value={targetDate}
+                        onChange={(e) => setTargetDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:outline-none focus:border-stone-900 text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-stone-700 mb-1">Available Openings</label>
+                      {loadingSlots ? (
+                        <p className="p-3 bg-stone-50 rounded-xl border border-stone-200 text-stone-400 text-center">
+                          Checking available openings...
+                        </p>
+                      ) : availableSlots.length === 0 ? (
+                        <p className="p-3 bg-stone-50 rounded-xl border border-stone-200 text-stone-500 text-center">
+                          No open slots on this date with your specialist. Please pick another date.
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-1.5 max-h-36 overflow-y-auto p-1">
+                          {availableSlots.map((slot, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setSelectedSlot(slot)}
+                              className={`p-2 rounded-xl border text-center transition ${
+                                selectedSlot?.startTime === slot.startTime
+                                  ? 'bg-stone-900 text-white font-bold border-stone-900'
+                                  : 'bg-white text-stone-800 border-stone-200 hover:border-stone-400'
+                              }`}
+                            >
+                              {new Date(slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-stone-700 mb-1">Reason for Rescheduling (Optional)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Schedule adjustment"
+                        value={rescheduleReason}
+                        onChange={(e) => setRescheduleReason(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:outline-none focus:border-stone-900 text-xs"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={rescheduling || !selectedSlot}
+                      className="w-full bg-stone-900 text-white font-semibold py-2.5 rounded-xl hover:bg-stone-800 transition text-xs shadow disabled:opacity-50"
+                    >
+                      {rescheduling ? 'Rescheduling...' : 'Confirm New Time'}
+                    </button>
+                  </form>
+                )}
               </div>
             )}
 

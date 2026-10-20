@@ -1,8 +1,12 @@
 import { query, pool } from './index';
+import { runMigrations } from './migrate';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
 export const seedData = async () => {
+  // Ensure all schema and tables (e.g. notifications, demo_sessions) exist
+  await runMigrations();
+
   console.log('Seeding deterministic Lumière Beauty Studio demo data...');
 
   const client = await pool.connect();

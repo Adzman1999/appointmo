@@ -48,7 +48,12 @@ export const LandingPage: React.FC = () => {
           <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-stone-600">
             <a href="#how-it-works" className="hover:text-stone-900 transition-colors">How It Works</a>
             <a href="#concierge" className="hover:text-stone-900 transition-colors">Concierge Booking</a>
-            <a href="#preview" className="hover:text-stone-900 transition-colors">Product Preview</a>
+            <button
+              onClick={() => navigate('/manage')}
+              className="hover:text-stone-900 transition-colors text-stone-700 font-medium text-sm"
+            >
+              Manage Booking
+            </button>
             {SHOW_PRODUCTION_AUTH && (
               <button
                 onClick={() => navigate('/admin/login')}
@@ -86,11 +91,11 @@ export const LandingPage: React.FC = () => {
         </div>
 
         <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-stone-900 mb-6 leading-tight">
-          Intelligent, guided appointments for modern salons and studios.
+          Intelligent, guided appointment scheduling for any service business.
         </h1>
 
         <p className="text-base sm:text-lg text-stone-600 max-w-2xl mx-auto mb-10 leading-relaxed font-normal">
-          Explore Appointmo with synthetic data right now. Experience both the business management dashboard and customer scheduling with intelligent concierge discovery.
+          Designed for studios, clinics, salons, wellness centres, and professional services. Explore Appointmo with synthetic data right now — featuring two-way live sync and instant self-service appointment management.
         </p>
 
         {/* Primary Call to Action Buttons */}
@@ -125,7 +130,7 @@ export const LandingPage: React.FC = () => {
               "Not sure what to book? Tell us what you need, and we'll help you find the right service and time."
             </h2>
             <p className="text-sm text-stone-600 leading-relaxed mb-6">
-              Instead of forcing customers to interpret an entire salon catalogue, Appointmo's Concierge interprets preferences, skin sensitivity, and budget in natural language, matching them directly to genuine calendar openings.
+              Instead of forcing customers to interpret a complex service catalogue, Appointmo's Concierge interprets preferences, specialized needs, and budget in natural language, matching them directly to genuine calendar openings.
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <button
@@ -159,9 +164,9 @@ export const LandingPage: React.FC = () => {
             <div className="w-10 h-10 rounded-2xl bg-stone-100 text-stone-900 flex items-center justify-center font-bold">
               <Building2 className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-bold text-stone-900">Admin Management Demo</h3>
+            <h3 className="text-lg font-bold text-stone-900">Admin Operations Demo</h3>
             <p className="text-xs text-stone-600 leading-relaxed">
-              Experience the complete studio management interface: real calculated revenue, upcoming calendar list, status changes, service pricing, and safe demo reset.
+              Experience the complete business operations dashboard: real-time revenue, incoming appointment feed, status approvals, reschedule coordination, and instant synchronization.
             </p>
             <ul className="text-xs text-stone-600 space-y-2 pt-2">
               <li className="flex items-center space-x-2">
@@ -192,9 +197,9 @@ export const LandingPage: React.FC = () => {
             <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center font-bold">
               <Sparkles className="w-5 h-5 text-amber-600" />
             </div>
-            <h3 className="text-lg font-bold text-stone-900">Customer Booking Demo</h3>
+            <h3 className="text-lg font-bold text-stone-900">Customer Booking &amp; Self-Management</h3>
             <p className="text-xs text-stone-600 leading-relaxed">
-              Book appointments directly with genuine calendar availability, zero accounts required. Features atomic double-booking prevention.
+              Book appointments directly with genuine availability, then reschedule or cancel anytime through the private self-service portal.
             </p>
             <ul className="text-xs text-stone-600 space-y-2 pt-2">
               <li className="flex items-center space-x-2">
@@ -203,11 +208,11 @@ export const LandingPage: React.FC = () => {
               </li>
               <li className="flex items-center space-x-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Natural-language Concierge service discovery</span>
+                <span>Natural-language Concierge discovery</span>
               </li>
               <li className="flex items-center space-x-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Immediate booking synchronization with Admin Demo</span>
+                <span>Full self-service management (reschedule &amp; cancel anytime)</span>
               </li>
             </ul>
             <div className="pt-4">
