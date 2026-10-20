@@ -46,6 +46,12 @@ export const LandingPage: React.FC = () => {
           </div>
 
           <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-stone-600">
+            <button
+              onClick={() => navigate('/browse')}
+              className="hover:text-stone-900 transition-colors text-stone-800 font-semibold text-sm flex items-center space-x-1"
+            >
+              <span>Explore Businesses</span>
+            </button>
             <a href="#how-it-works" className="hover:text-stone-900 transition-colors">How It Works</a>
             <a href="#concierge" className="hover:text-stone-900 transition-colors">Concierge Booking</a>
             <button
@@ -109,10 +115,10 @@ export const LandingPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => navigate('/demo/book')}
+            onClick={() => navigate('/browse')}
             className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-white text-stone-800 border border-stone-300 px-7 py-3.5 rounded-xl hover:bg-stone-50 transition shadow-sm"
           >
-            <span>Book an Appointment</span>
+            <span>Browse Businesses &amp; Book</span>
             <ArrowRight className="w-4 h-4 text-stone-500" />
           </button>
         </div>

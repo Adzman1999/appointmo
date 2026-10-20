@@ -243,6 +243,48 @@ export const runMigrations = async () => {
     );
     CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON notifications (recipient_type, recipient_identifier, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_notifications_appt ON notifications (appointment_id);
+
+    -- Multi-Business & Branch Extensions
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS category VARCHAR(100) NOT NULL DEFAULT 'Beauty & Wellness';
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS logo_url TEXT;
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS booking_policies JSONB DEFAULT '{"requireApproval": false, "minLeadHours": 2, "maxAdvanceDays": 60}'::jsonb;
+
+    ALTER TABLE branches ADD COLUMN IF NOT EXISTS latitude NUMERIC(10, 7);
+    ALTER TABLE branches ADD COLUMN IF NOT EXISTS longitude NUMERIC(10, 7);
+    ALTER TABLE branches ADD COLUMN IF NOT EXISTS location_description TEXT;
+
+    ALTER TABLE services ADD COLUMN IF NOT EXISTS suitability_tags TEXT[] DEFAULT ARRAY[]::TEXT[];
+    ALTER TABLE services ADD COLUMN IF NOT EXISTS buffer_minutes INTEGER NOT NULL DEFAULT 0;
+
+    -- Branch-specific service offerings
+    CREATE TABLE IF NOT EXISTS branch_services (
+      branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+      service_id UUID NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+      is_available BOOLEAN NOT NULL DEFAULT true,
+      price_override NUMERIC(10, 2),
+      PRIMARY KEY (branch_id, service_id)
+    );
+
+    -- Staff branch assignments
+    CREATE TABLE IF NOT EXISTS staff_branches (
+      staff_id UUID NOT NULL REFERENCES staff_profiles(id) ON DELETE CASCADE,
+      branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+      PRIMARY KEY (staff_id, branch_id)
+    );
+
+    -- Verified Synthetic Reviews
+    CREATE TABLE IF NOT EXISTS reviews (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
+      service_id UUID REFERENCES services(id) ON DELETE SET NULL,
+      appointment_id UUID REFERENCES appointments(id) ON DELETE CASCADE,
+      customer_name VARCHAR(255) NOT NULL,
+      rating SMALLINT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+      comment TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_reviews_business ON reviews (business_id, rating DESC);
   `);
 
   console.log('✅ Migrations completed successfully.');

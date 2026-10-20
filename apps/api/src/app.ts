@@ -11,6 +11,7 @@ import adminRoutes from './routes/admin';
 import ownerRoutes from './routes/owner';
 import accessRoutes from './routes/access';
 import demoAdminRoutes from './routes/demoAdmin';
+import discoveryRoutes from './routes/discovery';
 import { runMigrations } from './db/migrate';
 
 // Automatically ensure database schema is up-to-date on cold-start (non-blocking)
@@ -46,6 +47,7 @@ export const createApp = () => {
   app.use('/api/access', accessRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/demo-access', demoAccessRoutes);
+  app.use('/api', discoveryRoutes);
   app.use('/api', bookingRoutes);
   app.use('/api/admin', adminRoutes);
 

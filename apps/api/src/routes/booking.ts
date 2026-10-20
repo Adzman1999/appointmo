@@ -10,19 +10,27 @@ const router = Router();
 // 1. Get Public Demo Business & Branch Profile
 router.get('/business', async (req: Request, res: Response) => {
   try {
+    const { slug } = req.query;
+    const targetSlug = typeof slug === 'string' && slug ? slug : 'lumiere-beauty-studio';
+
     const bizRes = await query(`
-      SELECT b.id, b.name, b.slug, b.description, b.currency, b.timezone
+      SELECT b.id, b.name, b.slug, b.description, b.category, b.currency, b.timezone, b.logo_url AS "logoUrl"
       FROM businesses b
-      WHERE b.slug = 'lumiere-beauty-studio'
+      WHERE b.slug = $1
       LIMIT 1
-    `);
+    `, [targetSlug]);
 
     if (bizRes.rows.length === 0) {
-      return res.status(404).json({ error: 'Demo business not found' });
+      return res.status(404).json({ error: 'Business not found' });
     }
 
     const business = bizRes.rows[0];
-    const branchesRes = await query('SELECT id, name, address, city, phone FROM branches WHERE business_id = $1', [business.id]);
+    const branchesRes = await query(`
+      SELECT id, name, address, city, phone, latitude, longitude, location_description AS "locationDescription"
+      FROM branches
+      WHERE business_id = $1 AND is_active = true
+      ORDER BY name ASC
+    `, [business.id]);
 
     res.json({
       business: {
@@ -38,14 +46,39 @@ router.get('/business', async (req: Request, res: Response) => {
 // 2. Get Public Services
 router.get('/services', async (req: Request, res: Response) => {
   try {
-    const sRes = await query(`
-      SELECT s.id, s.name, s.description, s.duration_minutes AS "durationMinutes", s.price, s.category
+    const { businessId, slug, branchId } = req.query;
+
+    let sql = `
+      SELECT s.id, s.name, s.description, s.duration_minutes AS "durationMinutes", s.price, s.category,
+             s.suitability_tags AS "suitabilityTags"
       FROM services s
       JOIN businesses b ON s.business_id = b.id
-      WHERE b.slug = 'lumiere-beauty-studio' AND s.is_active = true
-      ORDER BY s.price ASC
-    `);
+      WHERE s.is_active = true
+    `;
+    const params: any[] = [];
 
+    if (businessId && typeof businessId === 'string') {
+      params.push(businessId);
+      sql += ` AND b.id = $${params.length}`;
+    } else if (slug && typeof slug === 'string') {
+      params.push(slug);
+      sql += ` AND b.slug = $${params.length}`;
+    } else {
+      sql += ` AND b.slug = 'lumiere-beauty-studio'`;
+    }
+
+    // Branch-specific service filter if branch_services table is populated
+    if (branchId && typeof branchId === 'string') {
+      params.push(branchId);
+      sql += ` AND (
+        NOT EXISTS (SELECT 1 FROM branch_services bs WHERE bs.branch_id = $${params.length})
+        OR s.id IN (SELECT bs.service_id FROM branch_services bs WHERE bs.branch_id = $${params.length} AND bs.is_available = true)
+      )`;
+    }
+
+    sql += ` ORDER BY s.price ASC`;
+
+    const sRes = await query(sql, params);
     res.json({ services: sRes.rows });
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve services' });
@@ -55,21 +88,30 @@ router.get('/services', async (req: Request, res: Response) => {
 // 3. Get Staff Eligible for a Service (or all staff)
 router.get('/staff', async (req: Request, res: Response) => {
   try {
-    const { serviceId } = req.query;
+    const { serviceId, businessId, slug } = req.query;
 
     let sql = `
       SELECT DISTINCT sp.id, sp.name, sp.bio, sp.avatar_url AS "avatarUrl"
       FROM staff_profiles sp
       JOIN businesses b ON sp.business_id = b.id
+      WHERE sp.is_active = true
     `;
     const params: any[] = [];
 
     if (serviceId && typeof serviceId === 'string') {
-      sql += ` JOIN staff_services ss ON sp.id = ss.staff_id WHERE ss.service_id = $1 AND sp.is_active = true`;
       params.push(serviceId);
+      sql += ` AND sp.id IN (SELECT ss.staff_id FROM staff_services ss WHERE ss.service_id = $${params.length})`;
+    } else if (businessId && typeof businessId === 'string') {
+      params.push(businessId);
+      sql += ` AND b.id = $${params.length}`;
+    } else if (slug && typeof slug === 'string') {
+      params.push(slug);
+      sql += ` AND b.slug = $${params.length}`;
     } else {
-      sql += ` WHERE b.slug = 'lumiere-beauty-studio' AND sp.is_active = true`;
+      sql += ` AND b.slug = 'lumiere-beauty-studio'`;
     }
+
+    sql += ` ORDER BY sp.name ASC`;
 
     const staffRes = await query(sql, params);
     res.json({ staff: staffRes.rows });
@@ -81,16 +123,27 @@ router.get('/staff', async (req: Request, res: Response) => {
 // 4. Get Available Appointment Time Slots (Real calculation from DB rules)
 router.get('/availability', async (req: Request, res: Response) => {
   try {
-    const { serviceId, date, staffId } = req.query;
+    const { serviceId, date, staffId, businessId } = req.query;
     if (!serviceId || !date) {
       return res.status(400).json({ error: 'serviceId and date (YYYY-MM-DD) are required' });
     }
 
-    const bizRes = await query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio'");
-    const businessId = bizRes.rows[0].id;
+    let resolvedBusinessId: string;
+    if (businessId && typeof businessId === 'string') {
+      resolvedBusinessId = businessId;
+    } else {
+      // Find business from service
+      const sBizRes = await query('SELECT business_id FROM services WHERE id = $1', [serviceId]);
+      if (sBizRes.rows.length > 0) {
+        resolvedBusinessId = sBizRes.rows[0].business_id;
+      } else {
+        const bizRes = await query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio'");
+        resolvedBusinessId = bizRes.rows[0].id;
+      }
+    }
 
     const slots = await AvailabilityService.getAvailableSlots(
-      businessId,
+      resolvedBusinessId,
       serviceId as string,
       date as string,
       staffId as string | undefined

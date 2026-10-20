@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { LandingPage } from './pages/LandingPage';
+import { DiscoveryPage } from './pages/DiscoveryPage';
 import { QuickBookingPage } from './pages/QuickBookingPage';
 import { ConciergePage } from './pages/ConciergePage';
 import { ManageBookingPage } from './pages/ManageBookingPage';
@@ -27,6 +28,8 @@ export const App: React.FC = () => {
       <Route path="/" element={<LandingPage />} />
 
       {/* 2. Customer Demo Experiences (Zero Accounts Required) */}
+      <Route path="/browse" element={<DiscoveryPage />} />
+      <Route path="/discover" element={<DiscoveryPage />} />
       <Route path="/demo/book" element={<QuickBookingPage />} />
       <Route path="/demo/concierge" element={<ConciergePage />} />
       <Route path="/concierge" element={<ConciergePage />} />

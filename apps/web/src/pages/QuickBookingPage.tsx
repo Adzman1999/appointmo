@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Calendar as CalendarIcon, Clock, User, CheckCircle2, AlertCircle, Sparkles, ArrowRight } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Calendar as CalendarIcon, Clock, User, CheckCircle2, AlertCircle, Sparkles, ArrowRight, Building2, MapPin } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 interface Service {
@@ -19,8 +19,31 @@ interface Slot {
   staffName: string;
 }
 
+interface BusinessProfile {
+  id: string;
+  name: string;
+  slug: string;
+  category: string;
+  description: string;
+  branches: Array<{
+    id: string;
+    name: string;
+    address: string;
+    city: string;
+    phone: string;
+  }>;
+}
+
 export const QuickBookingPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const businessSlug = searchParams.get('slug') || 'lumiere-beauty-studio';
+  const initialBranchId = searchParams.get('branchId') || '';
+
+  const [business, setBusiness] = useState<BusinessProfile | null>(null);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>(initialBranchId);
+
   const [services, setServices] = useState<Service[]>([]);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
@@ -47,17 +70,32 @@ export const QuickBookingPage: React.FC = () => {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [completedBooking, setCompletedBooking] = useState<any | null>(null);
 
-  // Fetch synthetic services on load
+  // 1. Fetch Business Profile
   useEffect(() => {
-    apiFetch<{ services: Service[] }>('/services')
+    apiFetch<{ business: BusinessProfile }>(`/business?slug=${businessSlug}`)
+      .then(res => {
+        setBusiness(res.business);
+        if (!selectedBranchId && res.business.branches.length > 0) {
+          setSelectedBranchId(res.business.branches[0].id);
+        }
+      })
+      .catch(console.error);
+  }, [businessSlug]);
+
+  // 2. Fetch synthetic services for selected business & branch
+  useEffect(() => {
+    const url = `/services?slug=${businessSlug}${selectedBranchId ? `&branchId=${selectedBranchId}` : ''}`;
+    apiFetch<{ services: Service[] }>(url)
       .then(res => {
         setServices(res.services);
         if (res.services.length > 0) {
           setSelectedService(res.services[0]);
+        } else {
+          setSelectedService(null);
         }
       })
       .catch(console.error);
-  }, []);
+  }, [businessSlug, selectedBranchId]);
 
   // Fetch available slots when service or date changes
   useEffect(() => {
@@ -115,14 +153,22 @@ export const QuickBookingPage: React.FC = () => {
           <div className="flex items-center space-x-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
             <span className="font-semibold text-white">Public Customer Demo:</span>
-            <span>Lumière Beauty Studio (Synthetic Demonstration). No real card or payment required.</span>
+            <span>{business?.name || 'Synthetic Demonstration Business'}. No payment or account required.</span>
           </div>
-          <button
-            onClick={() => navigate('/demo/admin')}
-            className="text-white hover:text-amber-300 font-semibold underline text-xs"
-          >
-            Switch to Admin Demo &rarr;
-          </button>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => navigate('/browse')}
+              className="text-amber-300 hover:text-white font-semibold underline text-xs"
+            >
+              &larr; Switch Business
+            </button>
+            <button
+              onClick={() => navigate('/demo/admin')}
+              className="text-white hover:text-amber-300 font-semibold underline text-xs"
+            >
+              Admin Demo &rarr;
+            </button>
+          </div>
         </div>
       </div>
 
@@ -131,40 +177,68 @@ export const QuickBookingPage: React.FC = () => {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-9 h-9 rounded-xl bg-stone-900 text-white flex items-center justify-center font-bold text-base shadow">
-              L
+              {business?.name ? business.name[0] : 'A'}
             </div>
             <div>
-              <h1 className="text-base font-bold text-stone-900">Lumière Beauty Studio</h1>
-              <p className="text-xs text-stone-500">Intelligent Online Booking</p>
+              <h1 className="text-base font-bold text-stone-900">{business?.name || 'Appointmo Booking'}</h1>
+              <p className="text-xs text-stone-500">{business?.category || 'Intelligent Scheduling'}</p>
             </div>
           </div>
           <div className="flex items-center space-x-3">
             <button
-              onClick={() => navigate('/demo/concierge')}
+              onClick={() => navigate(`/demo/concierge?business=${business?.slug || ''}`)}
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 text-xs font-semibold hover:bg-amber-100 transition shadow-sm"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-              <span>Help Me Find the Right Appointment</span>
+              <span>Concierge Finder</span>
             </button>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/browse')}
               className="px-3 py-1.5 rounded-xl border border-stone-200 text-stone-600 hover:text-stone-900 transition text-xs font-semibold"
             >
-              Home
+              Directory
             </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-3xl mx-auto px-4">
+        {/* Branch Selector if multiple branches exist */}
+        {business && business.branches.length > 1 && (
+          <div className="bg-white rounded-2xl border border-stone-200 p-4 mb-6 shadow-sm">
+            <label className="block text-xs font-bold uppercase tracking-wider text-stone-600 mb-2">
+              Select Branch Location
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {business.branches.map((br) => (
+                <button
+                  key={br.id}
+                  type="button"
+                  onClick={() => setSelectedBranchId(br.id)}
+                  className={`p-3 rounded-xl border text-left transition ${
+                    selectedBranchId === br.id
+                      ? 'border-stone-900 bg-stone-900 text-white shadow-sm'
+                      : 'border-stone-200 hover:border-stone-400 bg-white text-stone-800'
+                  }`}
+                >
+                  <div className="font-bold text-xs">{br.name}</div>
+                  <div className={`text-[11px] truncate mt-0.5 ${selectedBranchId === br.id ? 'text-stone-300' : 'text-stone-500'}`}>
+                    {br.address}, {br.city}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Navigation Mode Banner */}
         <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-amber-950">
           <div>
-            <span className="font-bold">Not sure which service fits your skin or schedule?</span>
+            <span className="font-bold">Not sure which service fits your goals or schedule?</span>
             <p className="text-amber-800 text-[11px] mt-0.5">Let our Concierge find the ideal service and time slot for your budget.</p>
           </div>
           <button
-            onClick={() => navigate('/demo/concierge')}
+            onClick={() => navigate(`/demo/concierge?business=${business?.slug || ''}`)}
             className="shrink-0 bg-stone-900 text-white font-semibold px-3.5 py-2 rounded-xl hover:bg-stone-800 transition shadow text-xs flex items-center space-x-1.5"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />

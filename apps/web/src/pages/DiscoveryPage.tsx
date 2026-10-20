@@ -1,0 +1,442 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { 
+  Search, MapPin, Sparkles, Filter, Building2, Star, 
+  Clock, ArrowRight, ChevronRight, Phone, ShieldCheck, Map as MapIcon, List 
+} from 'lucide-react';
+import { apiFetch } from '../lib/api';
+
+interface Branch {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  phone: string;
+  latitude?: number;
+  longitude?: number;
+  locationDescription?: string;
+}
+
+interface Business {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  category: string;
+  currency: string;
+  branchCount: number;
+  serviceCount: number;
+  minPrice: number;
+  maxPrice: number;
+  rating: number;
+  reviewCount: number;
+  branches: Branch[];
+}
+
+export const DiscoveryPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get('category') || 'all');
+  const [searchQuery, setSearchQuery] = useState<string>(searchParams.get('search') || '');
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [selectedBranch, setSelectedBranch] = useState<{ biz: Business; branch: Branch } | null>(null);
+
+  // Fetch categories on load
+  useEffect(() => {
+    apiFetch<{ categories: string[] }>('/categories')
+      .then(res => setCategories(res.categories || []))
+      .catch(console.error);
+  }, []);
+
+  // Fetch businesses when category or search changes
+  useEffect(() => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (selectedCategory && selectedCategory !== 'all') {
+      params.set('category', selectedCategory);
+    }
+    if (searchQuery.trim()) {
+      params.set('search', searchQuery.trim());
+    }
+
+    apiFetch<{ businesses: Business[] }>(`/businesses?${params.toString()}`)
+      .then(res => {
+        setBusinesses(res.businesses || []);
+        if (res.businesses.length > 0 && res.businesses[0].branches.length > 0) {
+          setSelectedBranch({ biz: res.businesses[0], branch: res.businesses[0].branches[0] });
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [selectedCategory, searchQuery]);
+
+  const handleCategorySelect = (cat: string) => {
+    setSelectedCategory(cat);
+    const next = new URLSearchParams(searchParams);
+    if (cat === 'all') next.delete('category');
+    else next.set('category', cat);
+    setSearchParams(next);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const next = new URLSearchParams(searchParams);
+    if (searchQuery.trim()) next.set('search', searchQuery.trim());
+    else next.delete('search');
+    setSearchParams(next);
+  };
+
+  // Extract all branches for Map View
+  const allBranches = businesses.flatMap(b => b.branches.map(br => ({ biz: b, branch: br })));
+
+  return (
+    <div className="min-h-screen bg-stone-50 text-stone-900 pb-24">
+      {/* Top Header */}
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-stone-200">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
+            <div className="w-9 h-9 rounded-xl bg-stone-900 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+              A
+            </div>
+            <div>
+              <span className="font-semibold text-lg tracking-tight text-stone-900">Appointmo</span>
+              <span className="ml-2 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
+                Discovery Directory
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => navigate('/manage')}
+              className="text-xs font-semibold text-stone-700 hover:text-stone-900 px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-50 transition"
+            >
+              Manage My Booking
+            </button>
+            <button
+              onClick={() => navigate('/demo/concierge')}
+              className="bg-amber-100 text-amber-900 font-semibold px-3.5 py-1.5 rounded-xl text-xs hover:bg-amber-200 transition flex items-center space-x-1.5 shadow-sm border border-amber-200"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <span>Concierge Finder</span>
+            </button>
+            <button
+              onClick={() => navigate('/demo/admin')}
+              className="hidden sm:inline-flex bg-stone-900 text-white font-semibold px-3.5 py-1.5 rounded-xl text-xs hover:bg-stone-800 transition shadow-sm"
+            >
+              Admin Studio
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Search & Header */}
+      <section className="bg-white border-b border-stone-200 py-10 sm:py-14 px-4">
+        <div className="max-w-4xl mx-auto text-center space-y-4">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-stone-100 border border-stone-200 text-stone-700 text-xs font-semibold">
+            <Building2 className="w-3.5 h-3.5 text-stone-600" />
+            <span>Discover Verified Service Businesses Across Metro Manila</span>
+          </div>
+
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-stone-900">
+            Find and book appointments with top-rated local providers.
+          </h1>
+
+          <p className="text-sm text-stone-500 max-w-xl mx-auto">
+            Browse genuine schedules for clinics, wellness salons, animal healthcare, and professional consultancies.
+          </p>
+
+          {/* Search bar */}
+          <form onSubmit={handleSearchSubmit} className="max-w-2xl mx-auto flex items-center gap-2 pt-2">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-stone-400" />
+              <input
+                type="text"
+                placeholder="Search by business name, specialty, or branch..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-2xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 shadow-sm"
+              />
+            </div>
+            <button
+              type="submit"
+              className="bg-stone-900 text-white text-xs font-semibold px-5 py-3 rounded-2xl hover:bg-stone-800 transition shadow"
+            >
+              Search
+            </button>
+          </form>
+
+          {/* Category Filter Pills */}
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+            <button
+              onClick={() => handleCategorySelect('all')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition ${
+                selectedCategory === 'all'
+                  ? 'bg-stone-900 text-white shadow-sm'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              All Categories
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => handleCategorySelect(cat)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition ${
+                  selectedCategory === cat
+                    ? 'bg-stone-900 text-white shadow-sm'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Main Content Area */}
+      <main className="max-w-6xl mx-auto px-4 py-8">
+        {/* Controls Bar: Results count & Map/List Toggle */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-base font-bold text-stone-900">
+              {businesses.length} {businesses.length === 1 ? 'Business' : 'Businesses'} Found
+            </h2>
+            <p className="text-xs text-stone-500">
+              Showing real synthetic business catalogues and active branch locations.
+            </p>
+          </div>
+
+          {/* Toggle View */}
+          <div className="inline-flex p-1 bg-stone-200 rounded-2xl">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                viewMode === 'list' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>List View</span>
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                viewMode === 'map' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <MapIcon className="w-3.5 h-3.5" />
+              <span>Map View</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Loading State */}
+        {loading ? (
+          <div className="py-20 text-center space-y-3">
+            <div className="w-8 h-8 border-2 border-stone-900 border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-xs text-stone-500">Loading business directory...</p>
+          </div>
+        ) : businesses.length === 0 ? (
+          /* Empty State */
+          <div className="bg-white rounded-3xl border border-stone-200 p-12 text-center max-w-md mx-auto space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center mx-auto text-stone-500">
+              <Search className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-stone-900">No businesses match your criteria</h3>
+            <p className="text-xs text-stone-500">
+              Try adjusting your search keyword or clearing the category filter to see available demo providers.
+            </p>
+            <button
+              onClick={() => {
+                setSelectedCategory('all');
+                setSearchQuery('');
+                setSearchParams({});
+              }}
+              className="bg-stone-900 text-white text-xs font-semibold px-4 py-2 rounded-xl hover:bg-stone-800 transition"
+            >
+              Reset Filters
+            </button>
+          </div>
+        ) : viewMode === 'list' ? (
+          /* List Mode */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+            {businesses.map((biz) => (
+              <div
+                key={biz.id}
+                className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-7 shadow-sm hover:border-stone-400 transition flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-stone-100 border border-stone-200 text-stone-700 text-[10px] font-bold uppercase tracking-wider mb-2">
+                        {biz.category}
+                      </span>
+                      <h3 className="text-lg font-bold text-stone-900">{biz.name}</h3>
+                    </div>
+                    <div className="flex items-center space-x-1 bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-full text-xs font-bold shrink-0">
+                      <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                      <span>{biz.rating}</span>
+                      <span className="text-stone-400 font-normal">({biz.reviewCount})</span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed mb-4">
+                    {biz.description}
+                  </p>
+
+                  {/* Branches preview */}
+                  <div className="space-y-1.5 mb-4 bg-stone-50 p-3.5 rounded-2xl border border-stone-200">
+                    <div className="text-[11px] font-bold text-stone-700 flex items-center space-x-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-stone-500" />
+                      <span>{biz.branches.length} {biz.branches.length === 1 ? 'Location' : 'Locations'}:</span>
+                    </div>
+                    {biz.branches.map((br) => (
+                      <div key={br.id} className="text-[11px] text-stone-500 pl-5">
+                        <strong className="text-stone-700">{br.name}</strong> • {br.city}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Service pricing & count */}
+                  <div className="flex items-center justify-between text-xs text-stone-500 pt-2 border-t border-stone-100">
+                    <span>{biz.serviceCount} Services Available</span>
+                    <span className="font-semibold text-stone-900">
+                      ₱{biz.minPrice} – ₱{biz.maxPrice}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-6 flex gap-2">
+                  <button
+                    onClick={() => navigate(`/demo/book?slug=${biz.slug}`)}
+                    className="flex-1 bg-stone-900 text-white text-xs font-semibold py-3 rounded-xl hover:bg-stone-800 transition shadow flex items-center justify-center space-x-1.5"
+                  >
+                    <span>Book Appointment</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => navigate(`/demo/concierge?business=${biz.slug}`)}
+                    className="px-3 py-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100 transition text-xs font-semibold"
+                    title="Concierge Match"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-600" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Map View: Interactive Synthetic Map Display with Synchronized Sidebar */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Map Canvas / Grid Representation */}
+            <div className="lg:col-span-2 bg-stone-100 border border-stone-300 rounded-3xl p-6 min-h-[480px] flex flex-col justify-between relative overflow-hidden">
+              <div className="flex items-center justify-between bg-white/90 backdrop-blur-md p-3 rounded-2xl border border-stone-200 shadow-sm z-10">
+                <div className="flex items-center space-x-2 text-xs font-semibold text-stone-800">
+                  <MapPin className="w-4 h-4 text-rose-600" />
+                  <span>Fictional Metro Manila Demonstration Map</span>
+                </div>
+                <span className="text-[10px] text-stone-500 font-mono">
+                  Coordinates Verified (QC, Makati, BGC, Ortigas)
+                </span>
+              </div>
+
+              {/* Synthetic Map Coordinate Markers Layout */}
+              <div className="relative w-full h-80 my-4 bg-stone-200/60 rounded-2xl border border-stone-300/80 p-6 flex flex-wrap items-center justify-around gap-4">
+                {allBranches.map((item, idx) => (
+                  <button
+                    key={item.branch.id}
+                    onClick={() => setSelectedBranch(item)}
+                    className={`p-3 rounded-2xl border transition text-left max-w-[200px] shadow-sm transform hover:-translate-y-0.5 ${
+                      selectedBranch?.branch.id === item.branch.id
+                        ? 'bg-stone-900 text-white border-stone-900 ring-4 ring-stone-900/10'
+                        : 'bg-white text-stone-800 border-stone-300 hover:border-stone-500'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-1.5 mb-1">
+                      <div className={`w-2 h-2 rounded-full ${selectedBranch?.branch.id === item.branch.id ? 'bg-amber-400' : 'bg-rose-500'}`} />
+                      <span className="text-[10px] font-bold uppercase truncate">{item.biz.category}</span>
+                    </div>
+                    <div className="font-bold text-xs leading-snug line-clamp-1">{item.biz.name}</div>
+                    <div className={`text-[10px] truncate mt-0.5 ${selectedBranch?.branch.id === item.branch.id ? 'text-stone-300' : 'text-stone-500'}`}>
+                      {item.branch.city}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="text-[11px] text-stone-500 text-center bg-white/80 p-2 rounded-xl border border-stone-200">
+                Click any fictional pin or branch card to view live service offerings and booking options.
+              </div>
+            </div>
+
+            {/* Selected Branch Details Sidebar */}
+            <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-sm flex flex-col justify-between">
+              {selectedBranch ? (
+                <div className="space-y-4">
+                  <div>
+                    <span className="inline-block px-2.5 py-0.5 rounded-full bg-stone-100 border border-stone-200 text-stone-700 text-[10px] font-bold uppercase tracking-wider mb-2">
+                      {selectedBranch.biz.category}
+                    </span>
+                    <h3 className="text-lg font-bold text-stone-900">{selectedBranch.biz.name}</h3>
+                    <p className="text-xs text-stone-600 mt-1">{selectedBranch.biz.description}</p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2 text-xs">
+                    <div className="flex items-start space-x-2">
+                      <MapPin className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-bold text-stone-900">{selectedBranch.branch.name}</div>
+                        <div className="text-stone-500">{selectedBranch.branch.address}</div>
+                        {selectedBranch.branch.locationDescription && (
+                          <div className="text-[11px] text-stone-400 mt-0.5">{selectedBranch.branch.locationDescription}</div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2 pt-2 border-t border-stone-200 text-stone-600">
+                      <Phone className="w-3.5 h-3.5 text-stone-400" />
+                      <span>{selectedBranch.branch.phone}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 text-xs text-stone-600">
+                    <div className="font-semibold text-stone-900">Pricing &amp; Booking Rules:</div>
+                    <div>• Services from <strong>₱{selectedBranch.biz.minPrice}</strong> to ₱{selectedBranch.biz.maxPrice}</div>
+                    <div>• Verified synthetic reviews: <strong>★ {selectedBranch.biz.rating}</strong> ({selectedBranch.biz.reviewCount})</div>
+                    <div>• Zero registration required for instant booking.</div>
+                  </div>
+
+                  <div className="pt-4 space-y-2">
+                    <button
+                      onClick={() => navigate(`/demo/book?slug=${selectedBranch.biz.slug}&branchId=${selectedBranch.branch.id}`)}
+                      className="w-full bg-stone-900 text-white text-xs font-semibold py-3 rounded-xl hover:bg-stone-800 transition shadow flex items-center justify-center space-x-2"
+                    >
+                      <span>Book at this Branch</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => navigate(`/demo/concierge?business=${selectedBranch.biz.slug}`)}
+                      className="w-full bg-amber-50 text-amber-900 border border-amber-200 text-xs font-semibold py-2.5 rounded-xl hover:bg-amber-100 transition flex items-center justify-center space-x-2"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Concierge Recommendations</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-20 text-xs text-stone-400">
+                  Select a branch pin on the map to preview services and book.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};

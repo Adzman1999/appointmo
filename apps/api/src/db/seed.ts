@@ -35,13 +35,20 @@ export const seedData = async () => {
       businessId = bizRes.rows[0].id;
     }
 
-    // 2. Create branch (Fictional synthetic branch)
-    const branchRes = await client.query(`
-      INSERT INTO branches (business_id, name, address, city, phone)
-      VALUES ($1, 'Lumière Studio (Fictional Demo Branch)', 'Suite 404, Fictional Innovation Tower, Demo District', 'Quezon City', '+63 2 8000 0000')
-      RETURNING id
-    `, [businessId]);
-    const branchId = branchRes.rows[0].id;
+      const branchRes = await client.query(`
+        INSERT INTO branches (business_id, name, address, city, phone, latitude, longitude, location_description)
+        VALUES ($1, 'Lumière Studio - Quezon City Branch', 'Suite 404, Fictional Innovation Tower, Demo District', 'Quezon City', '+63 2 8000 0001', 14.6507, 121.0336, 'Near North Triangle, Fictional Commercial Hub')
+        RETURNING id
+      `, [businessId]);
+      const branchId = branchRes.rows[0].id;
+
+      // Add a 2nd branch for Lumière (BGC branch)
+      const branch2Res = await client.query(`
+        INSERT INTO branches (business_id, name, address, city, phone, latitude, longitude, location_description)
+        VALUES ($1, 'Lumière Studio - BGC High Street', 'Level 2, Fictional Wellness Wing, Bonifacio Global City', 'Taguig', '+63 2 8000 0002', 14.5507, 121.0506, 'Bonifacio Global City central pedestrian strip')
+        RETURNING id
+      `, [businessId]);
+      const branch2Id = branch2Res.rows[0].id;
 
     // 3. Create business admin user and platform admin user
     const passwordHash = await bcrypt.hash('Lumiere2026!', 10);
@@ -261,6 +268,180 @@ export const seedData = async () => {
         ('Synthetic Portfolio Reviewer', 'reviewer.two@example.com', 'Fictional Labs', 'Evaluating scheduling system performance.', 'approved')
       ON CONFLICT DO NOTHING
     `);
+
+    // 9. Seed 3 Additional Diverse Fictional Businesses: Dental, Veterinary, and Legal Consulting
+    const additionalBusinesses = [
+      {
+        name: 'Apex Dental & Orthodontics',
+        slug: 'apex-dental-orthodontics',
+        category: 'Dental Services',
+        description: 'Comprehensive oral healthcare, restorative dentistry, teeth whitening, and cosmetic orthodontics.',
+        branches: [
+          {
+            name: 'Apex Dental - Makati Medical Plaza',
+            address: 'Suite 802, Fictional Ayala Avenue Medical Tower',
+            city: 'Makati',
+            phone: '+63 2 8111 0001',
+            lat: 14.5547,
+            lng: 121.0244,
+            locDesc: 'Central Makati CBD near Salcedo'
+          },
+          {
+            name: 'Apex Dental - Ortigas Center',
+            address: 'Unit 301, Fictional Pearl Plaza, Ortigas Center',
+            city: 'Pasig',
+            phone: '+63 2 8111 0002',
+            lat: 14.5866,
+            lng: 121.0617,
+            locDesc: 'Ortigas Center business district'
+          }
+        ],
+        services: [
+          { name: 'Comprehensive Dental Checkup & Cleaning', desc: 'Thorough oral prophylaxis, digital x-ray review, and tartar removal.', duration: 45, price: 1200, category: 'Preventive' },
+          { name: 'Laser Teeth Whitening', desc: 'Advanced in-chair cold-light teeth whitening treatment.', duration: 60, price: 3500, category: 'Cosmetic' },
+          { name: 'Composite Dental Restoration', desc: 'Tooth-colored filling for dental caries and minor damage.', duration: 45, price: 1800, category: 'Restorative' },
+          { name: 'Orthodontic Consultation', desc: 'Clear aligner and brace treatment planning with 3D smile scan.', duration: 30, price: 800, category: 'Orthodontics' },
+        ],
+        staff: [
+          { name: 'Dr. Rafael Villanueva', bio: 'Licensed dental surgeon with 10+ years specializing in aesthetic restorations.' },
+          { name: 'Dr. Samantha Cruz', bio: 'Orthodontic specialist certified in invisible aligners and pediatric care.' }
+        ]
+      },
+      {
+        name: 'Paws & Whiskers Animal Clinic',
+        slug: 'paws-and-whiskers-clinic',
+        category: 'Veterinary Services',
+        description: 'Compassionate companion animal wellness examinations, vaccinations, and grooming.',
+        branches: [
+          {
+            name: 'Paws & Whiskers - Greenhills Clinic',
+            address: '12-B Fictional Annapolis St, Greenhills',
+            city: 'San Juan',
+            phone: '+63 2 8222 0001',
+            lat: 14.6015,
+            lng: 121.0503,
+            locDesc: 'Across from Greenhills shopping arcade'
+          }
+        ],
+        services: [
+          { name: 'General Pet Wellness Exam', desc: 'Full physical checkup, heart & lung auscultation, and diet review.', duration: 30, price: 650, category: 'Checkup' },
+          { name: 'Annual Booster Vaccination Pack', desc: 'Core 5-in-1 vaccine, rabies booster, and deworming administration.', duration: 30, price: 1100, category: 'Vaccination' },
+          { name: 'Full Canine Spa & Grooming', desc: 'Medicated bath, blow dry, nail clipping, ear cleansing, and styling.', duration: 60, price: 850, category: 'Grooming' },
+          { name: 'Feline Gentle Grooming & Deshedding', desc: 'Low-stress cat brush-out, hygiene trim, and claw smoothing.', duration: 45, price: 750, category: 'Grooming' },
+        ],
+        staff: [
+          { name: 'Dr. Josefa Mercado, DVM', bio: 'Experienced small animal veterinarian focused on preventive wellness.' },
+          { name: 'Kenneth Aquino', bio: 'Certified master pet groomer trained in gentle handling techniques.' }
+        ]
+      },
+      {
+        name: 'Vanguard Legal & Advisory',
+        slug: 'vanguard-legal-advisory',
+        category: 'Professional Consultations',
+        description: 'Corporate law, startup structuring, intellectual property, and contract advisory consultations.',
+        branches: [
+          {
+            name: 'Vanguard Advisory - BGC Financial Tower',
+            address: '25th Floor, Fictional 5th Avenue Corporate Center',
+            city: 'Taguig',
+            phone: '+63 2 8333 0001',
+            lat: 14.5495,
+            lng: 121.0478,
+            locDesc: 'Heart of BGC Financial District'
+          }
+        ],
+        services: [
+          { name: 'Startup Advisory & Corporate Structuring', desc: 'Initial incorporation consultation, share structure review, and SEC compliance.', duration: 60, price: 2500, category: 'Corporate' },
+          { name: 'Contract Drafting & Due Diligence Review', desc: 'Commercial agreement analysis, liability clauses, and risk mitigation.', duration: 45, price: 2000, category: 'Commercial' },
+          { name: 'Intellectual Property & Trademark Strategy', desc: 'Brand registration roadmap, IP audit, and trademark conflict search.', duration: 45, price: 1800, category: 'IP Advisory' },
+        ],
+        staff: [
+          { name: 'Atty. Christian Navarro', bio: 'Senior commercial legal counsel advising emerging enterprises.' },
+          { name: 'Atty. Maria Cielo Domingo', bio: 'Intellectual property and corporate governance specialist.' }
+        ]
+      }
+    ];
+
+    for (const bizData of additionalBusinesses) {
+      // 1. Clean or create business
+      const existRes = await client.query('SELECT id FROM businesses WHERE slug = $1', [bizData.slug]);
+      let bId: string;
+      if (existRes.rows.length > 0) {
+        bId = existRes.rows[0].id;
+        await client.query('DELETE FROM appointments WHERE business_id = $1', [bId]);
+        await client.query('DELETE FROM staff_profiles WHERE business_id = $1', [bId]);
+        await client.query('DELETE FROM services WHERE business_id = $1', [bId]);
+        await client.query('DELETE FROM branches WHERE business_id = $1', [bId]);
+      } else {
+        const insertBiz = await client.query(`
+          INSERT INTO businesses (name, slug, description, category, currency, timezone)
+          VALUES ($1, $2, $3, $4, 'PHP', 'Asia/Manila')
+          RETURNING id
+        `, [bizData.name, bizData.slug, bizData.description, bizData.category]);
+        bId = insertBiz.rows[0].id;
+      }
+
+      // 2. Insert branches
+      const branchIds: string[] = [];
+      for (const br of bizData.branches) {
+        const bRes = await client.query(`
+          INSERT INTO branches (business_id, name, address, city, phone, latitude, longitude, location_description)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          RETURNING id
+        `, [bId, br.name, br.address, br.city, br.phone, br.lat, br.lng, br.locDesc]);
+        branchIds.push(bRes.rows[0].id);
+      }
+
+      // 3. Insert services
+      const sIds: string[] = [];
+      for (const s of bizData.services) {
+        const sRes = await client.query(`
+          INSERT INTO services (business_id, name, description, duration_minutes, price, category, suitability_tags)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          RETURNING id
+        `, [bId, s.name, s.desc, s.duration, s.price, s.category, ['general', s.category.toLowerCase()]]);
+        sIds.push(sRes.rows[0].id);
+      }
+
+      // 4. Insert staff and schedules
+      for (const st of bizData.staff) {
+        const stRes = await client.query(`
+          INSERT INTO staff_profiles (business_id, name, bio)
+          VALUES ($1, $2, $3)
+          RETURNING id
+        `, [bId, st.name, st.bio]);
+        const stId = stRes.rows[0].id;
+
+        // Qualify staff for all services in this business
+        for (const sId of sIds) {
+          await client.query(`
+            INSERT INTO staff_services (staff_id, service_id)
+            VALUES ($1, $2)
+          `, [stId, sId]);
+        }
+
+        // Working hours Mon-Sat
+        for (let day = 1; day <= 6; day++) {
+          await client.query(`
+            INSERT INTO staff_working_hours (staff_id, day_of_week, start_time, end_time, break_start, break_end, is_working)
+            VALUES ($1, $2, '09:00:00', '18:00:00', '12:00:00', '13:00:00', true)
+          `, [stId, day]);
+        }
+        await client.query(`
+          INSERT INTO staff_working_hours (staff_id, day_of_week, start_time, end_time, is_working)
+          VALUES ($1, 0, '09:00:00', '18:00:00', false)
+        `, [stId]);
+      }
+
+      // 5. Insert sample reviews
+      await client.query(`
+        INSERT INTO reviews (business_id, customer_name, rating, comment)
+        VALUES 
+          ($1, 'Patricia Santos', 5, 'Exceptional experience and highly professional team. The booking process was seamless!'),
+          ($1, 'Marcus Lim', 5, 'Prompt start, pristine environment, and expert service. Will definitely rebook.'),
+          ($1, 'Bea Alonzo', 4, 'Very knowledgeable practitioners. Smooth scheduling.')
+      `, [bId]);
+    }
 
     await client.query('COMMIT');
     console.log(`✅ Seed completed: 1 Business, 1 Branch, 6 Services, 3 Staff, 40 Customers, ${apptCount} Appointments seeded.`);
