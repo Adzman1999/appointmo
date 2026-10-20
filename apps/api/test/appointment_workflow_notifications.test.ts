@@ -49,9 +49,13 @@ describe('Full Appointment Workflow, Sorting, Rescheduling & Two-Way Notificatio
 
   // 2. Customer creates first booking -> Newest First sorting in Admin Demo
   it('2. Customer creates booking #1 and it immediately appears at the TOP of Admin Demo (created_at DESC)', async () => {
+    // Find a weekday in Manila (+08:00)
     const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + 25);
-    if (targetDate.getDay() === 0) targetDate.setDate(targetDate.getDate() + 1);
+    targetDate.setDate(targetDate.getDate() + 26);
+    // Ensure Monday-Friday
+    while (targetDate.getUTCDay() === 0 || targetDate.getUTCDay() === 6) {
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
     const dateStr = targetDate.toISOString().split('T')[0];
 
     const avail = await request(app).get(`/api/availability?serviceId=${serviceId}&date=${dateStr}&staffId=${staffId}`);
@@ -91,8 +95,10 @@ describe('Full Appointment Workflow, Sorting, Rescheduling & Two-Way Notificatio
   // 3. Customer creates second booking -> becomes the NEW top item
   it('3. Multiple bookings maintain strict newest-first ordering', async () => {
     const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + 26);
-    if (targetDate.getDay() === 0) targetDate.setDate(targetDate.getDate() + 1);
+    targetDate.setDate(targetDate.getDate() + 28);
+    while (targetDate.getUTCDay() === 0 || targetDate.getUTCDay() === 6) {
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
     const dateStr = targetDate.toISOString().split('T')[0];
 
     const avail = await request(app).get(`/api/availability?serviceId=${serviceId}&date=${dateStr}&staffId=${staffId}`);
