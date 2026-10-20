@@ -10,6 +10,7 @@ import bookingRoutes from './routes/booking';
 import adminRoutes from './routes/admin';
 import ownerRoutes from './routes/owner';
 import accessRoutes from './routes/access';
+import demoAdminRoutes from './routes/demoAdmin';
 
 export const createApp = () => {
   const app = express();
@@ -32,6 +33,7 @@ export const createApp = () => {
   });
 
   // API Routes
+  app.use('/api/demo/admin', demoAdminRoutes);
   app.use('/api/owner', ownerRoutes);
   app.use('/api/access', accessRoutes);
   app.use('/api/auth', authRoutes);

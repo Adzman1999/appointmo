@@ -1,37 +1,34 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Calendar, Sparkles, Shield, Clock, CheckCircle2, ChevronRight, UserCheck, ArrowRight, KeyRound } from 'lucide-react';
-import { AccessGateModal } from '../components/AccessGateModal';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  Calendar, Sparkles, Shield, Clock, CheckCircle2, 
+  ChevronRight, ArrowRight, Building2, UserCheck, Search, SlidersHorizontal 
+} from 'lucide-react';
+import { SHOW_PRODUCTION_AUTH } from '../config';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
-  const [initialModalTab, setInitialModalTab] = useState<'request' | 'login'>('request');
-
-  const openRequestAccess = () => {
-    setInitialModalTab('request');
-    setIsAccessModalOpen(true);
-  };
-
-  const openApprovedSignIn = () => {
-    setInitialModalTab('login');
-    setIsAccessModalOpen(true);
-  };
-
-  const handleAccessGranted = () => {
-    setIsAccessModalOpen(false);
-    navigate('/demo/book');
-  };
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 selection:bg-stone-200">
-      {/* Access Gate Modal (Friendly & Natural) */}
-      <AccessGateModal
-        isOpen={isAccessModalOpen}
-        initialTab={initialModalTab}
-        onClose={() => setIsAccessModalOpen(false)}
-        onSuccess={handleAccessGranted}
-      />
+      {/* Top Banner introducing Fictional Demo Environment */}
+      <div className="bg-stone-900 text-stone-300 py-2 px-4 text-xs">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div className="flex items-center space-x-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span className="font-semibold text-white">Demo-First Showcase:</span>
+            <span>Explore both Admin and Customer experiences immediately with synthetic demo data.</span>
+          </div>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => navigate('/demo/admin')}
+              className="text-white hover:text-amber-300 font-medium underline text-xs"
+            >
+              Open Admin Demo &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-stone-200">
@@ -43,259 +40,184 @@ export const LandingPage: React.FC = () => {
             <div>
               <span className="font-semibold text-xl tracking-tight text-stone-900">Appointmo</span>
               <span className="hidden sm:inline-block ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
-                Salon &amp; Studio Suite
+                Intelligent Scheduling
               </span>
             </div>
           </div>
 
           <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-stone-600">
             <a href="#how-it-works" className="hover:text-stone-900 transition-colors">How It Works</a>
-            <a href="#features" className="hover:text-stone-900 transition-colors">Features</a>
+            <a href="#concierge" className="hover:text-stone-900 transition-colors">Concierge Booking</a>
             <a href="#preview" className="hover:text-stone-900 transition-colors">Product Preview</a>
-            <button
-              onClick={openApprovedSignIn}
-              className="hover:text-stone-900 transition-colors text-stone-700 font-semibold text-xs"
-            >
-              Approved User Sign In
-            </button>
+            {SHOW_PRODUCTION_AUTH && (
+              <button
+                onClick={() => navigate('/admin/login')}
+                className="hover:text-stone-900 transition-colors text-stone-800 font-semibold text-xs"
+              >
+                Sign In
+              </button>
+            )}
           </nav>
 
           <div className="flex items-center space-x-3">
-            <Link
-              to="/admin/login"
-              className="text-stone-300 hover:text-stone-500 transition-colors p-1"
-              title="Staff Access"
-            >
-              <KeyRound className="w-4 h-4 opacity-40 hover:opacity-100" />
-            </Link>
             <button
-              onClick={openRequestAccess}
-              className="text-xs sm:text-sm font-semibold bg-stone-900 text-white px-4 py-2 rounded-lg hover:bg-stone-800 transition shadow-sm"
+              onClick={() => navigate('/demo/admin')}
+              className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-stone-800 font-semibold text-xs hover:bg-stone-50 transition shadow-sm"
             >
-              Request Access
+              <Building2 className="w-3.5 h-3.5 text-stone-500" />
+              <span>Admin Demo</span>
+            </button>
+            <button
+              onClick={() => navigate('/demo/book')}
+              className="bg-stone-900 text-white font-semibold px-4 py-2 rounded-xl hover:bg-stone-800 transition text-xs shadow-sm flex items-center space-x-1"
+            >
+              <span>Book Appointment</span>
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="py-20 px-4 text-center max-w-4xl mx-auto">
-        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold mb-6">
+      {/* Hero Section */}
+      <section className="py-20 sm:py-28 max-w-5xl mx-auto px-4 text-center">
+        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-stone-100 border border-stone-200 text-stone-700 text-xs font-semibold mb-6">
           <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-          <span>Next-Generation Studio Scheduling</span>
+          <span>Interactive Demo Platform • Zero Registration Required</span>
         </div>
-        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-stone-900 mb-6 leading-tight">
-          Appointments, <br className="hidden sm:block" />
-          <span className="text-stone-700">made simpler.</span>
+
+        <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-stone-900 mb-6 leading-tight">
+          Intelligent, guided appointments for modern salons and studios.
         </h1>
-        <p className="text-lg sm:text-xl text-stone-600 max-w-2xl mx-auto mb-10 leading-relaxed font-normal">
-          Find the right service, discover genuinely available times, and book with confidence. Appointmo combines frictionless guest booking with an intelligent natural-language concierge.
+
+        <p className="text-base sm:text-lg text-stone-600 max-w-2xl mx-auto mb-10 leading-relaxed font-normal">
+          Explore Appointmo with synthetic data right now. Experience both the business management dashboard and customer scheduling with intelligent concierge discovery.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        {/* Primary Call to Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm font-semibold">
           <button
-            onClick={openRequestAccess}
-            className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-stone-900 text-white font-medium px-6 py-3.5 rounded-xl hover:bg-stone-800 transition shadow-md"
+            onClick={() => navigate('/demo/admin')}
+            className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-stone-900 text-white px-7 py-3.5 rounded-xl hover:bg-stone-800 transition shadow"
           >
-            <span>Request Access</span>
-            <ArrowRight className="w-4 h-4" />
+            <Building2 className="w-4 h-4 text-amber-300" />
+            <span>Explore Admin Demo</span>
           </button>
+
           <button
-            onClick={openApprovedSignIn}
-            className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-white text-stone-700 border border-stone-300 font-medium px-6 py-3.5 rounded-xl hover:bg-stone-50 transition"
+            onClick={() => navigate('/demo/book')}
+            className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-white text-stone-800 border border-stone-300 px-7 py-3.5 rounded-xl hover:bg-stone-50 transition shadow-sm"
           >
-            <span>Approved User Sign In</span>
+            <span>Book an Appointment</span>
+            <ArrowRight className="w-4 h-4 text-stone-500" />
           </button>
         </div>
       </section>
 
-      {/* Product Preview Cards */}
-      <section id="preview" className="py-16 max-w-6xl mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900">
-            Intelligent Booking Experience
-          </h2>
-          <p className="text-stone-600 text-sm mt-2">
-            Showcasing Lumière Beauty Studio with genuine real-time database scheduling and live staff rosters.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* Quick Booking Preview */}
-          <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="p-2.5 rounded-xl bg-stone-100 text-stone-800">
-                <Clock className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg text-stone-900">Quick Booking Engine</h3>
-                <p className="text-xs text-stone-500">Fast 3-step checkout without account requirements</p>
-              </div>
+      {/* Differentiator Highlight: Concierge Booking */}
+      <section id="concierge" className="py-12 max-w-5xl mx-auto px-4">
+        <div className="bg-gradient-to-br from-amber-50/80 via-white to-stone-50 border border-amber-200/80 rounded-3xl p-8 sm:p-12 shadow-sm">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-semibold mb-4">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <span>The Appointmo Advantage</span>
             </div>
-            <p className="text-sm text-stone-600 mb-6">
-              Customers pick a curated aesthetic service, choose a preferred date, and inspect genuine unreserved slots validated against staff working hours, breaks, and active bookings.
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900 mb-3">
+              "Not sure what to book? Tell us what you need, and we'll help you find the right service and time."
+            </h2>
+            <p className="text-sm text-stone-600 leading-relaxed mb-6">
+              Instead of forcing customers to interpret an entire salon catalogue, Appointmo's Concierge interprets preferences, skin sensitivity, and budget in natural language, matching them directly to genuine calendar openings.
             </p>
-            <div className="bg-stone-50 rounded-xl p-4 border border-stone-200 text-xs text-stone-600 space-y-2">
-              <div className="flex justify-between items-center py-1 border-b border-stone-200">
-                <span className="font-medium text-stone-900">Basic Facial (45 min)</span>
-                <span className="font-semibold text-stone-900">₱800</span>
-              </div>
-              <div className="flex justify-between items-center py-1 border-b border-stone-200">
-                <span className="font-medium text-stone-900">Deep Cleansing Facial (75 min)</span>
-                <span className="font-semibold text-stone-900">₱1,500</span>
-              </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="font-medium text-stone-900">Relaxation Massage (60 min)</span>
-                <span className="font-semibold text-stone-900">₱1,000</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Concierge Booking Preview */}
-          <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="p-2.5 rounded-xl bg-amber-100 text-amber-900">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg text-stone-900">Concierge Booking</h3>
-                <p className="text-xs text-stone-500">Natural-language preference & availability scoring</p>
-              </div>
-            </div>
-            <p className="text-sm text-stone-600 mb-6">
-              Express requests like <span className="font-medium text-stone-800 italic">“I want a facial tomorrow afternoon under ₱1,500”</span> and receive scored, explainable slot recommendations backed by PostgreSQL transactions.
-            </p>
-            <div className="bg-amber-50/60 rounded-xl p-4 border border-amber-200/80 text-xs text-amber-900 space-y-2">
-              <div className="font-semibold text-amber-950 flex items-center space-x-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Explainable Criteria Validation</span>
-              </div>
-              <ul className="list-disc list-inside space-y-1 text-amber-800 text-[11px]">
-                <li>Matches category: Facial Care</li>
-                <li>Within budget ceiling (₱1,200 &lt;= ₱1,500)</li>
-                <li>Available afternoon slot with certified specialist Maria Santos</li>
-              </ul>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => navigate('/demo/concierge')}
+                className="bg-stone-900 text-white text-xs font-semibold px-5 py-3 rounded-xl hover:bg-stone-800 transition shadow flex items-center space-x-2"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>Help Me Find the Right Appointment</span>
+              </button>
+              <button
+                onClick={() => navigate('/demo/book')}
+                className="bg-white border border-stone-300 text-stone-700 text-xs font-semibold px-4 py-3 rounded-xl hover:bg-stone-50 transition"
+              >
+                Or use Quick Booking
+              </button>
             </div>
           </div>
         </div>
       </section>
 
       {/* How it Works */}
-      <section id="how-it-works" className="py-16 bg-stone-100 border-y border-stone-200">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900">
-              How Appointmo Works
-            </h2>
-            <p className="text-stone-600 text-sm mt-2">
-              Engineered for seamless customer discovery and rigorous schedule integrity.
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm">
-              <span className="w-8 h-8 rounded-full bg-stone-900 text-white font-bold text-sm flex items-center justify-center mb-4">
-                1
-              </span>
-              <h4 className="font-semibold text-base text-stone-900 mb-1">Select or Inquire</h4>
-              <p className="text-xs text-stone-600">
-                Browse our curated menu or type your specific wellness requirements to our concierge.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm">
-              <span className="w-8 h-8 rounded-full bg-stone-900 text-white font-bold text-sm flex items-center justify-center mb-4">
-                2
-              </span>
-              <h4 className="font-semibold text-base text-stone-900 mb-1">Real Availability</h4>
-              <p className="text-xs text-stone-600">
-                Slot options computed live against therapist working hours, breaks, and existing bookings.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm">
-              <span className="w-8 h-8 rounded-full bg-stone-900 text-white font-bold text-sm flex items-center justify-center mb-4">
-                3
-              </span>
-              <h4 className="font-semibold text-base text-stone-900 mb-1">Confirm with Ease</h4>
-              <p className="text-xs text-stone-600">
-                No compulsory password or sign-up. Receive instant reference and a secret management token.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm">
-              <span className="w-8 h-8 rounded-full bg-stone-900 text-white font-bold text-sm flex items-center justify-center mb-4">
-                4
-              </span>
-              <h4 className="font-semibold text-base text-stone-900 mb-1">Manage Securely</h4>
-              <p className="text-xs text-stone-600">
-                Lookup bookings or cancel safely with zero risk of enumerating other customer records.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section id="features" className="py-20 max-w-6xl mx-auto px-4">
-        <div className="text-center mb-14">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900">
-            Enterprise Grade Architecture
-          </h2>
-          <p className="text-stone-600 text-sm mt-2">
-            Every feature is backed by clean relational database design and security best practices.
-          </p>
+      <section id="how-it-works" className="py-16 max-w-5xl mx-auto px-4">
+        <div className="text-center mb-12">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900">Two Seamless Demo Experiences</h2>
+          <p className="text-xs text-stone-500 mt-2">Connected in real-time through an isolated synthetic PostgreSQL database.</p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          <div className="p-6 rounded-xl border border-stone-200 bg-white shadow-sm">
-            <Shield className="w-6 h-6 text-stone-800 mb-3" />
-            <h4 className="font-semibold text-stone-900 mb-2">Concurrency &amp; Conflict Locks</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Admin Demo Card */}
+          <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm space-y-4 hover:border-stone-400 transition">
+            <div className="w-10 h-10 rounded-2xl bg-stone-100 text-stone-900 flex items-center justify-center font-bold">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <h3 className="text-lg font-bold text-stone-900">Admin Management Demo</h3>
             <p className="text-xs text-stone-600 leading-relaxed">
-              Atomic transactional queries prevent double-booking across concurrent customer checkouts.
+              Experience the complete studio management interface: real calculated revenue, upcoming calendar list, status changes, service pricing, and safe demo reset.
             </p>
+            <ul className="text-xs text-stone-600 space-y-2 pt-2">
+              <li className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Live dashboard metrics from 125 persisted records</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>One-click status management (Complete, Cancel, Confirm)</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Dedicated safe reset for synthetic demo data</span>
+              </li>
+            </ul>
+            <div className="pt-4">
+              <button
+                onClick={() => navigate('/demo/admin')}
+                className="w-full py-2.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition"
+              >
+                Launch Admin Demo &rarr;
+              </button>
+            </div>
           </div>
 
-          <div className="p-6 rounded-xl border border-stone-200 bg-white shadow-sm">
-            <UserCheck className="w-6 h-6 text-stone-800 mb-3" />
-            <h4 className="font-semibold text-stone-900 mb-2">Contact-First Demo Access</h4>
+          {/* Customer Demo Card */}
+          <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm space-y-4 hover:border-stone-400 transition">
+            <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center font-bold">
+              <Sparkles className="w-5 h-5 text-amber-600" />
+            </div>
+            <h3 className="text-lg font-bold text-stone-900">Customer Booking Demo</h3>
             <p className="text-xs text-stone-600 leading-relaxed">
-              Demo access requires product owner approval. Single-use hashed invitation tokens safeguard the environment.
+              Book appointments directly with genuine calendar availability, zero accounts required. Features atomic double-booking prevention.
             </p>
-          </div>
-
-          <div className="p-6 rounded-xl border border-stone-200 bg-white shadow-sm">
-            <Calendar className="w-6 h-6 text-stone-800 mb-3" />
-            <h4 className="font-semibold text-stone-900 mb-2">Live Staff Rostering</h4>
-            <p className="text-xs text-stone-600 leading-relaxed">
-              Staff qualification matrices, shift schedules, meal breaks, and custom time-off periods.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Customer Experience: Let's Get You Started Callout Section */}
-      <section id="request-demo" className="py-20 bg-stone-900 text-white">
-        <div className="max-w-xl mx-auto px-4 text-center">
-          <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">Experience Appointmo</span>
-          <h2 className="text-3xl font-bold mt-2">Let's Get You Started</h2>
-          <p className="text-stone-400 text-sm mt-3 leading-relaxed">
-            Our interactive experience is available by invitation. Send us a quick request, and we'll email you when your access is ready.
-          </p>
-
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <button
-              onClick={openRequestAccess}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white text-stone-900 font-semibold text-xs hover:bg-stone-100 transition shadow"
-            >
-              Request Access
-            </button>
-            <button
-              onClick={openApprovedSignIn}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-stone-700 text-stone-300 font-semibold text-xs hover:bg-stone-800 transition"
-            >
-              Approved User Sign In
-            </button>
+            <ul className="text-xs text-stone-600 space-y-2 pt-2">
+              <li className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Quick Booking with instant service selection</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Natural-language Concierge service discovery</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Immediate booking synchronization with Admin Demo</span>
+              </li>
+            </ul>
+            <div className="pt-4">
+              <button
+                onClick={() => navigate('/demo/book')}
+                className="w-full py-2.5 rounded-xl border border-stone-300 text-stone-800 text-xs font-semibold hover:bg-stone-50 transition"
+              >
+                Launch Customer Demo &rarr;
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -305,10 +227,10 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
             <span className="font-semibold text-stone-900">Appointmo</span>
-            <span>— The smarter way to book. Powered by intelligent scheduling.</span>
+            <span>— Intelligent Scheduling Platform. Powered by Concierge Discovery.</span>
           </div>
-          <div className="flex space-x-6">
-            <span>Featured Business: Lumière Beauty Studio (Quezon City, PH)</span>
+          <div className="flex space-x-6 text-[11px]">
+            <span>Fictional Demonstration Studio: Lumière Beauty Studio</span>
           </div>
         </div>
       </footer>

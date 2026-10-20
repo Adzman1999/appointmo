@@ -1,26 +1,16 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { LandingPage } from './pages/LandingPage';
-import { RedeemInvitePage } from './pages/RedeemInvitePage';
 import { QuickBookingPage } from './pages/QuickBookingPage';
 import { ConciergePage } from './pages/ConciergePage';
 import { ManageBookingPage } from './pages/ManageBookingPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
-import { PlatformAdminPage } from './pages/PlatformAdminPage';
-import { BusinessDashboardPage } from './pages/BusinessDashboardPage';
 import { OwnerDashboardPage } from './pages/OwnerDashboardPage';
 import { SetupPasswordPage } from './pages/SetupPasswordPage';
+import { DemoAdminDashboardPage } from './pages/DemoAdminDashboardPage';
+import { SHOW_PRODUCTION_AUTH } from './config';
 
-// Protected Route Guard for Private Demo Access
-const ProtectedDemoRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
-  const token = localStorage.getItem('appointmo_token');
-  if (!token) {
-    return <Navigate to="/?request=access" replace />;
-  }
-  return children;
-};
-
-// Protected Admin / Owner Route Guard
+// Protected Admin / Owner Route Guard for production management
 const ProtectedOwnerRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const token = localStorage.getItem('appointmo_token');
   const user = JSON.parse(localStorage.getItem('appointmo_user') || '{}');
@@ -30,25 +20,27 @@ const ProtectedOwnerRoute: React.FC<{ children: React.ReactElement }> = ({ child
   return children;
 };
 
-const ProtectedAdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
-  const token = localStorage.getItem('appointmo_token');
-  const user = JSON.parse(localStorage.getItem('appointmo_user') || '{}');
-  if (!token || (user.role !== 'platform_admin' && user.role !== 'business_admin' && user.role !== 'owner')) {
-    return <Navigate to="/admin/login" replace />;
-  }
-  return children;
-};
-
 export const App: React.FC = () => {
   return (
     <Routes>
-      {/* Public Pages */}
+      {/* 1. Public Landing Page */}
       <Route path="/" element={<LandingPage />} />
-      <Route path="/setup-password" element={<SetupPasswordPage />} />
-      <Route path="/manage" element={<ManageBookingPage />} />
-      <Route path="/admin/login" element={<AdminLoginPage />} />
 
-      {/* Discrete Owner Area (Private Implementation) */}
+      {/* 2. Customer Demo Experiences (Zero Accounts Required) */}
+      <Route path="/demo/book" element={<QuickBookingPage />} />
+      <Route path="/demo/concierge" element={<ConciergePage />} />
+      <Route path="/concierge" element={<ConciergePage />} />
+
+      {/* 3. Interactive Admin Demo (Isolated Fictional Demo Business) */}
+      <Route path="/demo/admin" element={<DemoAdminDashboardPage />} />
+      <Route path="/admin/dashboard" element={<DemoAdminDashboardPage />} />
+
+      {/* 4. Customer Secure Booking Lookup & Management */}
+      <Route path="/manage" element={<ManageBookingPage />} />
+
+      {/* 5. Production Authentication (Hidden from public links, but functional) */}
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route path="/setup-password" element={<SetupPasswordPage />} />
       <Route
         path="/owner/access-requests"
         element={
@@ -57,26 +49,6 @@ export const App: React.FC = () => {
           </ProtectedOwnerRoute>
         }
       />
-
-      {/* Protected Interactive Demo Routes */}
-      <Route
-        path="/demo/book"
-        element={
-          <ProtectedDemoRoute>
-            <QuickBookingPage />
-          </ProtectedDemoRoute>
-        }
-      />
-      <Route
-        path="/concierge"
-        element={
-          <ProtectedDemoRoute>
-            <ConciergePage />
-          </ProtectedDemoRoute>
-        }
-      />
-
-      {/* Administrative Routes */}
       <Route
         path="/admin/platform"
         element={
@@ -85,18 +57,9 @@ export const App: React.FC = () => {
           </ProtectedOwnerRoute>
         }
       />
-      <Route
-        path="/admin/dashboard"
-        element={
-          <ProtectedAdminRoute>
-            <BusinessDashboardPage />
-          </ProtectedAdminRoute>
-        }
-      />
 
       {/* Catch-all redirect */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
-

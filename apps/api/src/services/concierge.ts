@@ -21,70 +21,104 @@ export class ConciergeService {
     preferredTimeOfDay?: 'morning' | 'afternoon' | 'evening' | 'any';
     maxBudget?: number;
     preferredStaffId?: string;
-  }): Promise<{ recommendations: ConciergeRecommendation[]; extractedPreferences: any }> {
+  }): Promise<{ recommendations: ConciergeRecommendation[]; extractedPreferences: any; alternatives?: ConciergeRecommendation[] }> {
     const qLower = params.query.toLowerCase();
 
-    // 1. Fetch all active services for business
+    // 1. Fetch all active services for business (Synthetic catalogue only)
     const servicesRes = await query(
       'SELECT id, name, description, duration_minutes, price, category FROM services WHERE business_id = $1 AND is_active = true',
       [businessId]
     );
     const services = servicesRes.rows;
 
-    // 2. Identify service matches via keyword or description
+    // Detect user preferences from query text
+    const isSensitive = qLower.includes('sensitive') || qLower.includes('gentle') || qLower.includes('mild');
+    const isDeep = qLower.includes('deep') || qLower.includes('intense') || qLower.includes('extraction');
+    const isMassage = qLower.includes('massage') || qLower.includes('relax') || qLower.includes('body') || qLower.includes('stress');
+    const isFacial = qLower.includes('facial') || qLower.includes('skin') || qLower.includes('face') || qLower.includes('glow');
+    const isNails = qLower.includes('nail') || qLower.includes('manicure') || qLower.includes('pedicure') || qLower.includes('feet') || qLower.includes('hands');
+
+    // Extract stated budget
+    const budgetMatch = qLower.match(/(under|below|budget of|max|less than)?\s*(?:₱|php)?\s*(\d{3,4})/i);
+    const statedBudget = params.maxBudget || (budgetMatch ? parseInt(budgetMatch[2], 10) : undefined);
+
+    // 2. Score candidate services
     const candidateServices = services.map(s => {
       let score = 0;
       const reasons: string[] = [];
+      const sDesc = (s.description || '').toLowerCase();
+      const sName = s.name.toLowerCase();
 
-      const nameWords = s.name.toLowerCase().split(' ');
+      // Category matching
+      if (isFacial && s.category === 'Facial') {
+        score += 80;
+        reasons.push('Matches your requested facial & skincare goal');
+      } else if (isMassage && s.category.includes('Body')) {
+        score += 80;
+        reasons.push('Matches your relaxation and body wellness focus');
+      } else if (isNails && s.category === 'Nails') {
+        score += 80;
+        reasons.push('Matches your nail care grooming preference');
+      }
+
+      // Specific attributes
+      if (isSensitive) {
+        if (sDesc.includes('gentle') || sName.includes('basic') || sDesc.includes('soothing')) {
+          score += 30;
+          reasons.push('Specially curated formula suitable for sensitive skin');
+        } else if (isDeep && sName.includes('deep')) {
+          score -= 10; // slightly penalize intense extractions for sensitive skin
+        }
+      }
+
+      if (isDeep && sName.includes('deep')) {
+        score += 25;
+        reasons.push('Features deep extraction and ultrasonic pore cleansing');
+      }
+
+      // Keyword match in name
+      const nameWords = sName.split(' ');
       for (const w of nameWords) {
-        if (qLower.includes(w)) {
-          score += 40;
+        if (w.length > 3 && qLower.includes(w)) {
+          score += 20;
           reasons.push(`Direct match with ${s.name}`);
           break;
         }
       }
 
-      if (qLower.includes('facial') && s.category === 'Facial') {
-        score += 30;
-        reasons.push('Matches requested facial category');
-      } else if ((qLower.includes('massage') || qLower.includes('relax') || qLower.includes('body')) && s.category.includes('Body')) {
-        score += 30;
-        reasons.push('Matches body & relaxation wellness preference');
-      } else if ((qLower.includes('nail') || qLower.includes('manicure') || qLower.includes('pedicure')) && s.category === 'Nails') {
-        score += 30;
-        reasons.push('Matches nail care preference');
-      }
-
-      // Budget check
-      const budget = params.maxBudget || (qLower.match(/(under|below|budget of|max)?\s*(?:₱|php)?\s*(\d{3,4})/)?.[2] ? parseInt(qLower.match(/(under|below|budget of|max)?\s*(?:₱|php)?\s*(\d{3,4})/)![2], 10) : undefined);
-      if (budget) {
-        if (Number(s.price) <= budget) {
+      // Budget scoring
+      if (statedBudget) {
+        const priceNum = Number(s.price);
+        if (priceNum <= statedBudget) {
           score += 25;
-          reasons.push(`Within specified budget (₱${s.price} <= ₱${budget})`);
+          reasons.push(`Within stated budget (₱${priceNum} <= ₱${statedBudget})`);
         } else {
-          score -= 30; // penalty if over budget
+          score -= 40; // penalize if over budget
         }
       }
+
+      // Baseline score for category matches
+      if (score === 0 && (s.category === 'Facial' && isFacial)) score = 10;
 
       return {
         service: s,
         score,
         reasons,
-        budget,
+        budget: statedBudget,
       };
     }).sort((a, b) => b.score - a.score);
 
     // 3. Determine target date (default tomorrow if "tomorrow" mentioned, or next working day)
     let targetDateStr = params.preferredDate;
     if (!targetDateStr) {
-      const tomorrow = new Date();
+      const targetDate = new Date();
       if (qLower.includes('tomorrow')) {
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        targetDate.setDate(targetDate.getDate() + 1);
       } else {
-        tomorrow.setDate(tomorrow.getDate() + 2);
+        targetDate.setDate(targetDate.getDate() + 2);
       }
-      targetDateStr = tomorrow.toISOString().split('T')[0];
+      if (targetDate.getDay() === 0) targetDate.setDate(targetDate.getDate() + 1); // skip Sunday
+      targetDateStr = targetDate.toISOString().split('T')[0];
     }
 
     // Determine time of day
@@ -96,11 +130,10 @@ export class ConciergeService {
     }
 
     const recommendations: ConciergeRecommendation[] = [];
+    const alternatives: ConciergeRecommendation[] = [];
 
     // 4. Query real slots for top candidate services
-    for (const item of candidateServices.slice(0, 3)) {
-      if (item.score <= 0 && candidateServices[0].score > 0) continue;
-
+    for (const item of candidateServices) {
       try {
         const slots = await AvailabilityService.getAvailableSlots(
           businessId,
@@ -127,10 +160,12 @@ export class ConciergeService {
           const reasons = [...item.reasons];
           if (timeOfDay && filteredSlots.length > 0) {
             reasons.push(`Available in your preferred ${timeOfDay} time frame`);
+          } else if (timeOfDay && filteredSlots.length === 0) {
+            reasons.push(`Nearest open opening (outside preferred ${timeOfDay})`);
           }
           reasons.push(`Verified open slot with certified specialist ${chosenSlot.staffName}`);
 
-          recommendations.push({
+          const recItem: ConciergeRecommendation = {
             serviceId: item.service.id,
             serviceName: item.service.name,
             price: Number(item.service.price),
@@ -139,21 +174,29 @@ export class ConciergeService {
             staffId: chosenSlot.staffId,
             staffName: chosenSlot.staffName,
             slot: chosenSlot,
-            matchScore: item.score + (filteredSlots.length > 0 ? 15 : 0),
+            matchScore: item.score * 10 + (filteredSlots.length > 0 ? 15 : 0),
             matchReasons: reasons,
-          });
+          };
+
+          if (item.score > 0) {
+            recommendations.push(recItem);
+          } else {
+            alternatives.push(recItem);
+          }
         }
       } catch (err) {
-        // Continue if service fails availability check
+        // Skip service if availability fails
       }
     }
 
     return {
-      recommendations: recommendations.sort((a, b) => b.matchScore - a.matchScore),
+      recommendations: recommendations.sort((a, b) => b.matchScore - a.matchScore).slice(0, 3),
+      alternatives: alternatives.slice(0, 2),
       extractedPreferences: {
         targetDate: targetDateStr,
         timeOfDay: timeOfDay || 'any',
-        budget: candidateServices[0]?.budget,
+        budget: statedBudget,
+        sensitiveSkin: isSensitive,
       },
     };
   }

@@ -31,10 +31,10 @@ export const seedData = async () => {
       businessId = bizRes.rows[0].id;
     }
 
-    // 2. Create branch
+    // 2. Create branch (Fictional synthetic branch)
     const branchRes = await client.query(`
       INSERT INTO branches (business_id, name, address, city, phone)
-      VALUES ($1, 'Lumière Studio QC', '142 Tomas Morato Ave, Diliman (Demo Location)', 'Quezon City', '+63 2 8123 4567')
+      VALUES ($1, 'Lumière Studio (Fictional Demo Branch)', 'Suite 404, Fictional Innovation Tower, Demo District', 'Quezon City', '+63 2 8000 0000')
       RETURNING id
     `, [businessId]);
     const branchId = branchRes.rows[0].id;
@@ -45,7 +45,7 @@ export const seedData = async () => {
 
     await client.query(`
       INSERT INTO users (business_id, email, password_hash, role, name)
-      VALUES ($1, 'owner@lumiere.demo', $2, 'business_admin', 'Camille Del Rosario')
+      VALUES ($1, 'demo.manager@example.com', $2, 'business_admin', 'Camille Del Rosario (Synthetic Admin)')
       ON CONFLICT (email) DO UPDATE SET password_hash = $2
     `, [businessId, passwordHash]);
 
@@ -144,8 +144,8 @@ export const seedData = async () => {
     const customerIds: string[] = [];
     for (let i = 0; i < customerNames.length; i++) {
       const name = customerNames[i];
-      const email = `customer${i + 1}@fictional.ph`;
-      const phone = `+63 917 555 ${1000 + i}`;
+      const email = `customer${i + 1}@example.com`;
+      const phone = `+63 900 000 ${1000 + i}`;
       const cRes = await client.query(`
         INSERT INTO customers (business_id, name, email, phone)
         VALUES ($1, $2, $3, $4)
@@ -253,8 +253,8 @@ export const seedData = async () => {
     await client.query(`
       INSERT INTO demo_access_requests (full_name, email, business_name, message, status)
       VALUES 
-        ('Dr. Sophia Reyes', 'sophia.reyes@demoviewer.ph', 'Reyes Dental Aesthetics', 'Looking for modern booking software for our clinic chain.', 'pending'),
-        ('Marcus Vance', 'marcus.vance@techventures.io', 'Vance & Co', 'Evaluating SaaS platforms for portfolio acquisition.', 'approved')
+        ('Synthetic Demo Visitor', 'visitor.one@example.com', 'Fictional Aesthetics Studio', 'Evaluating SaaS booking platforms for synthetic case study.', 'pending'),
+        ('Synthetic Portfolio Reviewer', 'reviewer.two@example.com', 'Fictional Labs', 'Evaluating scheduling system performance.', 'approved')
       ON CONFLICT DO NOTHING
     `);
 
