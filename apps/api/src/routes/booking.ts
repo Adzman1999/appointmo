@@ -222,9 +222,89 @@ router.post('/bookings/:reference/cancel', async (req: Request, res: Response) =
       VALUES ($1, $2, 'cancelled', $3, 'customer')
     `, [appt.id, appt.status, reason || 'Customer cancellation']);
 
+    // Emit Notifications to both Customer and Admin
+    const fullAppt = await query(`
+      SELECT a.business_id, s.name AS service_name, c.name AS customer_name, a.start_time
+      FROM appointments a
+      JOIN services s ON a.service_id = s.id
+      JOIN customers c ON a.customer_id = c.id
+      WHERE a.id = $1
+    `, [appt.id]);
+
+    if (fullAppt.rows.length > 0) {
+      const bizId = fullAppt.rows[0].business_id;
+      const sName = fullAppt.rows[0].service_name;
+      const cName = fullAppt.rows[0].customer_name;
+
+      // Customer notification
+      await query(`
+        INSERT INTO notifications (
+          business_id, appointment_id, recipient_type, recipient_identifier, type, title, message
+        ) VALUES ($1, $2, 'customer', $3, 'booking_cancelled', 'Appointment cancellation confirmed', $4)
+      `, [bizId, appt.id, reference, `Your appointment for ${sName} has been cancelled as requested.`]);
+
+      // Admin notification
+      await query(`
+        INSERT INTO notifications (
+          business_id, appointment_id, recipient_type, recipient_identifier, type, title, message
+        ) VALUES ($1, $2, 'admin', 'admin', 'booking_cancelled', 'Customer cancelled appointment', $3)
+      `, [bizId, appt.id, `Appointment ${reference} for ${sName} was cancelled by customer ${cName}.`]);
+    }
+
     res.json({ message: 'Appointment cancelled successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to cancel appointment' });
+  }
+});
+
+// 9. Customer Notifications Endpoint (Securely verified via token)
+router.get('/bookings/:reference/notifications', async (req: Request, res: Response) => {
+  try {
+    const { reference } = req.params;
+    const { token } = req.query;
+
+    if (!token || typeof token !== 'string') {
+      return res.status(401).json({ error: 'Management token required' });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const { NotificationService } = await import('../services/notification');
+    const result = await NotificationService.getCustomerNotifications(reference, tokenHash);
+
+    res.json(result);
+  } catch (err: any) {
+    res.status(401).json({ error: err.message || 'Unauthorized access to notifications' });
+  }
+});
+
+// 10. Customer Mark Notification Read
+router.patch('/bookings/:reference/notifications/:id/read', async (req: Request, res: Response) => {
+  try {
+    const { reference, id } = req.params;
+    const { token } = req.body;
+
+    if (!token || typeof token !== 'string') {
+      return res.status(401).json({ error: 'Management token required' });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    // Verify ownership
+    const checkRes = await query(`
+      SELECT 1 FROM appointments a
+      JOIN notifications n ON a.id = n.appointment_id
+      WHERE a.booking_reference = $1 AND a.management_token_hash = $2 AND n.id = $3
+    `, [reference, tokenHash, id]);
+
+    if (checkRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Notification not found or unauthorized' });
+    }
+
+    const { NotificationService } = await import('../services/notification');
+    await NotificationService.markAsRead(id);
+
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to mark notification as read' });
   }
 });
 

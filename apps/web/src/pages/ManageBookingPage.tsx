@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Calendar, Clock, User, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { Calendar, Clock, User, AlertCircle, CheckCircle2, XCircle, Bell, Check } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 export const ManageBookingPage: React.FC = () => {
@@ -11,12 +11,22 @@ export const ManageBookingPage: React.FC = () => {
   const [token, setToken] = useState(searchParams.get('token') || '');
 
   const [booking, setBooking] = useState<any | null>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  const fetchNotifications = async (currentRef: string, currentToken: string) => {
+    try {
+      const res: any = await apiFetch(`/bookings/${currentRef.trim()}/notifications?token=${currentToken.trim()}`);
+      setNotifications(res.notifications || []);
+    } catch (e) {
+      // Non-blocking
+    }
+  };
 
   const handleLookup = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -29,9 +39,11 @@ export const ManageBookingPage: React.FC = () => {
     try {
       const res: any = await apiFetch(`/bookings/${ref.trim()}?token=${token.trim()}`);
       setBooking(res.booking);
+      await fetchNotifications(ref, token);
     } catch (err: any) {
       setError(err.message || 'Could not find booking. Please check reference and secret token.');
       setBooking(null);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -42,6 +54,27 @@ export const ManageBookingPage: React.FC = () => {
       handleLookup();
     }
   }, []);
+
+  // Poll for notifications and status updates if booking is active
+  useEffect(() => {
+    if (!booking || !ref || !token) return;
+    const interval = setInterval(() => {
+      fetchNotifications(ref, token);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [booking, ref, token]);
+
+  const handleMarkNotificationRead = async (notifId: number) => {
+    try {
+      await apiFetch(`/bookings/${ref.trim()}/notifications/${notifId}/read`, {
+        method: 'PATCH',
+        body: JSON.stringify({ token: token.trim() })
+      });
+      setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, isRead: true } : n));
+    } catch (err) {
+      // ignore
+    }
+  };
 
   const handleCancelBooking = async () => {
     if (!window.confirm('Are you sure you want to cancel this appointment?')) return;
@@ -162,6 +195,51 @@ export const ManageBookingPage: React.FC = () => {
               </div>
             </div>
 
+            {/* In-App Customer Notifications Feed */}
+            {notifications.length > 0 && (
+              <div className="border border-stone-200 rounded-2xl p-4 bg-stone-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-1.5 text-xs font-semibold text-stone-800">
+                    <Bell className="w-3.5 h-3.5 text-stone-600" />
+                    <span>Appointment Updates</span>
+                  </div>
+                  <span className="text-[10px] font-medium text-stone-500">
+                    {notifications.filter(n => !n.isRead).length} new
+                  </span>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {notifications.map((notif) => (
+                    <div
+                      key={notif.id}
+                      className={`p-2.5 rounded-xl border text-xs transition ${
+                        notif.isRead ? 'bg-white border-stone-200 text-stone-600' : 'bg-emerald-50/60 border-emerald-200 text-emerald-950 font-medium'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-semibold text-stone-900">{notif.title}</p>
+                          <p className="text-[11px] text-stone-600 mt-0.5">{notif.message}</p>
+                          <p className="text-[10px] text-stone-400 mt-1">
+                            {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                        {!notif.isRead && (
+                          <button
+                            onClick={() => handleMarkNotificationRead(notif.id)}
+                            className="text-[10px] text-emerald-700 hover:text-emerald-900 font-semibold flex items-center space-x-0.5 ml-2 shrink-0"
+                            title="Mark as read"
+                          >
+                            <Check className="w-3 h-3" />
+                            <span>Read</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {booking.status !== 'cancelled' ? (
               <div className="space-y-3 pt-2 border-t border-stone-100">
                 <label className="block text-xs font-semibold text-stone-700">Cancellation Reason (Optional)</label>
@@ -190,6 +268,7 @@ export const ManageBookingPage: React.FC = () => {
             <button
               onClick={() => {
                 setBooking(null);
+                setNotifications([]);
                 setRef('');
                 setToken('');
               }}

@@ -226,6 +226,23 @@ export const runMigrations = async () => {
       details JSONB,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    -- Notifications (Two-way persistent notifications for admin and customer)
+    CREATE TABLE IF NOT EXISTS notifications (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+      appointment_id UUID REFERENCES appointments(id) ON DELETE CASCADE,
+      recipient_type VARCHAR(50) NOT NULL, -- 'admin' or 'customer'
+      recipient_identifier VARCHAR(255) NOT NULL, -- 'admin' or customer email / booking reference
+      type VARCHAR(50) NOT NULL, -- 'booking_created', 'booking_confirmed', 'booking_rescheduled', 'booking_cancelled'
+      title VARCHAR(255) NOT NULL,
+      message TEXT NOT NULL,
+      is_read BOOLEAN NOT NULL DEFAULT false,
+      read_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON notifications (recipient_type, recipient_identifier, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_notifications_appt ON notifications (appointment_id);
   `);
 
   console.log('✅ Migrations completed successfully.');

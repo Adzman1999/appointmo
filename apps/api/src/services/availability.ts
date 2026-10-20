@@ -273,6 +273,32 @@ export class AvailabilityService {
         VALUES ($1, 'confirmed', 'guest_customer', 'Initial booking creation')
       `, [apptRes.rows[0].id]);
 
+      // 7. Generate Two-Way Notifications
+      // A. Admin notification
+      await client.query(`
+        INSERT INTO notifications (
+          business_id, appointment_id, recipient_type, recipient_identifier, type, title, message
+        ) VALUES ($1, $2, 'admin', 'admin', 'booking_created', $3, $4)
+      `, [
+        businessId,
+        apptRes.rows[0].id,
+        `New appointment booked: ${srv.name}`,
+        `New appointment booked by ${params.customerName} for ${srv.name} on ${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}. (Ref: ${bookingRef})`
+      ]);
+
+      // B. Customer notification
+      await client.query(`
+        INSERT INTO notifications (
+          business_id, appointment_id, recipient_type, recipient_identifier, type, title, message
+        ) VALUES ($1, $2, 'customer', $3, 'booking_confirmed', $4, $5)
+      `, [
+        businessId,
+        apptRes.rows[0].id,
+        bookingRef,
+        'Your appointment is confirmed!',
+        `Good news! Your booking for ${srv.name} is confirmed for ${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} with ${srv.name}.`
+      ]);
+
       await client.query('COMMIT');
 
       return {
