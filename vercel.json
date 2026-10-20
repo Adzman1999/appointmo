@@ -1,13 +1,27 @@
 {
-  "version": 2,
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "api": {
+      "root": "apps/api",
+      "framework": "express"
+    },
+    "web": {
+      "root": "apps/web",
+      "framework": "vite"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/apps/api/index.ts"
+      "destination": {
+        "service": "api"
+      }
     },
     {
       "source": "/(.*)",
-      "destination": "/apps/web/dist/$1"
+      "destination": {
+        "service": "web"
+      }
     }
   ]
 }
