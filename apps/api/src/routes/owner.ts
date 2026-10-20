@@ -120,8 +120,9 @@ router.get('/requests', requireOwnerAuth, async (req: Request, res: Response) =>
       requests: result.rows,
       counts,
     });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to retrieve access requests' });
+  } catch (err: any) {
+    console.error('Owner list requests error:', err);
+    res.status(500).json({ error: 'Failed to retrieve access requests: ' + (err.message || 'Database error') });
   }
 });
 
