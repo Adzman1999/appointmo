@@ -53,6 +53,10 @@ export const QuickBookingPage: React.FC = () => {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [completedBooking, setCompletedBooking] = useState<any | null>(null);
 
+  // Check if current session is Read-Only
+  const storedUser = JSON.parse(localStorage.getItem('appointmo_user') || '{}');
+  const isReadOnly = storedUser.isReadOnly ?? true;
+
   // Fetch services on load
   useEffect(() => {
     apiFetch<{ services: Service[] }>('/services')
@@ -82,6 +86,11 @@ export const QuickBookingPage: React.FC = () => {
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedService || !selectedSlot) return;
+
+    if (isReadOnly) {
+      setBookingError('Demo is in Interactive Read-Only Preview. Booking submissions are simulated and disabled to preserve sample state.');
+      return;
+    }
 
     setBookingLoading(true);
     setBookingError(null);
@@ -179,9 +188,16 @@ export const QuickBookingPage: React.FC = () => {
       {/* Top Bar */}
       <div className="bg-white border-b border-stone-200 py-4 px-6 mb-8">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold text-stone-900">Lumière Beauty Studio</h1>
-            <p className="text-xs text-stone-500">142 Tomas Morato Ave, Quezon City</p>
+          <div className="flex items-center space-x-3">
+            <div>
+              <h1 className="text-lg font-bold text-stone-900">Lumière Beauty Studio</h1>
+              <p className="text-xs text-stone-500">142 Tomas Morato Ave, Quezon City</p>
+            </div>
+            {isReadOnly && (
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                Interactive Read-Only Preview
+              </span>
+            )}
           </div>
           <button
             onClick={() => navigate('/concierge')}

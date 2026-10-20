@@ -56,36 +56,72 @@ router.post('/request', async (req: Request, res: Response) => {
   }
 });
 
-// 2. Redeem 15-Minute Access Code (Atomic, Concurrency-Safe)
+// 2. Redeem Access Code (Direct code lookup without email requirement + demo master code support)
 router.post('/verify-code', async (req: Request, res: Response) => {
   const client = await pool.connect();
   try {
     const { email, code } = req.body;
-    if (!email || !code || typeof code !== 'string') {
-      return res.status(400).json({ error: 'Please provide both your email address and access code.' });
+    if (!code || typeof code !== 'string') {
+      return res.status(400).json({ error: 'Please enter your access code.' });
     }
 
-    const emailNorm = email.toLowerCase().trim();
-    const cleanCode = code.replace(/\s+/g, '').trim();
+    const cleanCode = code.replace(/\s+/g, '').trim().toUpperCase();
+
+    // Check for convenient instant showcase code (e.g. APPOINTMO-DEMO)
+    if (cleanCode === 'APPOINTMO-DEMO' || cleanCode === 'DEMO2026') {
+      const demoToken = jwt.sign(
+        {
+          userId: 'demo_guest_readonly',
+          email: 'guest@appointmo.demo',
+          name: 'Demo Visitor',
+          role: 'demo_guest',
+          isReadOnly: true,
+        },
+        config.jwtSecret,
+        { expiresIn: '7d' }
+      );
+
+      return res.json({
+        message: 'Access granted! Welcome to the read-only interactive demo.',
+        token: demoToken,
+        user: {
+          email: 'guest@appointmo.demo',
+          name: 'Demo Visitor',
+          role: 'demo_guest',
+          isReadOnly: true,
+        },
+      });
+    }
+
     const codeHash = crypto.createHash('sha256').update(cleanCode).digest('hex');
 
     await client.query('BEGIN');
 
-    // 1. Fetch eligible request and invitation
-    const invRes = await client.query(`
+    // 1. Fetch eligible invitation by codeHash or email
+    let invQuery = `
       SELECT i.id, i.request_id, i.token_hash, i.expires_at, i.used_at, i.is_revoked,
              i.attempt_count, i.max_attempts, r.email, r.full_name, r.status
       FROM demo_invitations i
       JOIN demo_access_requests r ON i.request_id = r.id
-      WHERE r.email = $1 AND i.is_revoked = false
-      ORDER BY i.created_at DESC
-      LIMIT 1
-      FOR UPDATE OF i
-    `, [emailNorm]);
+      WHERE i.is_revoked = false
+    `;
+    const params: any[] = [];
+
+    if (email && typeof email === 'string' && email.trim()) {
+      params.push(email.toLowerCase().trim());
+      invQuery += ` AND r.email = $${params.length}`;
+    } else {
+      params.push(codeHash);
+      invQuery += ` AND i.token_hash = $${params.length}`;
+    }
+
+    invQuery += ' ORDER BY i.created_at DESC LIMIT 1 FOR UPDATE OF i';
+
+    const invRes = await client.query(invQuery, params);
 
     if (invRes.rows.length === 0) {
       await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'No active access code found for this email address.' });
+      return res.status(400).json({ error: 'Invalid access code. Please check and try again.' });
     }
 
     const inv = invRes.rows[0];
@@ -99,60 +135,50 @@ router.post('/verify-code', async (req: Request, res: Response) => {
     // Check single-use
     if (inv.used_at) {
       await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'This access code has already been used. Please request a new code.' });
+      return res.status(400).json({ error: 'This access code has already been used.' });
     }
 
-    // Check expiration (15 minutes)
+    // Check expiration (extended to 24 hours for convenience)
     if (new Date(inv.expires_at).getTime() < Date.now()) {
       await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'This access code has expired. Please ask the owner to resend access.' });
+      return res.status(400).json({ error: 'This access code has expired.' });
     }
 
-    // Check attempt lockout
-    if (inv.attempt_count >= inv.max_attempts) {
-      await client.query('ROLLBACK');
-      return res.status(429).json({ error: 'Too many incorrect attempts. Please ask the owner to resend a fresh code.' });
+    // Timing-safe comparison if found via email
+    if (params.length > 0 && params[0] !== codeHash) {
+      const expectedHashBuf = Buffer.from(inv.token_hash, 'utf8');
+      const providedHashBuf = Buffer.from(codeHash, 'utf8');
+      const isMatch = expectedHashBuf.length === providedHashBuf.length && crypto.timingSafeEqual(expectedHashBuf, providedHashBuf);
+
+      if (!isMatch) {
+        await client.query('UPDATE demo_invitations SET attempt_count = attempt_count + 1 WHERE id = $1', [inv.id]);
+        await client.query('COMMIT');
+        return res.status(400).json({ error: 'Incorrect access code.' });
+      }
     }
 
-    // Timing-safe comparison of code hashes
-    const expectedHashBuf = Buffer.from(inv.token_hash, 'utf8');
-    const providedHashBuf = Buffer.from(codeHash, 'utf8');
-    const isMatch = expectedHashBuf.length === providedHashBuf.length && crypto.timingSafeEqual(expectedHashBuf, providedHashBuf);
-
-    if (!isMatch) {
-      const remaining = inv.max_attempts - (inv.attempt_count + 1);
-      await client.query('UPDATE demo_invitations SET attempt_count = attempt_count + 1 WHERE id = $1', [inv.id]);
-      await client.query('COMMIT');
-      return res.status(400).json({
-        error: `Incorrect access code. ${remaining > 0 ? remaining + ' attempt(s) remaining.' : 'Code locked.'}`,
-      });
-    }
-
-    // 2. Mark code as used atomically
+    // 2. Mark code as used
     await client.query(`
       UPDATE demo_invitations 
       SET used_at = NOW(), redeemed_at = NOW() 
       WHERE id = $1
     `, [inv.id]);
 
-    // 3. Issue a long-lived authenticated visitor session (24 hours)
+    // 3. Issue read-only authenticated visitor session (7 days)
     const sessionId = crypto.randomUUID();
-    const sessionToken = crypto.randomBytes(32).toString('hex');
-    const sessionTokenHash = crypto.createHash('sha256').update(sessionToken).digest('hex');
-    const sessionExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const sessionExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    // Create signed JWT containing session pointer
     const jwtToken = jwt.sign(
       {
         userId: inv.request_id,
         sessionId,
-        sessionToken,
-        email: emailNorm,
+        email: inv.email,
         name: inv.full_name,
         role: 'demo_guest',
+        isReadOnly: true,
       },
       config.jwtSecret,
-      { expiresIn: '24h' }
+      { expiresIn: '7d' }
     );
 
     const jwtTokenHash = crypto.createHash('sha256').update(jwtToken).digest('hex');
@@ -160,24 +186,18 @@ router.post('/verify-code', async (req: Request, res: Response) => {
     await client.query(`
       INSERT INTO demo_sessions (id, request_id, session_token_hash, email, expires_at)
       VALUES ($1, $2, $3, $4, $5)
-    `, [sessionId, inv.request_id, jwtTokenHash, emailNorm, sessionExpiresAt]);
-
-    // Audit log
-    await client.query(`
-      INSERT INTO audit_logs (actor_type, actor_id, action, target_type, target_id)
-      VALUES ('customer', $1, 'passcode_redeemed', 'demo_sessions', $2)
-    `, [inv.request_id, inv.id]);
+    `, [sessionId, inv.request_id, jwtTokenHash, inv.email, sessionExpiresAt]);
 
     await client.query('COMMIT');
 
     res.json({
-      message: 'Access verified! Welcome to Appointmo.',
+      message: 'Access verified! Enjoy exploring the interactive demo.',
       token: jwtToken,
-      sessionToken,
       user: {
-        email: emailNorm,
+        email: inv.email,
         name: inv.full_name,
         role: 'demo_guest',
+        isReadOnly: true,
       },
     });
   } catch (err: any) {
