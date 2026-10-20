@@ -61,12 +61,6 @@ export const LandingPage: React.FC = () => {
           </nav>
 
           <div className="flex items-center space-x-3">
-            <Link
-              to="/admin/login"
-              className="text-xs font-medium text-stone-600 hover:text-stone-900 px-3 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 transition-colors"
-            >
-              Staff Portal
-            </Link>
             <button
               onClick={openRequestAccess}
               className="text-xs sm:text-sm font-semibold bg-stone-900 text-white px-4 py-2 rounded-lg hover:bg-stone-800 transition shadow-sm"
@@ -308,7 +302,6 @@ export const LandingPage: React.FC = () => {
           </div>
           <div className="flex space-x-6">
             <span>Demo Business: Lumière Beauty Studio (Quezon City, PH)</span>
-            <Link to="/admin/login" className="hover:text-stone-900 transition-colors">Admin Portal</Link>
           </div>
         </div>
       </footer>
