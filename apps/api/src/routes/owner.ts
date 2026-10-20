@@ -5,8 +5,21 @@ import { query } from '../db';
 import { config } from '../config';
 import { requireOwnerAuth } from '../middleware/session';
 import { EmailService } from '../services/email';
+import { runMigrations } from '../db/migrate';
 
 const router = Router();
+
+// Automatic Database Migration Endpoint (Auto-creates missing tables like demo_sessions on hosted Neon)
+router.post('/auto-migrate', requireOwnerAuth, async (req: Request, res: Response) => {
+  try {
+    console.log('Running auto-migration requested by owner...');
+    await runMigrations();
+    res.json({ message: 'Database tables and schema synchronized successfully!' });
+  } catch (err: any) {
+    console.error('Auto-migrate error:', err);
+    res.status(500).json({ error: 'Migration failed: ' + (err.message || 'Unknown database error') });
+  }
+});
 
 // 1. Owner Login Endpoint (Strict, rate-limited credentials)
 router.post('/login', async (req: Request, res: Response) => {

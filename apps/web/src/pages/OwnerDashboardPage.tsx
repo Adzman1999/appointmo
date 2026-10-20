@@ -11,6 +11,21 @@ export const OwnerDashboardPage: React.FC = () => {
   const [filter, setFilter] = useState('all');
   const [notice, setNotice] = useState<string | null>(null);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
+  const [migrating, setMigrating] = useState(false);
+
+  const handleSyncDatabase = async () => {
+    setMigrating(true);
+    setErrorNotice(null);
+    try {
+      const res: any = await apiFetch('/owner/auto-migrate', { method: 'POST' });
+      setNotice(res.message);
+      fetchRequests();
+    } catch (err: any) {
+      setErrorNotice(err.message || 'Auto-migration failed');
+    } finally {
+      setMigrating(false);
+    }
+  };
 
   // Modal confirm action
   const [pendingAction, setPendingAction] = useState<{ type: 'approve' | 'resend' | 'reject' | 'revoke'; request: any } | null>(null);
@@ -123,9 +138,20 @@ export const OwnerDashboardPage: React.FC = () => {
         )}
 
         {errorNotice && (
-          <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex justify-between items-center shadow-sm">
-            <span>{errorNotice}</span>
-            <button onClick={() => setErrorNotice(null)} className="text-rose-900 font-bold ml-2">×</button>
+          <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{errorNotice}</span>
+            </div>
+            {errorNotice.includes('does not exist') && (
+              <button
+                onClick={handleSyncDatabase}
+                disabled={migrating}
+                className="px-3 py-1.5 rounded-xl bg-stone-900 text-white font-semibold text-xs hover:bg-stone-800 transition shrink-0"
+              >
+                {migrating ? 'Syncing...' : '1-Click Fix: Sync Database'}
+              </button>
+            )}
           </div>
         )}
 
