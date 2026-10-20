@@ -1,0 +1,201 @@
+import { query, pool } from './index';
+
+export const runMigrations = async () => {
+  console.log('Running Appointmo database migrations...');
+
+  await query(`
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+    -- Businesses
+    CREATE TABLE IF NOT EXISTS businesses (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      name VARCHAR(255) NOT NULL,
+      slug VARCHAR(100) UNIQUE NOT NULL,
+      description TEXT,
+      currency VARCHAR(10) NOT NULL DEFAULT 'PHP',
+      timezone VARCHAR(50) NOT NULL DEFAULT 'Asia/Manila',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- Branches
+    CREATE TABLE IF NOT EXISTS branches (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      name VARCHAR(255) NOT NULL,
+      address TEXT NOT NULL,
+      city VARCHAR(100) NOT NULL,
+      phone VARCHAR(50) NOT NULL,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- Users (Business admins, staff logins, platform admin)
+    CREATE TABLE IF NOT EXISTS users (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      business_id UUID REFERENCES businesses(id) ON DELETE SET NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
+      role VARCHAR(50) NOT NULL DEFAULT 'business_admin', -- platform_admin, business_admin, staff
+      name VARCHAR(255) NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- Services
+    CREATE TABLE IF NOT EXISTS services (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      name VARCHAR(255) NOT NULL,
+      description TEXT NOT NULL,
+      duration_minutes INTEGER NOT NULL CHECK (duration_minutes > 0),
+      price NUMERIC(10, 2) NOT NULL CHECK (price >= 0),
+      category VARCHAR(100) NOT NULL DEFAULT 'General',
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- Staff profiles
+    CREATE TABLE IF NOT EXISTS staff_profiles (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      name VARCHAR(255) NOT NULL,
+      bio TEXT NOT NULL,
+      avatar_url TEXT,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- Staff-Service qualifications
+    CREATE TABLE IF NOT EXISTS staff_services (
+      staff_id UUID NOT NULL REFERENCES staff_profiles(id) ON DELETE CASCADE,
+      service_id UUID NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+      PRIMARY KEY (staff_id, service_id)
+    );
+
+    -- Staff working hours (day_of_week: 0=Sun, 1=Mon, ..., 6=Sat)
+    CREATE TABLE IF NOT EXISTS staff_working_hours (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      staff_id UUID NOT NULL REFERENCES staff_profiles(id) ON DELETE CASCADE,
+      day_of_week SMALLINT NOT NULL CHECK (day_of_week >= 0 AND day_of_week <= 6),
+      start_time TIME NOT NULL,
+      end_time TIME NOT NULL,
+      break_start TIME,
+      break_end TIME,
+      is_working BOOLEAN NOT NULL DEFAULT true,
+      CONSTRAINT valid_hours CHECK (start_time < end_time)
+    );
+
+    -- Staff time off
+    CREATE TABLE IF NOT EXISTS staff_time_off (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      staff_id UUID NOT NULL REFERENCES staff_profiles(id) ON DELETE CASCADE,
+      start_date TIMESTAMPTZ NOT NULL,
+      end_date TIMESTAMPTZ NOT NULL,
+      reason TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- Customers
+    CREATE TABLE IF NOT EXISTS customers (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      phone VARCHAR(50) NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT uq_business_customer_email UNIQUE (business_id, email)
+    );
+
+    -- Appointments
+    CREATE TABLE IF NOT EXISTS appointments (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      booking_reference VARCHAR(20) UNIQUE NOT NULL,
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+      customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      service_id UUID NOT NULL REFERENCES services(id) ON DELETE RESTRICT,
+      staff_id UUID NOT NULL REFERENCES staff_profiles(id) ON DELETE RESTRICT,
+      start_time TIMESTAMPTZ NOT NULL,
+      end_time TIMESTAMPTZ NOT NULL,
+      status VARCHAR(50) NOT NULL DEFAULT 'confirmed', -- pending, confirmed, completed, cancelled, rescheduled
+      price_snapshot NUMERIC(10, 2) NOT NULL,
+      currency VARCHAR(10) NOT NULL DEFAULT 'PHP',
+      notes TEXT,
+      cancellation_reason TEXT,
+      management_token_hash VARCHAR(255) NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT valid_appointment_time CHECK (start_time < end_time)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_appointments_staff_time ON appointments (staff_id, start_time, end_time) WHERE status NOT IN ('cancelled');
+    CREATE INDEX IF NOT EXISTS idx_appointments_ref ON appointments (booking_reference);
+    CREATE INDEX IF NOT EXISTS idx_appointments_business ON appointments (business_id, start_time);
+
+    -- Appointment status history
+    CREATE TABLE IF NOT EXISTS appointment_status_history (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      appointment_id UUID NOT NULL REFERENCES appointments(id) ON DELETE CASCADE,
+      previous_status VARCHAR(50),
+      new_status VARCHAR(50) NOT NULL,
+      reason TEXT,
+      changed_by VARCHAR(100) DEFAULT 'system',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- Demo Access Requests
+    CREATE TABLE IF NOT EXISTS demo_access_requests (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      full_name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      business_name VARCHAR(255),
+      message TEXT,
+      status VARCHAR(50) NOT NULL DEFAULT 'pending', -- pending, approved, rejected, revoked
+      approved_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_demo_req_email ON demo_access_requests (email);
+
+    -- Demo Invitations
+    CREATE TABLE IF NOT EXISTS demo_invitations (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      request_id UUID NOT NULL REFERENCES demo_access_requests(id) ON DELETE CASCADE,
+      token_hash VARCHAR(255) UNIQUE NOT NULL,
+      raw_token_hint VARCHAR(50),
+      expires_at TIMESTAMPTZ NOT NULL,
+      redeemed_at TIMESTAMPTZ,
+      is_revoked BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- Audit Logs
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      actor_type VARCHAR(50) NOT NULL, -- platform_admin, business_user, customer, system
+      actor_id VARCHAR(100),
+      action VARCHAR(100) NOT NULL,
+      target_type VARCHAR(100) NOT NULL,
+      target_id VARCHAR(100),
+      details JSONB,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  console.log('✅ Migrations completed successfully.');
+};
+
+if (require.main === module) {
+  runMigrations()
+    .then(() => pool.end())
+    .catch((err) => {
+      console.error('Migration failed:', err);
+      process.exit(1);
+    });
+}

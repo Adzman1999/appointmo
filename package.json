@@ -1,0 +1,19 @@
+{
+  "name": "appointmo-monorepo",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r --filter=!./packages/* run build || pnpm -r run build",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "dev:api": "pnpm --filter @appointmo/api dev",
+    "dev:web": "pnpm --filter @appointmo/web dev",
+    "dev": "pnpm --parallel --filter @appointmo/api --filter @appointmo/web dev",
+    "db:migrate": "pnpm --filter @appointmo/api db:migrate",
+    "db:seed": "pnpm --filter @appointmo/api db:seed"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "prettier": "^3.3.3"
+  }
+}
