@@ -2,7 +2,8 @@
   "name": "appointmo-monorepo",
   "private": true,
   "scripts": {
-    "build": "pnpm -r --filter=!./packages/* run build || pnpm -r run build",
+    "build:shared": "pnpm --filter @appointmo/shared build",
+    "build": "pnpm --filter @appointmo/shared build && pnpm --filter @appointmo/api build && pnpm --filter @appointmo/web build",
     "lint": "pnpm -r run lint",
     "typecheck": "pnpm -r run typecheck",
     "test": "pnpm -r run test",
