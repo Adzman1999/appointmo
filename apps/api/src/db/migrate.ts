@@ -157,23 +157,52 @@ export const runMigrations = async () => {
       business_name VARCHAR(255),
       message TEXT,
       status VARCHAR(50) NOT NULL DEFAULT 'pending', -- pending, approved, rejected, revoked
+      requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      reviewed_at TIMESTAMPTZ,
+      reviewed_by VARCHAR(255),
       approved_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_demo_req_email ON demo_access_requests (email);
 
-    -- Demo Invitations
+    -- Ensure any existing table has new columns
+    ALTER TABLE demo_access_requests ADD COLUMN IF NOT EXISTS requested_at TIMESTAMPTZ DEFAULT NOW();
+    ALTER TABLE demo_access_requests ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+    ALTER TABLE demo_access_requests ADD COLUMN IF NOT EXISTS reviewed_by VARCHAR(255);
+
+    -- Demo Invitations & Passcodes
     CREATE TABLE IF NOT EXISTS demo_invitations (
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
       request_id UUID NOT NULL REFERENCES demo_access_requests(id) ON DELETE CASCADE,
       token_hash VARCHAR(255) UNIQUE NOT NULL,
       raw_token_hint VARCHAR(50),
+      attempt_count INT DEFAULT 0,
+      max_attempts INT DEFAULT 5,
       expires_at TIMESTAMPTZ NOT NULL,
       redeemed_at TIMESTAMPTZ,
+      used_at TIMESTAMPTZ,
+      revoked_at TIMESTAMPTZ,
       is_revoked BOOLEAN NOT NULL DEFAULT false,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    ALTER TABLE demo_invitations ADD COLUMN IF NOT EXISTS attempt_count INT DEFAULT 0;
+    ALTER TABLE demo_invitations ADD COLUMN IF NOT EXISTS max_attempts INT DEFAULT 5;
+    ALTER TABLE demo_invitations ADD COLUMN IF NOT EXISTS used_at TIMESTAMPTZ;
+    ALTER TABLE demo_invitations ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ;
+
+    -- Demo Sessions (PostgreSQL-backed for immediate revocation)
+    CREATE TABLE IF NOT EXISTS demo_sessions (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      request_id UUID NOT NULL REFERENCES demo_access_requests(id) ON DELETE CASCADE,
+      session_token_hash VARCHAR(255) UNIQUE NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      revoked_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_demo_sessions_token ON demo_sessions (session_token_hash);
 
     -- Audit Logs
     CREATE TABLE IF NOT EXISTS audit_logs (

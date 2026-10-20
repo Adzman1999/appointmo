@@ -11,4 +11,9 @@ export const config = {
   adminPassword: process.env.PLATFORM_ADMIN_PASSWORD || 'AppointmoAdmin2026!',
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   isProduction: process.env.NODE_ENV === 'production',
+  resendApiKey: process.env.RESEND_API_KEY || '',
+  emailFrom: process.env.EMAIL_FROM || 'Appointmo <access@appointmo.demo>',
+  appUrl: process.env.APP_URL || 'http://localhost:5173',
+  ownerEmail: process.env.OWNER_EMAIL || 'owner@appointmo.demo',
+  ownerPassword: process.env.OWNER_PASSWORD || process.env.PLATFORM_ADMIN_PASSWORD || 'AppointmoOwner2026!',
 };

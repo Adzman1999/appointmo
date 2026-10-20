@@ -8,21 +8,31 @@ import { ManageBookingPage } from './pages/ManageBookingPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { PlatformAdminPage } from './pages/PlatformAdminPage';
 import { BusinessDashboardPage } from './pages/BusinessDashboardPage';
+import { OwnerDashboardPage } from './pages/OwnerDashboardPage';
 
 // Protected Route Guard for Private Demo Access
 const ProtectedDemoRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const token = localStorage.getItem('appointmo_token');
   if (!token) {
-    return <Navigate to="/demo/redeem" replace />;
+    return <Navigate to="/?request=access" replace />;
   }
   return children;
 };
 
-// Protected Admin Route Guard
+// Protected Admin / Owner Route Guard
+const ProtectedOwnerRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const token = localStorage.getItem('appointmo_token');
+  const user = JSON.parse(localStorage.getItem('appointmo_user') || '{}');
+  if (!token || (user.role !== 'owner' && user.role !== 'platform_admin')) {
+    return <Navigate to="/admin/login" replace />;
+  }
+  return children;
+};
+
 const ProtectedAdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const token = localStorage.getItem('appointmo_token');
   const user = JSON.parse(localStorage.getItem('appointmo_user') || '{}');
-  if (!token || (user.role !== 'platform_admin' && user.role !== 'business_admin')) {
+  if (!token || (user.role !== 'platform_admin' && user.role !== 'business_admin' && user.role !== 'owner')) {
     return <Navigate to="/admin/login" replace />;
   }
   return children;
@@ -36,6 +46,16 @@ export const App: React.FC = () => {
       <Route path="/demo/redeem" element={<RedeemInvitePage />} />
       <Route path="/manage" element={<ManageBookingPage />} />
       <Route path="/admin/login" element={<AdminLoginPage />} />
+
+      {/* Discrete Owner Area (Private Implementation) */}
+      <Route
+        path="/owner/access-requests"
+        element={
+          <ProtectedOwnerRoute>
+            <OwnerDashboardPage />
+          </ProtectedOwnerRoute>
+        }
+      />
 
       {/* Protected Interactive Demo Routes */}
       <Route
@@ -55,13 +75,13 @@ export const App: React.FC = () => {
         }
       />
 
-      {/* Protected Admin Routes */}
+      {/* Administrative Routes */}
       <Route
         path="/admin/platform"
         element={
-          <ProtectedAdminRoute>
-            <PlatformAdminPage />
-          </ProtectedAdminRoute>
+          <ProtectedOwnerRoute>
+            <OwnerDashboardPage />
+          </ProtectedOwnerRoute>
         }
       />
       <Route
@@ -78,3 +98,4 @@ export const App: React.FC = () => {
     </Routes>
   );
 };
+

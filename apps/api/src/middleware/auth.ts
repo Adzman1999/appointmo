@@ -5,8 +5,10 @@ import { config } from '../config';
 export interface AuthUser {
   userId: string;
   email: string;
-  role: 'platform_admin' | 'business_admin' | 'staff' | 'demo_guest';
+  role: 'owner' | 'platform_admin' | 'business_admin' | 'staff' | 'demo_guest';
   businessId?: string;
+  sessionId?: string;
+  name?: string;
 }
 
 declare global {
