@@ -9,7 +9,7 @@ import { runMigrations } from '../db/migrate';
 
 const router = Router();
 
-// Automatic Database Migration Endpoint (Auto-creates missing tables like demo_sessions on hosted Neon)
+// Automatic Database Migration Endpoint
 router.post('/auto-migrate', requireOwnerAuth, async (req: Request, res: Response) => {
   try {
     console.log('Running auto-migration requested by owner...');
@@ -97,10 +97,10 @@ router.get('/requests', requireOwnerAuth, async (req: Request, res: Response) =>
     let sql = `
       SELECT r.id, r.full_name, r.email, r.business_name, r.message, r.status,
              r.requested_at, r.reviewed_at, r.reviewed_by, r.created_at,
-             i.expires_at, i.used_at, i.revoked_at, i.attempt_count, i.raw_token_hint,
+             u.id AS user_id,
              s.created_at AS session_started_at
       FROM demo_access_requests r
-      LEFT JOIN demo_invitations i ON r.id = i.request_id
+      LEFT JOIN users u ON LOWER(r.email) = LOWER(u.email)
       LEFT JOIN demo_sessions s ON r.id = s.request_id AND s.revoked_at IS NULL
     `;
     const params: any[] = [];
@@ -139,7 +139,50 @@ router.get('/requests', requireOwnerAuth, async (req: Request, res: Response) =>
   }
 });
 
-// 3. Approve Request and Send 15-Minute Access Code Email
+// Helper to provision user account and setup token
+async function provisionUserAndSetupToken(accessReq: { id: string; email: string; full_name: string }, origin: string) {
+  const emailNorm = accessReq.email.toLowerCase().trim();
+
+  // Find or create user
+  let userRes = await query('SELECT id, email, password_hash FROM users WHERE email = $1', [emailNorm]);
+  let userId: string;
+  let hasPassword = false;
+
+  if (userRes.rows.length === 0) {
+    const bcrypt = await import('bcryptjs');
+    const dummyHash = await bcrypt.default.hash(crypto.randomBytes(32).toString('hex'), 10);
+    const newUser = await query(`
+      INSERT INTO users (email, password_hash, role, name)
+      VALUES ($1, $2, 'demo_guest', $3)
+      RETURNING id
+    `, [emailNorm, dummyHash, accessReq.full_name]);
+    userId = newUser.rows[0].id;
+  } else {
+    userId = userRes.rows[0].id;
+    hasPassword = true;
+  }
+
+  // Generate single-use, 24-hour setup token
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  // Invalidate any previous unused setup tokens for this user
+  await query('DELETE FROM user_setup_tokens WHERE user_id = $1', [userId]);
+
+  await query(`
+    INSERT INTO user_setup_tokens (user_id, token_hash, expires_at)
+    VALUES ($1, $2, $3)
+  `, [userId, tokenHash, expiresAt]);
+
+  const cleanOrigin = origin.replace(/\/+$/, '');
+  const setupUrl = `${cleanOrigin}/#/setup-password?token=${rawToken}&email=${encodeURIComponent(emailNorm)}`;
+  const loginUrl = `${cleanOrigin}/#/admin/login`;
+
+  return { userId, rawToken, setupUrl, loginUrl, hasPassword };
+}
+
+// 3. Approve Request: Updates status, provisions account, and sends friendly approval notification
 router.post('/requests/:id/approve', requireOwnerAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -150,64 +193,53 @@ router.post('/requests/:id/approve', requireOwnerAuth, async (req: Request, res:
     }
 
     const accessReq = reqRes.rows[0];
+    const origin = req.headers.origin || (req.headers.host ? `https://${req.headers.host}` : 'https://appointmo.com');
 
-    // Generate cryptographic 6-digit alphanumeric passcode (e.g. 849201)
-    const rawPasscode = crypto.randomInt(100000, 999999).toString();
-    const codeHash = crypto.createHash('sha256').update(rawPasscode).digest('hex');
-    const tokenHint = rawPasscode.slice(0, 2) + '****';
-    const expiresInMinutes = 15;
-    const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
+    // 1. Transactionally provision account & single-use setup link
+    const { rawToken, setupUrl, loginUrl } = await provisionUserAndSetupToken(accessReq, origin);
 
-    // 1. Send email first via Resend / DevMock
-    const emailResult = await EmailService.sendAccessPasscode({
+    // 2. Send invitation email (no codes or passcodes)
+    const emailResult = await EmailService.sendApprovalNotification({
       recipientEmail: accessReq.email,
       recipientName: accessReq.full_name,
-      passcode: rawPasscode,
-      expiresInMinutes,
+      setupUrl,
+      loginUrl,
     });
 
     if (!emailResult.success) {
       return res.status(502).json({
-        error: `Email delivery failed: ${emailResult.error || 'Provider rejected send request'}. Code was not issued.`,
+        error: `Email delivery failed: ${emailResult.error || 'Provider rejected send request'}. Request status was not modified.`,
       });
     }
 
-    // 2. Mark request as approved
+    // 3. Mark request as approved
     await query(`
       UPDATE demo_access_requests 
-      SET status = 'approved', reviewed_at = NOW(), reviewed_by = $1, updated_at = NOW()
+      SET status = 'approved', approved_at = NOW(), reviewed_at = NOW(), reviewed_by = $1, updated_at = NOW()
       WHERE id = $2
     `, [req.user?.email || 'owner', id]);
-
-    // 3. Insert or update passcode invitation record
-    await query(`
-      INSERT INTO demo_invitations (request_id, token_hash, raw_token_hint, expires_at, attempt_count)
-      VALUES ($1, $2, $3, $4, 0)
-      ON CONFLICT (token_hash) DO NOTHING
-    `, [id, codeHash, tokenHint, expiresAt]);
 
     // 4. Record audit log
     await query(`
       INSERT INTO audit_logs (actor_type, actor_id, action, target_type, target_id, details)
-      VALUES ('owner', $1, 'approve_and_send_code', 'demo_access_requests', $2, $3)
+      VALUES ('owner', $1, 'approve_access_request', 'demo_access_requests', $2, $3)
     `, [req.user?.userId || 'owner', id, JSON.stringify({ email: accessReq.email, isMock: emailResult.isMock })]);
 
     res.json({
       message: emailResult.isMock
-        ? 'Request approved. (Mock email logged to console in local development).'
-        : `Access code email successfully sent to ${accessReq.email}.`,
-      expiresAt: expiresAt.toISOString(),
+        ? 'Request approved. (Mock approval email logged to console in local development).'
+        : `Approval invitation successfully sent to ${accessReq.email}.`,
       isMock: emailResult.isMock,
-      // Passcode only sent in response if in mock dev mode for testing convenience
-      devCodeHint: emailResult.isMock ? rawPasscode : undefined,
+      setupUrl: emailResult.isMock ? setupUrl : undefined,
+      devSetupToken: emailResult.isMock ? rawToken : undefined,
     });
   } catch (err: any) {
     console.error('Approve and send error:', err);
-    res.status(500).json({ error: 'Failed to approve request and send email' });
+    res.status(500).json({ error: 'Failed to approve request and send email: ' + (err.message || 'Server error') });
   }
 });
 
-// 4. Resend Access Code Email (Generates a fresh 15-minute code)
+// 4. Resend Approval Notification Email
 router.post('/requests/:id/resend', requireOwnerAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -219,43 +251,36 @@ router.post('/requests/:id/resend', requireOwnerAuth, async (req: Request, res: 
 
     const accessReq = reqRes.rows[0];
     if (accessReq.status === 'revoked' || accessReq.status === 'rejected') {
-      return res.status(400).json({ error: 'Cannot resend access code for rejected or revoked request' });
+      return res.status(400).json({ error: 'Cannot resend approval notification for rejected or revoked request' });
     }
 
-    const rawPasscode = crypto.randomInt(100000, 999999).toString();
-    const codeHash = crypto.createHash('sha256').update(rawPasscode).digest('hex');
-    const tokenHint = rawPasscode.slice(0, 2) + '****';
-    const expiresInMinutes = 15;
-    const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
+    const origin = req.headers.origin || (req.headers.host ? `https://${req.headers.host}` : 'https://appointmo.com');
+    const { rawToken, setupUrl, loginUrl } = await provisionUserAndSetupToken(accessReq, origin);
 
-    const emailResult = await EmailService.sendAccessPasscode({
+    const emailResult = await EmailService.sendApprovalNotification({
       recipientEmail: accessReq.email,
       recipientName: accessReq.full_name,
-      passcode: rawPasscode,
-      expiresInMinutes,
+      setupUrl,
+      loginUrl,
     });
 
     if (!emailResult.success) {
       return res.status(502).json({ error: `Email delivery failed: ${emailResult.error}` });
     }
 
-    // Invalidate prior codes
-    await query('UPDATE demo_invitations SET is_revoked = true, revoked_at = NOW() WHERE request_id = $1', [id]);
-
-    // Insert new fresh code
     await query(`
-      INSERT INTO demo_invitations (request_id, token_hash, raw_token_hint, expires_at, attempt_count)
-      VALUES ($1, $2, $3, $4, 0)
-    `, [id, codeHash, tokenHint, expiresAt]);
+      INSERT INTO audit_logs (actor_type, actor_id, action, target_type, target_id, details)
+      VALUES ('owner', $1, 'resend_approval_notification', 'demo_access_requests', $2, $3)
+    `, [req.user?.userId || 'owner', id, JSON.stringify({ email: accessReq.email })]);
 
     res.json({
-      message: `Fresh access code sent to ${accessReq.email}`,
-      expiresAt: expiresAt.toISOString(),
+      message: `Approval notification resent to ${accessReq.email}.`,
       isMock: emailResult.isMock,
-      devCodeHint: emailResult.isMock ? rawPasscode : undefined,
+      setupUrl: emailResult.isMock ? setupUrl : undefined,
+      devSetupToken: emailResult.isMock ? rawToken : undefined,
     });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to resend access email' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to resend approval notification' });
   }
 });
 
@@ -263,41 +288,68 @@ router.post('/requests/:id/resend', requireOwnerAuth, async (req: Request, res: 
 router.post('/requests/:id/reject', requireOwnerAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const reqRes = await query('SELECT id, email, status FROM demo_access_requests WHERE id = $1', [id]);
+    if (reqRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
     await query(`
-      UPDATE demo_access_requests 
+      UPDATE demo_access_requests
       SET status = 'rejected', reviewed_at = NOW(), reviewed_by = $1, updated_at = NOW()
       WHERE id = $2
     `, [req.user?.email || 'owner', id]);
 
-    await query('UPDATE demo_invitations SET is_revoked = true, revoked_at = NOW() WHERE request_id = $1', [id]);
+    await query(`
+      INSERT INTO audit_logs (actor_type, actor_id, action, target_type, target_id, details)
+      VALUES ('owner', $1, 'reject_access_request', 'demo_access_requests', $2, $3)
+    `, [req.user?.userId || 'owner', id, JSON.stringify({ email: reqRes.rows[0].email })]);
 
-    res.json({ message: 'Request rejected' });
+    res.json({ message: 'Request rejected successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to reject request' });
   }
 });
 
-// 6. Revoke Access (Immediately terminates invitations & active database sessions)
+// 6. Revoke Access Immediately
 router.post('/requests/:id/revoke', requireOwnerAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const reqRes = await query('SELECT id, email, status FROM demo_access_requests WHERE id = $1', [id]);
+    if (reqRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
 
+    const emailNorm = reqRes.rows[0].email.toLowerCase().trim();
+
+    // 1. Mark demo_access_requests status = 'revoked'
     await query(`
-      UPDATE demo_access_requests 
+      UPDATE demo_access_requests
       SET status = 'revoked', updated_at = NOW()
       WHERE id = $1
     `, [id]);
 
-    await query('UPDATE demo_invitations SET is_revoked = true, revoked_at = NOW() WHERE request_id = $1', [id]);
-    await query('UPDATE demo_sessions SET revoked_at = NOW() WHERE request_id = $1', [id]);
-
+    // 2. Invalidate all active demo_sessions
     await query(`
-      INSERT INTO audit_logs (actor_type, actor_id, action, target_type, target_id)
-      VALUES ('owner', $1, 'revoke_access', 'demo_access_requests', $2)
-    `, [req.user?.userId || 'owner', id]);
+      UPDATE demo_sessions
+      SET revoked_at = NOW()
+      WHERE request_id = $1 OR LOWER(email) = $2
+    `, [id, emailNorm]);
 
-    res.json({ message: 'Access and active sessions revoked successfully' });
-  } catch (err) {
+    // 3. Invalidate any pending setup tokens
+    await query(`
+      DELETE FROM user_setup_tokens
+      WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = $1)
+    `, [emailNorm]);
+
+    // 4. Audit log
+    await query(`
+      INSERT INTO audit_logs (actor_type, actor_id, action, target_type, target_id, details)
+      VALUES ('owner', $1, 'revoke_access', 'demo_access_requests', $2, $3)
+    `, [req.user?.userId || 'owner', id, JSON.stringify({ email: emailNorm })]);
+
+    res.json({ message: `Access revoked and active sessions invalidated for ${emailNorm}` });
+  } catch (err: any) {
+    console.error('Revoke access error:', err);
     res.status(500).json({ error: 'Failed to revoke access' });
   }
 });

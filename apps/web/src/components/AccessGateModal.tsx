@@ -1,28 +1,23 @@
 import React, { useState } from 'react';
-import { X, CheckCircle2, ArrowRight, KeyRound, Mail, Sparkles, AlertCircle } from 'lucide-react';
+import { X, CheckCircle2, ArrowRight, Mail, Sparkles, AlertCircle, Lock } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 interface AccessGateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  initialTab?: 'request' | 'verify';
+  initialTab?: 'request' | 'login';
 }
 
 export const AccessGateModal: React.FC<AccessGateModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  initialTab = 'verify',
+  initialTab = 'request',
 }) => {
-  const [tab, setTab] = useState<'request' | 'verify'>(initialTab);
+  const [tab, setTab] = useState<'request' | 'login'>(initialTab);
 
-  // Passcode verification state
-  const [passcode, setPasscode] = useState('');
-  const [verifyLoading, setVerifyLoading] = useState(false);
-  const [verifyError, setVerifyError] = useState<string | null>(null);
-
-  // Request form state (optional backup)
+  // Request form state
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [businessName, setBusinessName] = useState('');
@@ -31,31 +26,13 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
   const [requestSuccess, setRequestSuccess] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
 
+  // Approved user login state
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
   if (!isOpen) return null;
-
-  const handleVerifyPasscode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setVerifyLoading(true);
-    setVerifyError(null);
-
-    try {
-      const res: any = await apiFetch('/access/verify-code', {
-        method: 'POST',
-        body: JSON.stringify({
-          code: passcode.trim(),
-        }),
-      });
-
-      localStorage.setItem('appointmo_token', res.token);
-      localStorage.setItem('appointmo_user', JSON.stringify(res.user));
-
-      onSuccess();
-    } catch (err: any) {
-      setVerifyError(err.message || 'Incorrect or expired access code.');
-    } finally {
-      setVerifyLoading(false);
-    }
-  };
 
   const handleRequestAccess = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,13 +52,36 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
         }),
       });
 
-      setRequestSuccess(
-        res.message || "Thanks for reaching out! We've received your request. You'll receive an email when your access is ready."
-      );
+      setRequestSuccess(res.message || "Thanks for reaching out! We've received your request. You'll receive an email once approved.");
     } catch (err: any) {
-      setRequestError(err.message || 'Unable to submit your request. Please try again.');
+      setRequestError(err.message || 'Unable to submit your request. Please check your information and try again.');
     } finally {
       setRequestLoading(false);
+    }
+  };
+
+  const handleApprovedLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginLoading(true);
+    setLoginError(null);
+
+    try {
+      const res: any = await apiFetch('/access/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: loginEmail.trim(),
+          password: loginPassword,
+        }),
+      });
+
+      localStorage.setItem('appointmo_token', res.token);
+      localStorage.setItem('appointmo_user', JSON.stringify(res.user));
+
+      onSuccess();
+    } catch (err: any) {
+      setLoginError(err.message || 'Unable to sign in. Please verify your credentials or ensure your access is approved.');
+    } finally {
+      setLoginLoading(false);
     }
   };
 
@@ -102,63 +102,45 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
             <Sparkles className="w-3.5 h-3.5 text-stone-900" />
             <span>Interactive Demo</span>
           </div>
-          <h2 className="text-2xl font-bold tracking-tight text-stone-900">Enter Access Code</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-stone-900">
+            {tab === 'request' ? 'Request Demo Access' : 'Sign In to Demo'}
+          </h2>
           <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
-            Input your access code below to enter the interactive read-only demonstration.
+            {tab === 'request'
+              ? 'Tell us a bit about your business and we will approve your preview access promptly.'
+              : 'Sign in with your approved account to explore the interactive appointment platform.'}
           </p>
         </div>
 
-        {/* Primary Passcode Verification Form */}
-        {tab === 'verify' && (
-          <form onSubmit={handleVerifyPasscode} className="space-y-4 text-xs">
-            {verifyError && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{verifyError}</span>
-              </div>
-            )}
+        {/* Tab Switcher */}
+        <div className="flex bg-stone-100 p-1 rounded-2xl mb-6">
+          <button
+            type="button"
+            onClick={() => {
+              setTab('request');
+              setRequestError(null);
+            }}
+            className={`flex-1 py-2 text-xs font-semibold rounded-xl transition ${
+              tab === 'request' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            Request Access
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setTab('login');
+              setLoginError(null);
+            }}
+            className={`flex-1 py-2 text-xs font-semibold rounded-xl transition ${
+              tab === 'login' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            Approved Sign In
+          </button>
+        </div>
 
-            <div>
-              <label className="block font-semibold text-stone-700 mb-1.5">Access Code</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  required
-                  autoFocus
-                  placeholder="e.g. APPOINTMO-DEMO or your 6-digit code"
-                  value={passcode}
-                  onChange={(e) => setPasscode(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-3 rounded-xl border border-stone-300 text-sm font-mono tracking-wider focus:outline-none focus:border-stone-900 transition"
-                />
-                <KeyRound className="w-4 h-4 text-stone-400 absolute left-3.5 top-3.5" />
-              </div>
-              <div className="mt-2 text-[11px] text-stone-400 flex items-center justify-between">
-                <span>Try instant code: <button type="button" onClick={() => setPasscode('APPOINTMO-DEMO')} className="font-mono text-stone-700 font-semibold underline">APPOINTMO-DEMO</button></span>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={verifyLoading || !passcode}
-              className="w-full bg-stone-900 text-white font-semibold py-3.5 rounded-xl hover:bg-stone-800 transition text-xs shadow disabled:opacity-50 flex items-center justify-center space-x-2"
-            >
-              <span>{verifyLoading ? 'Verifying...' : 'Enter Interactive Demo'}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-
-            <div className="text-center pt-2">
-              <button
-                type="button"
-                onClick={() => setTab('request')}
-                className="text-[11px] text-stone-500 hover:text-stone-900 transition underline"
-              >
-                Don't have a code? Request an invitation
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Tab 2: Request Access Form (Secondary) */}
+        {/* TAB 1: REQUEST ACCESS */}
         {tab === 'request' && (
           <div>
             {requestSuccess ? (
@@ -171,11 +153,10 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
                 <div className="pt-2">
                   <button
                     type="button"
-                    onClick={() => setTab('verify')}
-                    className="w-full bg-emerald-800 text-white font-semibold py-2.5 rounded-xl text-xs hover:bg-emerald-900 transition flex items-center justify-center space-x-1.5"
+                    onClick={() => setTab('login')}
+                    className="w-full bg-emerald-700 text-white font-semibold py-2.5 rounded-xl hover:bg-emerald-800 transition text-xs shadow"
                   >
-                    <span>Back to Enter Code</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    Already received your approval? Sign in
                   </button>
                 </div>
               </div>
@@ -189,11 +170,11 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
                 )}
 
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Your Name *</label>
+                  <label className="block font-semibold text-stone-700 mb-1">Your Full Name</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Maria Clara"
+                    placeholder="e.g. Elena Rostova"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 transition"
@@ -201,11 +182,11 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Email Address *</label>
+                  <label className="block font-semibold text-stone-700 mb-1">Email Address</label>
                   <input
                     type="email"
                     required
-                    placeholder="you@company.com"
+                    placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 transition"
@@ -216,34 +197,96 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
                   <label className="block font-semibold text-stone-700 mb-1">Business Name (Optional)</label>
                   <input
                     type="text"
-                    placeholder="e.g. Clara Aesthetics"
+                    placeholder="e.g. Rostova Hair Studio"
                     value={businessName}
                     onChange={(e) => setBusinessName(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 transition"
                   />
                 </div>
 
+                <div>
+                  <label className="block font-semibold text-stone-700 mb-1">Message or Use Case (Optional)</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Tell us what you're looking for..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 transition resize-none"
+                  />
+                </div>
+
                 <button
                   type="submit"
-                  disabled={requestLoading}
-                  className="w-full mt-2 bg-stone-900 text-white font-semibold py-3 rounded-xl hover:bg-stone-800 transition text-xs shadow disabled:opacity-50 flex items-center justify-center space-x-2"
+                  disabled={requestLoading || !fullName || !email}
+                  className="w-full bg-stone-900 text-white font-semibold py-3 rounded-xl hover:bg-stone-800 transition text-xs shadow disabled:opacity-50 flex items-center justify-center space-x-2 mt-2"
                 >
-                  <span>{requestLoading ? 'Sending Request...' : 'Send Request'}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <Mail className="w-4 h-4" />
+                  <span>{requestLoading ? 'Submitting...' : 'Submit Access Request'}</span>
                 </button>
-
-                <div className="text-center pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setTab('verify')}
-                    className="text-[11px] text-stone-500 hover:text-stone-900 transition"
-                  >
-                    ← Already have a code?
-                  </button>
-                </div>
               </form>
             )}
           </div>
+        )}
+
+        {/* TAB 2: APPROVED USER SIGN IN */}
+        {tab === 'login' && (
+          <form onSubmit={handleApprovedLogin} className="space-y-4 text-xs">
+            {loginError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{loginError}</span>
+              </div>
+            )}
+
+            <div>
+              <label className="block font-semibold text-stone-700 mb-1">Approved Email Address</label>
+              <div className="relative">
+                <input
+                  type="email"
+                  required
+                  placeholder="name@company.com"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 transition"
+                />
+                <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-stone-700 mb-1">Password</label>
+              <div className="relative">
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••••••"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 transition"
+                />
+                <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loginLoading || !loginEmail || !loginPassword}
+              className="w-full bg-stone-900 text-white font-semibold py-3.5 rounded-xl hover:bg-stone-800 transition text-xs shadow disabled:opacity-50 flex items-center justify-center space-x-2"
+            >
+              <span>{loginLoading ? 'Signing in...' : 'Sign In to Interactive Demo'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={() => setTab('request')}
+                className="text-[11px] text-stone-500 hover:text-stone-900 transition underline"
+              >
+                Haven't requested access yet? Submit a request
+              </button>
+            </div>
+          </form>
         )}
       </div>
     </div>

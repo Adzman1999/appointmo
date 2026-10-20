@@ -9,6 +9,7 @@ import { AdminLoginPage } from './pages/AdminLoginPage';
 import { PlatformAdminPage } from './pages/PlatformAdminPage';
 import { BusinessDashboardPage } from './pages/BusinessDashboardPage';
 import { OwnerDashboardPage } from './pages/OwnerDashboardPage';
+import { SetupPasswordPage } from './pages/SetupPasswordPage';
 
 // Protected Route Guard for Private Demo Access
 const ProtectedDemoRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -43,7 +44,7 @@ export const App: React.FC = () => {
     <Routes>
       {/* Public Pages */}
       <Route path="/" element={<LandingPage />} />
-      <Route path="/demo/redeem" element={<RedeemInvitePage />} />
+      <Route path="/setup-password" element={<SetupPasswordPage />} />
       <Route path="/manage" element={<ManageBookingPage />} />
       <Route path="/admin/login" element={<AdminLoginPage />} />
 

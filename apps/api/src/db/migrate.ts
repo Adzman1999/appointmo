@@ -192,6 +192,17 @@ export const runMigrations = async () => {
     ALTER TABLE demo_invitations ADD COLUMN IF NOT EXISTS used_at TIMESTAMPTZ;
     ALTER TABLE demo_invitations ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ;
 
+    -- Password Setup / Reset Tokens (Single-use, short-lived, securely hashed)
+    CREATE TABLE IF NOT EXISTS user_setup_tokens (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash VARCHAR(255) UNIQUE NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_setup_tokens_hash ON user_setup_tokens (token_hash);
+
     -- Demo Sessions (PostgreSQL-backed for immediate revocation)
     CREATE TABLE IF NOT EXISTS demo_sessions (
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

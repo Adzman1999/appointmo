@@ -1,11 +1,11 @@
 import { Resend } from 'resend';
 import { config } from '../config';
 
-export interface SendPasscodeOptions {
+export interface SendApprovalNotificationOptions {
   recipientEmail: string;
   recipientName: string;
-  passcode: string;
-  expiresInMinutes: number;
+  setupUrl?: string;
+  loginUrl: string;
 }
 
 export interface EmailServiceResult {
@@ -18,23 +18,26 @@ export interface EmailServiceResult {
 export class EmailService {
   private static resendClient: Resend | null = config.resendApiKey ? new Resend(config.resendApiKey) : null;
 
-  static async sendAccessPasscode(options: SendPasscodeOptions): Promise<EmailServiceResult> {
-    const { recipientEmail, recipientName, passcode, expiresInMinutes } = options;
+  /**
+   * Sends an invitation notification email to an approved user.
+   * Completely devoid of access codes or OTP passcodes.
+   */
+  static async sendApprovalNotification(options: SendApprovalNotificationOptions): Promise<EmailServiceResult> {
+    const { recipientEmail, recipientName, setupUrl, loginUrl } = options;
 
-    const subject = 'Your Appointmo Access Is Ready';
+    const actionUrl = setupUrl || loginUrl;
+    const actionLabel = setupUrl ? 'Set Up Your Password & Explore' : 'Sign In to Appointmo';
+
+    const subject = "You're invited to explore Appointmo";
     const textBody = `Hi ${recipientName},
 
-Your request to explore Appointmo has been approved.
+Good news! Your request to explore Appointmo has been approved.
 
-Use the access code below to continue:
+You can now sign in using the email address associated with your request and access the interactive demo.
 
-${passcode}
+${actionLabel}: ${actionUrl}
 
-This code expires in ${expiresInMinutes} minutes and can only be used once.
-
-If you didn't request access, you can safely ignore this email.
-
-We're excited to show you a smarter way to manage appointments.
+We're excited for you to explore a smarter way to manage appointments.
 
 — The Appointmo Team`;
 
@@ -43,30 +46,33 @@ We're excited to show you a smarter way to manage appointments.
         <div style="margin-bottom: 24px;">
           <span style="font-size: 20px; font-weight: 700; color: #1c1917; letter-spacing: -0.5px;">Appointmo</span>
         </div>
-        <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #1c1917;">Your access is ready</h2>
-        <p style="font-size: 15px; color: #44403c; margin-bottom: 24px;">
-          Hi ${recipientName},<br><br>
-          Your request to explore Appointmo has been approved. Enter this access code to continue into the interactive experience:
+        <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #1c1917;">You're invited to explore Appointmo</h2>
+        <p style="font-size: 15px; color: #44403c; margin-bottom: 16px;">
+          Hi ${recipientName},
         </p>
-        <div style="background-color: #f5f5f4; border: 1px solid #e7e5e4; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
-          <span style="font-family: ui-monospace, Menlo, Monaco, Consolas, monospace; font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #1c1917; display: block;">
-            ${passcode}
-          </span>
-          <span style="font-size: 12px; color: #78716c; margin-top: 8px; display: block;">
-            Expires in ${expiresInMinutes} minutes • Single-use code
-          </span>
+        <p style="font-size: 15px; color: #44403c; margin-bottom: 24px;">
+          Good news! Your request to explore Appointmo has been approved.<br><br>
+          You can now sign in using the email address associated with your request and access the interactive demo.
+        </p>
+        <div style="margin: 28px 0;">
+          <a href="${actionUrl}" style="background-color: #1c1917; color: #ffffff; padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none; font-size: 14px; display: inline-block;">
+            ${actionLabel} &rarr;
+          </a>
         </div>
-        <p style="font-size: 13px; color: #78716c; margin-top: 24px;">
-          If you didn't request access, you can safely ignore this email.
+        <p style="font-size: 14px; color: #57534e; margin-bottom: 24px;">
+          We're excited for you to explore a smarter way to manage appointments.
+        </p>
+        <p style="font-size: 14px; color: #78716c;">
+          — The Appointmo Team
         </p>
         <hr style="border: none; border-top: 1px solid #e7e5e4; margin: 32px 0 16px;" />
         <p style="font-size: 12px; color: #a8a29e;">
-          Appointmo — Intelligent Appointment Platform
+          Appointmo — Intelligent Salon &amp; Studio Scheduling Platform
         </p>
       </div>
     `;
 
-    // 1. If Resend is configured, send via real email provider
+    // 1. If Resend is configured, send via live transactional email provider
     if (this.resendClient) {
       try {
         const { data, error } = await this.resendClient.emails.send({
@@ -78,29 +84,43 @@ We're excited to show you a smarter way to manage appointments.
         });
 
         if (error) {
-          console.error('Resend delivery failed:', error);
-          return { success: false, isMock: false, error: error.message };
+          console.error('❌ Resend API Error:', error);
+          return {
+            success: false,
+            isMock: false,
+            error: error.message || 'Resend failed to deliver email',
+          };
         }
 
-        return { success: true, messageId: data?.id, isMock: false };
+        console.log(`✅ Real email delivered to ${recipientEmail} (ID: ${data?.id})`);
+        return {
+          success: true,
+          messageId: data?.id,
+          isMock: false,
+        };
       } catch (err: any) {
-        console.error('Resend API exception:', err);
-        return { success: false, isMock: false, error: err.message || 'Email delivery exception' };
+        console.error('❌ Resend Exception:', err);
+        return {
+          success: false,
+          isMock: false,
+          error: err.message || 'Network exception communicating with Resend',
+        };
       }
     }
 
-    // 2. Safe development fallback when no API key is set
-    console.log('\n============================================================');
-    console.log('📨 [DEV MOCK EMAIL SERVICE] (No RESEND_API_KEY configured)');
-    console.log(`To: ${recipientEmail} (${recipientName})`);
-    console.log(`Subject: ${subject}`);
-    console.log(`Access Code: [ ${passcode} ]`);
-    console.log(`Expires: ${expiresInMinutes} minutes`);
-    console.log('============================================================\n');
+    // 2. Dev Mock Mode (No credentials required for local dev/testing)
+    console.log(`
+============================================================
+📨 [DEV MOCK EMAIL SERVICE] (No RESEND_API_KEY configured)
+To: ${recipientEmail} (${recipientName})
+Subject: ${subject}
+Action URL: ${actionUrl}
+============================================================
+`);
 
     return {
       success: true,
-      messageId: 'mock_' + Date.now(),
+      messageId: `mock_${Date.now()}`,
       isMock: true,
     };
   }

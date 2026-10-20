@@ -6,15 +6,15 @@ import { AccessGateModal } from '../components/AccessGateModal';
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
-  const [initialModalTab, setInitialModalTab] = useState<'request' | 'verify'>('request');
+  const [initialModalTab, setInitialModalTab] = useState<'request' | 'login'>('request');
 
   const openRequestAccess = () => {
     setInitialModalTab('request');
     setIsAccessModalOpen(true);
   };
 
-  const openEnterCode = () => {
-    setInitialModalTab('verify');
+  const openApprovedSignIn = () => {
+    setInitialModalTab('login');
     setIsAccessModalOpen(true);
   };
 
@@ -53,10 +53,10 @@ export const LandingPage: React.FC = () => {
             <a href="#features" className="hover:text-stone-900 transition-colors">Features</a>
             <a href="#preview" className="hover:text-stone-900 transition-colors">Product Preview</a>
             <button
-              onClick={openEnterCode}
-              className="hover:text-stone-900 transition-colors text-amber-800 font-semibold text-xs"
+              onClick={openApprovedSignIn}
+              className="hover:text-stone-900 transition-colors text-stone-700 font-semibold text-xs"
             >
-              Have an Access Code?
+              Approved User Sign In
             </button>
           </nav>
 
@@ -101,10 +101,10 @@ export const LandingPage: React.FC = () => {
             <ArrowRight className="w-4 h-4" />
           </button>
           <button
-            onClick={openEnterCode}
+            onClick={openApprovedSignIn}
             className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-white text-stone-700 border border-stone-300 font-medium px-6 py-3.5 rounded-xl hover:bg-stone-50 transition"
           >
-            <span>Have an Access Code?</span>
+            <span>Approved User Sign In</span>
           </button>
         </div>
       </section>
@@ -291,10 +291,10 @@ export const LandingPage: React.FC = () => {
               Request Access
             </button>
             <button
-              onClick={openEnterCode}
+              onClick={openApprovedSignIn}
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-stone-700 text-stone-300 font-semibold text-xs hover:bg-stone-800 transition"
             >
-              Have an Access Code?
+              Approved User Sign In
             </button>
           </div>
         </div>
