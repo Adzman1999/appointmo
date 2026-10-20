@@ -10,16 +10,22 @@
       "framework": "vite"
     }
   },
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": {
+      "src": "/api/(.*)",
+      "dest": {
         "service": "api"
       }
     },
     {
-      "source": "/(.*)",
-      "destination": {
+      "src": "/assets/(.*)",
+      "dest": {
+        "service": "web"
+      }
+    },
+    {
+      "src": "/(.*)",
+      "dest": {
         "service": "web"
       }
     }
