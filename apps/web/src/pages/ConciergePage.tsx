@@ -8,6 +8,7 @@ import {
 import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { DemoTopNav } from '../components/DemoTopNav';
 
 export const ConciergePage: React.FC = () => {
   const navigate = useNavigate();
@@ -105,6 +106,9 @@ export const ConciergePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20 transition-colors">
+      {/* Top Segmented Navigation Bar */}
+      <DemoTopNav currentRole="customer" />
+
       {/* Top Bar */}
       <div className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-4 px-6 mb-8">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
@@ -138,12 +142,6 @@ export const ConciergePage: React.FC = () => {
               className="text-xs font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white px-3 py-1.5 rounded-lg border border-stone-200 dark:border-stone-800 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
             >
               Quick Booking
-            </button>
-            <button
-              onClick={() => navigate('/demo/admin')}
-              className="text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 px-3 py-1.5 rounded-lg transition"
-            >
-              Admin Demo &rarr;
             </button>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { DemoTopNav } from '../components/DemoTopNav';
 
 interface Service {
   id: string;
@@ -162,30 +163,8 @@ export const QuickBookingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20 transition-colors">
-      {/* Top Banner indicating Fictional Demo Environment */}
-      <div className="bg-stone-900 text-stone-300 py-2 px-4 text-xs">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center space-x-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span className="font-semibold text-white">Public Customer Demo:</span>
-            <span>{business?.name || 'Synthetic Demonstration Business'}. No payment or account required.</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/browse')}
-              className="text-amber-300 hover:text-white font-semibold underline text-xs"
-            >
-              &larr; Switch Business
-            </button>
-            <button
-              onClick={() => navigate('/demo/admin')}
-              className="text-white hover:text-amber-300 font-semibold underline text-xs"
-            >
-              Admin Demo &rarr;
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Top Segmented Navigation Bar */}
+      <DemoTopNav currentRole="customer" />
 
       {/* Main Header */}
       <div className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-4 px-6 mb-8 shadow-sm">
@@ -232,8 +211,8 @@ export const QuickBookingPage: React.FC = () => {
       <div className="max-w-3xl mx-auto px-4">
         {/* Branch Selector if multiple branches exist */}
         {business && business.branches.length > 1 && (
-          <div className="bg-white rounded-2xl border border-stone-200 p-4 mb-6 shadow-sm">
-            <label className="block text-xs font-bold uppercase tracking-wider text-stone-600 mb-2">
+          <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-4 mb-6 shadow-sm">
+            <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-2">
               Select Branch Location
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -244,12 +223,12 @@ export const QuickBookingPage: React.FC = () => {
                   onClick={() => setSelectedBranchId(br.id)}
                   className={`p-3 rounded-xl border text-left transition ${
                     selectedBranchId === br.id
-                      ? 'border-stone-900 bg-stone-900 text-white shadow-sm'
-                      : 'border-stone-200 hover:border-stone-400 bg-white text-stone-800'
+                      ? 'border-stone-900 dark:border-amber-400 bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 shadow-sm font-bold'
+                      : 'border-stone-200 dark:border-stone-700 hover:border-stone-400 dark:hover:border-stone-600 bg-white dark:bg-stone-800/80 text-stone-800 dark:text-stone-200'
                   }`}
                 >
                   <div className="font-bold text-xs">{br.name}</div>
-                  <div className={`text-[11px] truncate mt-0.5 ${selectedBranchId === br.id ? 'text-stone-300' : 'text-stone-500'}`}>
+                  <div className={`text-[11px] truncate mt-0.5 ${selectedBranchId === br.id ? 'text-stone-300 dark:text-stone-900 font-semibold' : 'text-stone-600 dark:text-stone-300'}`}>
                     {br.address}, {br.city}
                   </div>
                 </button>
@@ -259,16 +238,16 @@ export const QuickBookingPage: React.FC = () => {
         )}
 
         {/* Navigation Mode Banner */}
-        <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-amber-950">
+        <div className="bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-amber-950 dark:text-amber-100">
           <div>
             <span className="font-bold">Not sure which service fits your goals or schedule?</span>
-            <p className="text-amber-800 text-[11px] mt-0.5">Let our Concierge find the ideal service and time slot for your budget.</p>
+            <p className="text-amber-800 dark:text-amber-200/90 text-[11px] mt-0.5 font-medium">Let our Concierge find the ideal service and time slot for your budget.</p>
           </div>
           <button
             onClick={() => navigate(`/demo/concierge?business=${business?.slug || ''}`)}
-            className="shrink-0 bg-stone-900 text-white font-semibold px-3.5 py-2 rounded-xl hover:bg-stone-800 transition shadow text-xs flex items-center space-x-1.5"
+            className="shrink-0 bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold px-3.5 py-2 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow text-xs flex items-center space-x-1.5"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-400 dark:text-stone-950" />
             <span>Try Concierge Booking</span>
           </button>
         </div>
@@ -342,8 +321,8 @@ export const QuickBookingPage: React.FC = () => {
         ) : (
           <form onSubmit={handleBookingSubmit} className="space-y-6">
             {/* Step 1: Select Service */}
-            <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-sm">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-600 mb-4">
+            <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-4">
                 1. Select a Service
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -354,47 +333,47 @@ export const QuickBookingPage: React.FC = () => {
                     onClick={() => setSelectedService(s)}
                     className={`p-4 rounded-2xl border text-left transition ${
                       selectedService?.id === s.id
-                        ? 'border-stone-900 ring-2 ring-stone-900 bg-stone-50 shadow-sm'
-                        : 'border-stone-200 hover:border-stone-300 bg-white'
+                        ? 'border-stone-900 dark:border-amber-400 ring-2 ring-stone-900 dark:ring-amber-400 bg-stone-50 dark:bg-stone-800 shadow-sm'
+                        : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 bg-white dark:bg-stone-850 text-stone-800 dark:text-stone-200'
                     }`}
                   >
                     <div className="flex justify-between items-start mb-1">
-                      <span className="font-bold text-sm text-stone-900">{s.name}</span>
-                      <span className="font-bold text-sm text-stone-900">₱{s.price}</span>
+                      <span className="font-bold text-sm text-stone-900 dark:text-stone-100">{s.name}</span>
+                      <span className="font-bold text-sm text-stone-900 dark:text-stone-100">₱{s.price}</span>
                     </div>
-                    <p className="text-xs text-stone-500 line-clamp-2 leading-relaxed">{s.description}</p>
-                    <div className="text-[11px] font-semibold text-stone-400 mt-2">{s.durationMinutes} mins • {s.category}</div>
+                    <p className="text-xs text-stone-600 dark:text-stone-300 line-clamp-2 leading-relaxed">{s.description}</p>
+                    <div className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 mt-2">{s.durationMinutes} mins • {s.category}</div>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Step 2: Date & Available Time Slot */}
-            <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-sm">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-600 mb-4">
+            <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-4">
                 2. Choose Date &amp; Available Time
               </h2>
               <div className="mb-4">
-                <label className="block text-xs font-semibold text-stone-700 mb-1">Select Date</label>
+                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">Select Date</label>
                 <input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                  className="px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 font-medium"
                 />
               </div>
 
               {loadingSlots ? (
-                <div className="py-8 text-center text-xs text-stone-400">
+                <div className="py-8 text-center text-xs text-stone-500 dark:text-stone-400 font-medium">
                   Calculating real calendar availability...
                 </div>
               ) : slots.length === 0 ? (
-                <div className="py-8 text-center text-xs text-stone-500 bg-stone-50 rounded-2xl border border-stone-200">
+                <div className="py-8 text-center text-xs text-stone-600 dark:text-stone-300 bg-stone-50 dark:bg-stone-800/60 rounded-2xl border border-stone-200 dark:border-stone-700 font-medium">
                   No available openings found for this date. Please try another day or use our{' '}
                   <button
                     type="button"
                     onClick={() => navigate('/demo/concierge')}
-                    className="text-stone-900 font-bold underline"
+                    className="text-stone-900 dark:text-amber-400 font-bold underline"
                   >
                     Concierge
                   </button>
@@ -409,14 +388,14 @@ export const QuickBookingPage: React.FC = () => {
                       onClick={() => setSelectedSlot(slot)}
                       className={`p-3 rounded-xl border text-center transition ${
                         selectedSlot?.startTime === slot.startTime && selectedSlot?.staffId === slot.staffId
-                          ? 'border-stone-900 bg-stone-900 text-white shadow-sm'
-                          : 'border-stone-200 hover:border-stone-400 bg-white text-stone-800'
+                          ? 'border-stone-900 dark:border-amber-400 bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold shadow-sm'
+                          : 'border-stone-200 dark:border-stone-700 hover:border-stone-400 dark:hover:border-stone-600 bg-white dark:bg-stone-800/80 text-stone-800 dark:text-stone-200 font-medium'
                       }`}
                     >
                       <div className="font-bold text-xs">
                         {new Date(slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
-                      <div className={`text-[10px] mt-0.5 truncate ${selectedSlot?.startTime === slot.startTime ? 'text-stone-300' : 'text-stone-500'}`}>
+                      <div className={`text-[10px] mt-0.5 truncate ${selectedSlot?.startTime === slot.startTime ? 'text-stone-300 dark:text-stone-900 font-semibold' : 'text-stone-500 dark:text-stone-400'}`}>
                         {slot.staffName}
                       </div>
                     </button>
@@ -426,13 +405,13 @@ export const QuickBookingPage: React.FC = () => {
             </div>
 
             {/* Step 3: Customer Information */}
-            <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-sm">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-600 mb-4">
+            <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-4">
                 3. Customer Contact Info
               </h2>
 
               {bookingError && (
-                <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs mb-4 flex items-center space-x-2">
+                <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs mb-4 flex items-center space-x-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{bookingError}</span>
                 </div>
@@ -440,46 +419,46 @@ export const QuickBookingPage: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Full Name</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Full Name</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Beatriz Alonzo"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Email Address</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Email Address</label>
                   <input
                     type="email"
                     required
                     placeholder="beatriz@example.com"
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Phone Number</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Phone Number</label>
                   <input
                     type="tel"
                     required
                     placeholder="+63 900 000 0000"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Notes / Preferences (Optional)</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Notes / Preferences (Optional)</label>
                   <input
                     type="text"
                     placeholder="Any preferences..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-none focus:border-stone-900"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                   />
                 </div>
               </div>
@@ -488,7 +467,7 @@ export const QuickBookingPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={bookingLoading || !selectedSlot || !customerName || !customerEmail || !customerPhone}
-                  className="w-full bg-stone-900 text-white font-semibold py-3.5 rounded-xl hover:bg-stone-800 transition text-xs shadow disabled:opacity-50 flex items-center justify-center space-x-2"
+                  className="w-full bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold py-3.5 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition text-xs shadow-md disabled:opacity-50 flex items-center justify-center space-x-2"
                 >
                   <span>{bookingLoading ? 'Reserving...' : 'Confirm Appointment Booking'}</span>
                   <ArrowRight className="w-4 h-4" />

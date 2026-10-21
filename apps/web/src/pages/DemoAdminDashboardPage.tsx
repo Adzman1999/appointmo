@@ -9,6 +9,7 @@ import {
 import { apiFetch } from '../lib/api';
 import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { DemoTopNav } from '../components/DemoTopNav';
 
 export const DemoAdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -349,31 +350,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20 transition-colors">
-      {/* Top Banner indicating Fictional Demo Environment */}
-      <div className="bg-stone-900 text-stone-200 py-2 px-4 text-xs">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center space-x-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="font-semibold text-white">Interactive Admin Demo Studio:</span>
-            <span>Switch between synthetic businesses or launch your own. Real PostgreSQL storage.</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/browse')}
-              className="text-stone-300 hover:text-white font-medium text-xs flex items-center space-x-1"
-            >
-              <Store className="w-3.5 h-3.5" />
-              <span>Smart Discovery</span>
-            </button>
-            <button
-              onClick={() => navigate(`/demo/book?slug=${activeSlug}`)}
-              className="text-white hover:text-amber-300 font-semibold underline text-xs"
-            >
-              Customer Booking Experience &rarr;
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Top Segmented Navigation Bar */}
+      <DemoTopNav currentRole="admin" />
 
       {/* Main Navbar */}
       <header className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-3.5 px-6 shadow-sm sticky top-0 z-30">
@@ -437,27 +415,27 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
               {/* Notification Dropdown */}
               {isNotifOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl border border-stone-200 shadow-xl z-50 overflow-hidden animate-in fade-in">
-                  <div className="p-3.5 border-b border-stone-100 flex items-center justify-between bg-stone-50">
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xl z-50 overflow-hidden animate-in fade-in">
+                  <div className="p-3.5 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between bg-stone-50 dark:bg-stone-800/60">
                     <div className="flex items-center space-x-2">
-                      <span className="font-bold text-xs text-stone-900">Studio Notifications</span>
-                      <span className="px-2 py-0.5 rounded-full bg-stone-200 text-stone-700 text-[10px] font-semibold">
+                      <span className="font-bold text-xs text-stone-900 dark:text-stone-100">Studio Notifications</span>
+                      <span className="px-2 py-0.5 rounded-full bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 text-[10px] font-semibold">
                         {unreadCount} unread
                       </span>
                     </div>
                     {unreadCount > 0 && (
                       <button
                         onClick={handleMarkAllNotifsRead}
-                        className="text-[11px] text-stone-600 hover:text-stone-900 underline font-medium"
+                        className="text-[11px] text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white underline font-medium"
                       >
                         Mark all as read
                       </button>
                     )}
                   </div>
 
-                  <div className="max-h-80 overflow-y-auto divide-y divide-stone-100 text-xs">
+                  <div className="max-h-80 overflow-y-auto divide-y divide-stone-100 dark:divide-stone-800 text-xs">
                     {notifications.length === 0 ? (
-                      <div className="p-6 text-center text-stone-400">
+                      <div className="p-6 text-center text-stone-500 dark:text-stone-400 font-medium">
                         No notifications yet.
                       </div>
                     ) : (
@@ -465,20 +443,20 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <div
                           key={n.id}
                           onClick={() => handleMarkNotifRead(n.id, n.appointmentId)}
-                          className={`p-3.5 hover:bg-stone-50 cursor-pointer transition ${
-                            !n.isRead ? 'bg-amber-50/40 font-semibold' : ''
+                          className={`p-3.5 hover:bg-stone-50 dark:hover:bg-stone-800/60 cursor-pointer transition ${
+                            !n.isRead ? 'bg-amber-50/40 dark:bg-amber-950/30 font-semibold' : ''
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <span className="text-stone-900 text-xs">{n.title}</span>
+                            <span className="text-stone-900 dark:text-stone-100 text-xs">{n.title}</span>
                             {!n.isRead && (
                               <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 mt-1"></span>
                             )}
                           </div>
-                          <p className="text-[11px] text-stone-500 font-normal mt-0.5 line-clamp-2 leading-relaxed">
+                          <p className="text-[11px] text-stone-600 dark:text-stone-300 font-normal mt-0.5 line-clamp-2 leading-relaxed">
                             {n.message}
                           </p>
-                          <div className="text-[10px] text-stone-400 mt-1">
+                          <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-1">
                             {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} •{' '}
                             {new Date(n.createdAt).toLocaleDateString()}
                           </div>
@@ -493,16 +471,16 @@ export const DemoAdminDashboardPage: React.FC = () => {
             <button
               onClick={handleResetDemoData}
               disabled={resetting}
-              className="inline-flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 transition shadow-sm"
+              className="inline-flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/80 transition shadow-sm"
               title="Reset synthetic demo records to original 125 bookings"
             >
-              <RotateCcw className={`w-3.5 h-3.5 text-amber-700 ${resetting ? 'animate-spin' : ''}`} />
+              <RotateCcw className={`w-3.5 h-3.5 text-amber-700 dark:text-amber-400 ${resetting ? 'animate-spin' : ''}`} />
               <span>{resetting ? 'Resetting...' : 'Reset Demo Data'}</span>
             </button>
 
             <button
               onClick={() => navigate('/')}
-              className="px-3 py-1.5 rounded-xl border border-stone-200 text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition text-xs font-semibold"
+              className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-stone-800 transition text-xs font-semibold"
             >
               Exit to Home
             </button>
@@ -514,12 +492,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
         {/* Notice Alerts */}
         {notice && (
-          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center justify-between animate-in fade-in">
+          <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs flex items-center justify-between animate-in fade-in">
             <div className="flex items-center space-x-2">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+              <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>{notice}</span>
             </div>
-            <button onClick={() => setNotice(null)} className="text-emerald-700 hover:text-emerald-900">
+            <button onClick={() => setNotice(null)} className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -528,18 +506,18 @@ export const DemoAdminDashboardPage: React.FC = () => {
         {/* Dashboard Title & Quick Insight */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-stone-900">Business Operations &amp; Appointments</h1>
-            <p className="text-xs text-stone-500 mt-0.5">
+            <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Business Operations &amp; Appointments</h1>
+            <p className="text-xs text-stone-600 dark:text-stone-300 mt-0.5 font-medium">
               Appointments sorted by <strong>creation date (newest first)</strong>. Auto-refreshes every 5 seconds.
             </p>
           </div>
           <div className="flex items-center space-x-2.5">
             <button
               onClick={() => setIsIdeasModalOpen(true)}
-              className="inline-flex items-center space-x-1.5 bg-amber-500/10 text-amber-900 border border-amber-300 text-xs font-semibold px-3.5 py-2 rounded-xl hover:bg-amber-100 transition shadow-sm"
+              className="inline-flex items-center space-x-1.5 bg-amber-500/10 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-800 text-xs font-semibold px-3.5 py-2 rounded-xl hover:bg-amber-100 dark:hover:bg-amber-900/80 transition shadow-sm"
               title="Explore high-converting appointment business ideas"
             >
-              <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
+              <Lightbulb className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               <span>Suggested &amp; Best Business Ideas</span>
             </button>
           </div>
@@ -768,60 +746,60 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
       {/* MODAL 1: VIEW DETAILS & AUDIT HISTORY */}
       {selectedApptDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-stone-100 mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
               <div>
-                <span className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Appointment Overview</span>
-                <h3 className="text-lg font-bold text-stone-900">{selectedApptDetails.bookingReference}</h3>
+                <span className="text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">Appointment Overview</span>
+                <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">{selectedApptDetails.bookingReference}</h3>
               </div>
               <button
                 onClick={() => setSelectedApptDetails(null)}
-                className="p-1.5 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100"
+                className="p-1.5 rounded-full text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="space-y-4 text-xs">
-              <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200/70 space-y-2">
+              <div className="bg-stone-50 dark:bg-stone-800/60 p-4 rounded-2xl border border-stone-200/70 dark:border-stone-700 space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-stone-500">Service:</span>
-                  <span className="font-semibold text-stone-900">{selectedApptDetails.serviceName} ({selectedApptDetails.durationMinutes} mins)</span>
+                  <span className="text-stone-600 dark:text-stone-300 font-medium">Service:</span>
+                  <span className="font-semibold text-stone-900 dark:text-stone-100">{selectedApptDetails.serviceName} ({selectedApptDetails.durationMinutes} mins)</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-stone-500">Staff Specialist:</span>
-                  <span className="font-semibold text-stone-900">{selectedApptDetails.staffName}</span>
+                  <span className="text-stone-600 dark:text-stone-300 font-medium">Staff Specialist:</span>
+                  <span className="font-semibold text-stone-900 dark:text-stone-100">{selectedApptDetails.staffName}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-stone-500">Scheduled Time:</span>
-                  <span className="font-semibold text-stone-900">
+                  <span className="text-stone-600 dark:text-stone-300 font-medium">Scheduled Time:</span>
+                  <span className="font-semibold text-stone-900 dark:text-stone-100">
                     {new Date(selectedApptDetails.startTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-stone-500">Booked On:</span>
-                  <span className="text-stone-700">{new Date(selectedApptDetails.createdAt).toLocaleString()}</span>
+                  <span className="text-stone-600 dark:text-stone-300 font-medium">Booked On:</span>
+                  <span className="text-stone-700 dark:text-stone-300 font-medium">{new Date(selectedApptDetails.createdAt).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-stone-500">Price:</span>
-                  <span className="font-bold text-stone-900">₱{Number(selectedApptDetails.price).toLocaleString()}</span>
+                  <span className="text-stone-600 dark:text-stone-300 font-medium">Price:</span>
+                  <span className="font-bold text-stone-900 dark:text-stone-100">₱{Number(selectedApptDetails.price).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-stone-500">Status:</span>
-                  <span className="font-bold uppercase text-stone-900">{selectedApptDetails.status}</span>
+                  <span className="text-stone-600 dark:text-stone-300 font-medium">Status:</span>
+                  <span className="font-bold uppercase text-stone-900 dark:text-stone-100">{selectedApptDetails.status}</span>
                 </div>
               </div>
 
               <div>
-                <h4 className="font-bold text-stone-800 mb-1">Customer Information</h4>
-                <div className="p-3 bg-white border border-stone-200 rounded-xl space-y-1">
+                <h4 className="font-bold text-stone-800 dark:text-stone-200 mb-1">Customer Information</h4>
+                <div className="p-3 bg-white dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl space-y-1 text-stone-700 dark:text-stone-200">
                   <div><strong>Name:</strong> {selectedApptDetails.customerName}</div>
                   <div><strong>Email:</strong> {selectedApptDetails.customerEmail}</div>
                   <div><strong>Phone:</strong> {selectedApptDetails.customerPhone}</div>
                   {selectedApptDetails.notes && <div><strong>Notes:</strong> {selectedApptDetails.notes}</div>}
                   {selectedApptDetails.cancellationReason && (
-                    <div className="text-rose-700 font-semibold">
+                    <div className="text-rose-700 dark:text-rose-400 font-semibold">
                       <strong>Cancellation Reason:</strong> {selectedApptDetails.cancellationReason}
                     </div>
                   )}
@@ -829,20 +807,20 @@ export const DemoAdminDashboardPage: React.FC = () => {
               </div>
 
               <div>
-                <h4 className="font-bold text-stone-800 mb-1">Status Audit History</h4>
+                <h4 className="font-bold text-stone-800 dark:text-stone-200 mb-1">Status Audit History</h4>
                 <div className="space-y-2">
                   {apptHistory.length === 0 ? (
-                    <p className="text-stone-400 italic">No history records logged.</p>
+                    <p className="text-stone-500 dark:text-stone-400 italic">No history records logged.</p>
                   ) : (
                     apptHistory.map((h, i) => (
-                      <div key={i} className="p-2.5 rounded-xl border border-stone-200 bg-stone-50/50 flex justify-between items-start">
+                      <div key={i} className="p-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/50 flex justify-between items-start">
                         <div>
-                          <div className="font-semibold text-stone-800">
+                          <div className="font-semibold text-stone-800 dark:text-stone-200">
                             Status changed to <span className="uppercase">{h.newStatus}</span> by {h.changedBy}
                           </div>
-                          {h.reason && <div className="text-stone-500 text-[11px] mt-0.5">{h.reason}</div>}
+                          {h.reason && <div className="text-stone-600 dark:text-stone-300 text-[11px] mt-0.5">{h.reason}</div>}
                         </div>
-                        <span className="text-[10px] text-stone-400 shrink-0">
+                        <span className="text-[10px] text-stone-500 dark:text-stone-400 shrink-0">
                           {new Date(h.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
@@ -855,7 +833,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
             <div className="pt-6">
               <button
                 onClick={() => setSelectedApptDetails(null)}
-                className="w-full py-2.5 rounded-xl bg-stone-900 text-white font-semibold text-xs hover:bg-stone-800"
+                className="w-full py-2.5 rounded-xl bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 font-bold text-xs hover:bg-stone-800 dark:hover:bg-stone-200 transition shadow"
               >
                 Close Details
               </button>
@@ -866,15 +844,15 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
       {/* MODAL 2: SAFE RESCHEDULE */}
       {rescheduleAppt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-stone-900 mb-1">Reschedule Appointment</h3>
-            <p className="text-xs text-stone-500 mb-4">
-              Select an available opening for {rescheduleAppt.bookingReference} ({rescheduleAppt.serviceName}).
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-md w-full shadow-2xl">
+            <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100 mb-1">Reschedule Appointment</h3>
+            <p className="text-xs text-stone-600 dark:text-stone-300 mb-4 font-medium">
+              Select an available opening for <strong>{rescheduleAppt.bookingReference}</strong> ({rescheduleAppt.serviceName}).
             </p>
 
             {rescheduleError && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs mb-3 flex items-center space-x-2">
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs mb-3 flex items-center space-x-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{rescheduleError}</span>
               </div>
@@ -883,33 +861,33 @@ export const DemoAdminDashboardPage: React.FC = () => {
             <form onSubmit={handleConfirmReschedule} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Target Date</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Target Date</label>
                   <input
                     type="date"
                     required
                     value={rescheduleDate}
                     onChange={(e) => handleRescheduleDateOrStaffChange(e.target.value, rescheduleStaffId)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Staff Specialist</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Staff Specialist</label>
                   <select
                     value={rescheduleStaffId}
                     onChange={(e) => handleRescheduleDateOrStaffChange(rescheduleDate, e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                   >
                     {rescheduleStaffList.map((st) => (
-                      <option key={st.id} value={st.id}>{st.name}</option>
+                      <option key={st.id} value={st.id} className="dark:bg-stone-800">{st.name}</option>
                     ))}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-stone-700 mb-1.5">Available Open Slots</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1.5">Available Open Slots</label>
                 {rescheduleSlots.length === 0 ? (
-                  <p className="p-4 bg-stone-50 rounded-xl border border-stone-200 text-stone-400 text-center">
+                  <p className="p-4 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-500 dark:text-stone-400 text-center font-medium">
                     No openings for this date and staff member.
                   </p>
                 ) : (
@@ -921,8 +899,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         onClick={() => setSelectedRescheduleSlot(slot)}
                         className={`p-2 rounded-xl border text-center transition ${
                           selectedRescheduleSlot?.startTime === slot.startTime
-                            ? 'bg-stone-900 text-white font-bold border-stone-900'
-                            : 'bg-white text-stone-800 border-stone-200 hover:border-stone-400'
+                            ? 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold border-stone-900 dark:border-amber-400'
+                            : 'bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 border-stone-200 dark:border-stone-700 hover:border-stone-400 dark:hover:border-stone-600'
                         }`}
                       >
                         {new Date(slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -933,13 +911,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">Reschedule Reason (Optional)</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Reschedule Reason (Optional)</label>
                 <input
                   type="text"
                   placeholder="e.g. Client requested afternoon change"
                   value={rescheduleReason}
                   onChange={(e) => setRescheduleReason(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                 />
               </div>
 
@@ -947,14 +925,14 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setRescheduleAppt(null)}
-                  className="flex-1 py-2.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={rescheduleLoading || !selectedRescheduleSlot}
-                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-stone-900 text-white hover:bg-stone-800 transition shadow disabled:opacity-50"
+                  className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow disabled:opacity-50"
                 >
                   {rescheduleLoading ? 'Saving...' : 'Confirm Reschedule'}
                 </button>
@@ -966,26 +944,26 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
       {/* MODAL 3: CANCELLATION CONFIRMATION */}
       {cancelModalAppt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 max-w-md w-full shadow-2xl">
-            <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-md w-full shadow-2xl">
+            <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-3">
               <XCircle className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-bold text-stone-900 mb-1">Cancel Appointment?</h3>
-            <p className="text-xs text-stone-500 mb-4">
+            <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100 mb-1">Cancel Appointment?</h3>
+            <p className="text-xs text-stone-600 dark:text-stone-300 mb-4 font-medium">
               Are you sure you want to cancel booking <strong>{cancelModalAppt.bookingReference}</strong> ({cancelModalAppt.customerName})? The time slot will be released back to availability.
             </p>
 
             <form onSubmit={handleConfirmCancellation} className="space-y-4 text-xs">
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">Reason for Cancellation</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Reason for Cancellation</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Schedule conflict or client request"
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                 />
               </div>
 
@@ -993,14 +971,14 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setCancelModalAppt(null)}
-                  className="flex-1 py-2.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800"
                 >
                   Keep Appointment
                 </button>
                 <button
                   type="submit"
                   disabled={cancelLoading}
-                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 transition shadow"
+                  className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-rose-600 dark:bg-rose-500 text-white hover:bg-rose-700 dark:hover:bg-rose-600 transition shadow"
                 >
                   {cancelLoading ? 'Cancelling...' : 'Confirm Cancellation'}
                 </button>
@@ -1012,29 +990,29 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
       {/* MODAL 5: SUGGESTED & BEST BUSINESS IDEAS */}
       {isIdeasModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-stone-100 mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
               <div className="flex items-center space-x-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center">
-                  <Lightbulb className="w-5 h-5 text-amber-600" />
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 flex items-center justify-center">
+                  <Lightbulb className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-stone-900">Suggested &amp; Best Business Ideas</h3>
-                  <p className="text-xs text-stone-500">High-converting appointment concepts pre-optimized for Appointmo</p>
+                  <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">Suggested &amp; Best Business Ideas</h3>
+                  <p className="text-xs text-stone-600 dark:text-stone-300 font-medium">High-converting appointment concepts pre-optimized for Appointmo</p>
                 </div>
               </div>
               <button
                 onClick={() => setIsIdeasModalOpen(false)}
-                className="text-stone-400 hover:text-stone-700 p-1 rounded-full hover:bg-stone-100"
+                className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 p-1 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="space-y-4">
-              <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200 text-xs text-stone-600">
-                <span className="font-semibold text-stone-900">💡 Instant Launch: </span>
+              <div className="bg-stone-50 dark:bg-stone-800/60 p-3.5 rounded-2xl border border-stone-200 dark:border-stone-700 text-xs text-stone-700 dark:text-stone-300 font-medium">
+                <span className="font-semibold text-stone-900 dark:text-stone-100">💡 Instant Launch: </span>
                 Click <strong>"Use This Idea"</strong> on any suggestion below to pre-populate the Business Setup Studio on the home page and launch an independent appointment page.
               </div>
 
@@ -1042,42 +1020,42 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 {businessIdeas.map((idea, idx) => (
                   <div
                     key={idx}
-                    className="bg-white rounded-2xl border border-stone-200 p-5 shadow-sm hover:border-amber-400 transition flex flex-col justify-between"
+                    className="bg-white dark:bg-stone-850 rounded-2xl border border-stone-200 dark:border-stone-800 p-5 shadow-sm hover:border-amber-400 dark:hover:border-amber-500 transition flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
                           {idea.category}
                         </span>
-                        <span className="text-[11px] font-bold text-stone-900">
+                        <span className="text-[11px] font-bold text-stone-900 dark:text-stone-100">
                           {idea.pricingRange}
                         </span>
                       </div>
-                      <h4 className="text-sm font-bold text-stone-900 mb-1">{idea.title}</h4>
-                      <p className="text-[11px] text-stone-500 leading-relaxed mb-3">
+                      <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100 mb-1">{idea.title}</h4>
+                      <p className="text-[11px] text-stone-600 dark:text-stone-300 leading-relaxed mb-3 font-medium">
                         {idea.description}
                       </p>
 
-                      <div className="space-y-1.5 mb-3 bg-stone-50 p-2.5 rounded-xl text-[10px] text-stone-600">
-                        <div className="font-semibold text-stone-700">Recommended Location:</div>
-                        <div className="flex items-center space-x-1 text-stone-600">
-                          <MapPin className="w-3 h-3 text-stone-400" />
+                      <div className="space-y-1.5 mb-3 bg-stone-50 dark:bg-stone-800/60 p-2.5 rounded-xl text-[10px] text-stone-700 dark:text-stone-300">
+                        <div className="font-semibold text-stone-800 dark:text-stone-200">Recommended Location:</div>
+                        <div className="flex items-center space-x-1 text-stone-600 dark:text-stone-300">
+                          <MapPin className="w-3 h-3 text-stone-500 dark:text-stone-400" />
                           <span>{idea.recommendedCity}</span>
                         </div>
-                        <div className="font-semibold text-stone-700 pt-1">Key High-Demand Services:</div>
-                        <div className="text-stone-500">
+                        <div className="font-semibold text-stone-800 dark:text-stone-200 pt-1">Key High-Demand Services:</div>
+                        <div className="text-stone-600 dark:text-stone-300">
                           {idea.keyServices.join(' • ')}
                         </div>
                       </div>
 
-                      <div className="text-[10px] text-emerald-800 bg-emerald-50/70 p-2 rounded-lg border border-emerald-100 mb-4">
+                      <div className="text-[10px] text-emerald-800 dark:text-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/40 p-2 rounded-lg border border-emerald-100 dark:border-emerald-900 mb-4 font-medium">
                         <strong>Why it succeeds:</strong> {idea.whyItWorks}
                       </div>
                     </div>
 
                     <button
                       onClick={() => handleApplyBusinessIdea(idea)}
-                      className="w-full py-2 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition flex items-center justify-center space-x-1.5 shadow"
+                      className="w-full py-2 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-bold hover:bg-stone-800 dark:hover:bg-amber-300 transition flex items-center justify-center space-x-1.5 shadow"
                     >
                       <span>Use This Idea</span>
                       <ArrowRight className="w-3 h-3" />

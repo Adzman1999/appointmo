@@ -8,6 +8,7 @@ import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { DemoTopNav } from '../components/DemoTopNav';
 
 interface Branch {
   id: string;
@@ -99,6 +100,9 @@ export const DiscoveryPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-24 transition-colors">
+      {/* Top Segmented Navigation Bar */}
+      <DemoTopNav currentRole="customer" />
+
       {/* Top Header */}
       <header className="sticky top-0 z-40 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200 dark:border-stone-800">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -120,12 +124,6 @@ export const DiscoveryPage: React.FC = () => {
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               <span>Concierge Finder</span>
-            </button>
-            <button
-              onClick={() => navigate('/demo/admin')}
-              className="hidden sm:inline-flex bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 font-semibold px-3.5 py-1.5 rounded-xl text-xs hover:bg-stone-800 dark:hover:bg-stone-200 transition shadow-sm"
-            >
-              Admin Studio
             </button>
           </div>
         </div>
