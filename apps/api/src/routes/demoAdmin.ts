@@ -27,7 +27,7 @@ async function getDemoBusinessId(req?: Request): Promise<string> {
 router.get('/businesses', async (_req: Request, res: Response) => {
   try {
     const listRes = await query(`
-      SELECT b.id, b.name, b.slug, b.category, b.description,
+      SELECT b.id, b.name, b.slug, b.category, b.description, b.logo_url AS "logoUrl",
              COUNT(DISTINCT br.id)::int AS "branchCount",
              COUNT(DISTINCT s.id)::int AS "serviceCount",
              COUNT(DISTINCT sp.id)::int AS "staffCount"
@@ -49,7 +49,7 @@ router.get('/businesses', async (_req: Request, res: Response) => {
 router.post('/create-business', async (req: Request, res: Response) => {
   const client = await pool.connect();
   try {
-    const { name, category, description, currency, timezone, branchName, branchAddress, branchCity, branchPhone } = req.body;
+    const { name, category, description, currency, timezone, logoUrl, branchName, branchAddress, branchCity, branchPhone } = req.body;
 
     if (!name || !category) {
       return res.status(400).json({ error: 'Business name and category are required' });
@@ -61,10 +61,10 @@ router.post('/create-business', async (req: Request, res: Response) => {
 
     // 1. Create Business
     const bRes = await client.query(`
-      INSERT INTO businesses (name, slug, description, category, currency, timezone)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id, name, slug, category, description
-    `, [name, slug, description || `Demo studio offering ${category}`, currency || 'PHP', timezone || 'Asia/Manila']);
+      INSERT INTO businesses (name, slug, description, category, currency, timezone, logo_url)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id, name, slug, category, description, logo_url AS "logoUrl"
+    `, [name, slug, description || `Demo studio offering ${category}`, currency || 'PHP', timezone || 'Asia/Manila', logoUrl || null]);
     const newBiz = bRes.rows[0];
 
     // 2. Create Initial Branch
@@ -599,7 +599,7 @@ router.get('/settings', async (req: Request, res: Response) => {
   try {
     const businessId = await getDemoBusinessId(req);
 
-    const bizRes = await query('SELECT id, name, slug, category, description, currency, timezone FROM businesses WHERE id = $1', [businessId]);
+    const bizRes = await query('SELECT id, name, slug, category, description, currency, timezone, logo_url AS "logoUrl" FROM businesses WHERE id = $1', [businessId]);
     const branchesRes = await query('SELECT id, name, address, city, phone, location_description AS "locationDescription" FROM branches WHERE business_id = $1 AND is_active = true', [businessId]);
     const servicesRes = await query('SELECT id, name, description, duration_minutes AS "durationMinutes", price, category FROM services WHERE business_id = $1 ORDER BY price ASC', [businessId]);
     const staffRes = await query('SELECT id, name, bio FROM staff_profiles WHERE business_id = $1', [businessId]);

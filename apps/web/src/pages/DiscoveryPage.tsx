@@ -5,6 +5,7 @@ import {
   Clock, ArrowRight, ChevronRight, Phone, ShieldCheck, Map as MapIcon, List 
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { AppointmoLogo } from '../components/AppointmoLogo';
 
 interface Branch {
   id: string;
@@ -24,6 +25,7 @@ interface Business {
   description: string;
   category: string;
   currency: string;
+  logoUrl?: string | null;
   branchCount: number;
   serviceCount: number;
   minPrice: number;
@@ -99,15 +101,7 @@ export const DiscoveryPage: React.FC = () => {
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-stone-200">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="w-9 h-9 rounded-xl bg-stone-900 flex items-center justify-center text-white font-bold text-lg shadow-sm">
-              A
-            </div>
-            <div>
-              <span className="font-semibold text-lg tracking-tight text-stone-900">Appointmo</span>
-              <span className="ml-2 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
-                Discovery Directory
-              </span>
-            </div>
+            <AppointmoLogo size="md" subtitle="Discovery Directory" />
           </div>
 
           <div className="flex items-center space-x-3">
@@ -272,11 +266,24 @@ export const DiscoveryPage: React.FC = () => {
               >
                 <div>
                   <div className="flex items-start justify-between gap-3 mb-2">
-                    <div>
-                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-stone-100 border border-stone-200 text-stone-700 text-[10px] font-bold uppercase tracking-wider mb-2">
-                        {biz.category}
-                      </span>
-                      <h3 className="text-lg font-bold text-stone-900">{biz.name}</h3>
+                    <div className="flex items-start space-x-3">
+                      {biz.logoUrl ? (
+                        <img
+                          src={biz.logoUrl}
+                          alt={biz.name}
+                          className="w-10 h-10 rounded-xl object-cover border border-stone-200 shrink-0 mt-0.5"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
+                          {biz.name.charAt(0)}
+                        </div>
+                      )}
+                      <div>
+                        <span className="inline-block px-2.5 py-0.5 rounded-full bg-stone-100 border border-stone-200 text-stone-700 text-[10px] font-bold uppercase tracking-wider mb-1">
+                          {biz.category}
+                        </span>
+                        <h3 className="text-lg font-bold text-stone-900">{biz.name}</h3>
+                      </div>
                     </div>
                     <div className="flex items-center space-x-1 bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-full text-xs font-bold shrink-0">
                       <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />

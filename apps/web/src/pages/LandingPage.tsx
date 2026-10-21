@@ -5,6 +5,7 @@ import {
   ChevronRight, ArrowRight, Building2, UserCheck, Search, SlidersHorizontal 
 } from 'lucide-react';
 import { SHOW_PRODUCTION_AUTH } from '../config';
+import { AppointmoLogo } from '../components/AppointmoLogo';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -33,16 +34,8 @@ export const LandingPage: React.FC = () => {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-stone-200">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-stone-900 flex items-center justify-center text-white font-bold text-lg shadow-sm">
-              A
-            </div>
-            <div>
-              <span className="font-semibold text-xl tracking-tight text-stone-900">Appointmo</span>
-              <span className="hidden sm:inline-block ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
-                Intelligent Scheduling
-              </span>
-            </div>
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
+            <AppointmoLogo size="md" subtitle="Intelligent Scheduling" />
           </div>
 
           <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-stone-600">
@@ -236,7 +229,8 @@ export const LandingPage: React.FC = () => {
       {/* Footer */}
       <footer className="border-t border-stone-200 py-10 bg-white text-xs text-stone-500">
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
+            <AppointmoLogo size="sm" showText={false} />
             <span className="font-semibold text-stone-900">Appointmo</span>
             <span>— Intelligent Scheduling Platform. Powered by Concierge Discovery.</span>
           </div>

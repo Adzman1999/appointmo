@@ -54,6 +54,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [createName, setCreateName] = useState('');
   const [createCategory, setCreateCategory] = useState('Beauty & Wellness');
   const [createDescription, setCreateDescription] = useState('');
+  const [createLogoUrl, setCreateLogoUrl] = useState('');
   const [createBranchName, setCreateBranchName] = useState('');
   const [createBranchCity, setCreateBranchCity] = useState('Quezon City');
   const [createBranchAddress, setCreateBranchAddress] = useState('');
@@ -290,6 +291,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
           name: createName.trim(),
           category: createCategory,
           description: createDescription.trim(),
+          logoUrl: createLogoUrl.trim() || undefined,
           branchName: createBranchName.trim() || undefined,
           branchCity: createBranchCity,
           branchAddress: createBranchAddress.trim() || undefined,
@@ -301,6 +303,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       setIsCreateModalOpen(false);
       setCreateName('');
       setCreateDescription('');
+      setCreateLogoUrl('');
       setCreateBranchName('');
       setCreateBranchAddress('');
 
@@ -362,9 +365,17 @@ export const DemoAdminDashboardPage: React.FC = () => {
       <header className="bg-white border-b border-stone-200 py-3.5 px-6 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center font-bold text-lg shadow shrink-0">
-              {currentBusiness?.name ? currentBusiness.name.charAt(0) : 'A'}
-            </div>
+            {currentBusiness?.logoUrl ? (
+              <img
+                src={currentBusiness.logoUrl}
+                alt={currentBusiness.name}
+                className="w-10 h-10 rounded-xl object-cover border border-stone-200 shadow-sm shrink-0"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center font-bold text-lg shadow shrink-0">
+                {currentBusiness?.name ? currentBusiness.name.charAt(0) : 'A'}
+              </div>
+            )}
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-bold text-base text-stone-900">
@@ -1071,6 +1082,19 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     <option value="Mandaluyong">Mandaluyong</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 mb-1">
+                  Logo / Avatar URL (Optional)
+                </label>
+                <input
+                  type="url"
+                  placeholder="e.g. https://images.unsplash.com/... or image link"
+                  value={createLogoUrl}
+                  onChange={(e) => setCreateLogoUrl(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                />
               </div>
 
               <div>

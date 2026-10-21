@@ -6,6 +6,7 @@ import {
   Building2, Award, Zap, ThumbsUp
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { AppointmoLogo } from '../components/AppointmoLogo';
 
 export const ConciergePage: React.FC = () => {
   const navigate = useNavigate();
@@ -106,13 +107,21 @@ export const ConciergePage: React.FC = () => {
       {/* Top Bar */}
       <div className="bg-white border-b border-stone-200 py-4 px-6 mb-8">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="p-2 rounded-xl bg-amber-100 text-amber-900">
-              <Sparkles className="w-4 h-4 text-amber-600" />
+          <div className="flex items-center space-x-6">
+            <div className="cursor-pointer" onClick={() => navigate('/')}>
+              <AppointmoLogo size="sm" showText={false} />
             </div>
-            <div>
-              <h1 className="text-base font-bold text-stone-900">Explainable Concierge Booking</h1>
-              <p className="text-xs text-stone-500">Multi-business appointment recommendation engine with live slot checking</p>
+
+            <div className="h-6 w-px bg-stone-200 hidden sm:block"></div>
+
+            <div className="flex items-center space-x-2">
+              <div className="p-2 rounded-xl bg-amber-100 text-amber-900">
+                <Sparkles className="w-4 h-4 text-amber-600" />
+              </div>
+              <div>
+                <h1 className="text-base font-bold text-stone-900">Explainable Concierge Booking</h1>
+                <p className="text-xs text-stone-500">Multi-business appointment recommendation engine with live slot checking</p>
+              </div>
             </div>
           </div>
           <div className="flex items-center space-x-3">

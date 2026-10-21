@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Calendar as CalendarIcon, Clock, User, CheckCircle2, AlertCircle, Sparkles, ArrowRight, Building2, MapPin } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { AppointmoLogo } from '../components/AppointmoLogo';
 
 interface Service {
   id: string;
@@ -25,6 +26,7 @@ interface BusinessProfile {
   slug: string;
   category: string;
   description: string;
+  logoUrl?: string | null;
   branches: Array<{
     id: string;
     name: string;
@@ -175,13 +177,29 @@ export const QuickBookingPage: React.FC = () => {
       {/* Main Header */}
       <div className="bg-white border-b border-stone-200 py-4 px-6 mb-8 shadow-sm">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-stone-900 text-white flex items-center justify-center font-bold text-base shadow">
-              {business?.name ? business.name[0] : 'A'}
+          <div className="flex items-center space-x-6">
+            <div className="cursor-pointer" onClick={() => navigate('/')}>
+              <AppointmoLogo size="sm" showText={false} />
             </div>
-            <div>
-              <h1 className="text-base font-bold text-stone-900">{business?.name || 'Appointmo Booking'}</h1>
-              <p className="text-xs text-stone-500">{business?.category || 'Intelligent Scheduling'}</p>
+
+            <div className="h-6 w-px bg-stone-200 hidden sm:block"></div>
+
+            <div className="flex items-center space-x-3">
+              {business?.logoUrl ? (
+                <img
+                  src={business.logoUrl}
+                  alt={business.name}
+                  className="w-10 h-10 rounded-xl object-cover border border-stone-200 shadow-sm shrink-0"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center font-bold text-base shadow shrink-0">
+                  {business?.name ? business.name[0] : 'A'}
+                </div>
+              )}
+              <div>
+                <h1 className="text-base font-bold text-stone-900">{business?.name || 'Appointmo Booking'}</h1>
+                <p className="text-xs text-stone-500">{business?.category || 'Intelligent Scheduling'}</p>
+              </div>
             </div>
           </div>
           <div className="flex items-center space-x-3">

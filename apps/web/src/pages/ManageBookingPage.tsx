@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Calendar, Clock, User, AlertCircle, CheckCircle2, XCircle, Bell, Check, CalendarDays, RefreshCw } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { AppointmoLogo } from '../components/AppointmoLogo';
 
 export const ManageBookingPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -155,7 +156,11 @@ export const ManageBookingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 py-12 px-4 flex items-center justify-center">
+    <div className="min-h-screen bg-stone-50 py-12 px-4 flex flex-col items-center justify-center">
+      <div className="mb-6 cursor-pointer" onClick={() => navigate('/')}>
+        <AppointmoLogo size="lg" subtitle="Customer Self-Service Hub" />
+      </div>
+
       <div className="max-w-lg w-full bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 shadow-sm">
         <h1 className="text-xl font-bold text-stone-900 mb-1 text-center">Manage Appointment</h1>
         <p className="text-xs text-stone-500 mb-6 text-center">
