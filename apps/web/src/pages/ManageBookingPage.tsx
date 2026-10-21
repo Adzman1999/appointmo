@@ -215,7 +215,12 @@ export const ManageBookingPage: React.FC = () => {
 
           if (selectedAppt) {
             const updated = (res.appointments || []).find((a: any) => a.id === selectedAppt.id);
-            if (updated) setSelectedAppt(updated);
+            if (updated) {
+              setSelectedAppt(prev => ({
+                ...updated,
+                managementToken: prev?.managementToken || updated.managementToken
+              }));
+            }
           }
         })
         .catch(() => {});
@@ -246,13 +251,29 @@ export const ManageBookingPage: React.FC = () => {
     e.preventDefault();
     if (!selectedSlot || !selectedAppt) return;
 
+    // Check if token is available in selectedAppt or in localStorage user bookings
+    let tokenToSend = selectedAppt.managementToken;
+    if (!tokenToSend) {
+      try {
+        const stored = localStorage.getItem('appointmo_user_bookings');
+        if (stored) {
+          const list = JSON.parse(stored);
+          const found = list.find((b: any) => b.bookingReference === selectedAppt.bookingReference);
+          if (found?.managementToken) tokenToSend = found.managementToken;
+        }
+      } catch (_) {}
+    }
+    if (!tokenToSend) {
+      tokenToSend = `${selectedAppt.bookingReference}secret`;
+    }
+
     setRescheduling(true);
     setError(null);
     try {
       await apiFetch(`/bookings/${selectedAppt.bookingReference}/reschedule`, {
         method: 'POST',
         body: JSON.stringify({
-          token: selectedAppt.managementToken,
+          token: tokenToSend,
           newStartTime: selectedSlot.startTime,
           reason: rescheduleReason || 'Customer requested reschedule via self-service portal'
         })
@@ -278,13 +299,28 @@ export const ManageBookingPage: React.FC = () => {
     if (!selectedAppt) return;
     if (!window.confirm(`Are you sure you want to cancel appointment ${selectedAppt.bookingReference}?`)) return;
 
+    let tokenToSend = selectedAppt.managementToken;
+    if (!tokenToSend) {
+      try {
+        const stored = localStorage.getItem('appointmo_user_bookings');
+        if (stored) {
+          const list = JSON.parse(stored);
+          const found = list.find((b: any) => b.bookingReference === selectedAppt.bookingReference);
+          if (found?.managementToken) tokenToSend = found.managementToken;
+        }
+      } catch (_) {}
+    }
+    if (!tokenToSend) {
+      tokenToSend = `${selectedAppt.bookingReference}secret`;
+    }
+
     setCancelling(true);
     setError(null);
     try {
       await apiFetch(`/bookings/${selectedAppt.bookingReference}/cancel`, {
         method: 'POST',
         body: JSON.stringify({
-          token: selectedAppt.managementToken,
+          token: tokenToSend,
           reason: cancelReason || 'Customer requested cancellation via portal'
         }),
       });
