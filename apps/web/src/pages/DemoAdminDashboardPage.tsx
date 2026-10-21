@@ -10,6 +10,7 @@ import { apiFetch } from '../lib/api';
 import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { DemoTopNav } from '../components/DemoTopNav';
+import { toast } from 'sonner';
 
 export const DemoAdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -205,10 +206,15 @@ export const DemoAdminDashboardPage: React.FC = () => {
         body: JSON.stringify({ status: newStatus }),
       });
       setNotice(`Appointment status updated to ${newStatus}`);
+      toast.success('Status Updated', {
+        description: `Appointment marked as ${newStatus}`
+      });
       fetchDashboardData();
       fetchNotifications();
     } catch (err: any) {
-      alert(err.message || 'Status update failed');
+      const errMsg = err.message || 'Status update failed';
+      alert(errMsg);
+      toast.error('Update Failed', { description: errMsg });
     }
   };
 
@@ -272,11 +278,16 @@ export const DemoAdminDashboardPage: React.FC = () => {
       });
 
       setNotice(`Appointment ${rescheduleAppt.bookingReference} rescheduled successfully`);
+      toast.success('Appointment Rescheduled', {
+        description: `New schedule confirmed for ${rescheduleAppt.bookingReference}`
+      });
       setRescheduleAppt(null);
       fetchDashboardData();
       fetchNotifications();
     } catch (err: any) {
-      setRescheduleError(err.message || 'Rescheduling failed. Slot may have been taken.');
+      const errMsg = err.message || 'Rescheduling failed. Slot may have been taken.';
+      setRescheduleError(errMsg);
+      toast.error('Reschedule Failed', { description: errMsg });
     } finally {
       setRescheduleLoading(false);
     }

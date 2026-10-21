@@ -9,6 +9,7 @@ import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { DemoTopNav } from '../components/DemoTopNav';
+import { toast } from 'sonner';
 
 interface CustomerAppointment {
   id: string;
@@ -48,6 +49,9 @@ export const ManageBookingPage: React.FC = () => {
 
   // Active view tab in customer dashboard
   const [activeTab, setActiveTab] = useState<'upcoming' | 'history' | 'lookup'>('upcoming');
+
+  // Search filter across appointments list
+  const [searchFilter, setSearchFilter] = useState('');
 
   // Customer Data
   const [customer, setCustomer] = useState<CustomerProfile | null>(null);
@@ -102,9 +106,25 @@ export const ManageBookingPage: React.FC = () => {
       // If URL has ref, auto-open that specific appointment
       const urlRef = searchParams.get('ref');
       if (urlRef) {
-        const found = (res.appointments || []).find((a: any) => a.bookingReference === urlRef);
+        let found = (res.appointments || []).find((a: any) => a.bookingReference === urlRef);
         if (found) {
           setSelectedAppt(found);
+        } else {
+          // If not in standard customer demo list, fetch via direct lookup
+          const token = searchParams.get('token') || `${urlRef}secret`;
+          apiFetch<any>(`/bookings/${urlRef}?token=${token}`)
+            .then(directRes => {
+              if (directRes?.booking) {
+                const loaded = { ...directRes.booking, managementToken: token };
+                setSelectedAppt(loaded);
+                // Also prepend to appointments list so it is immediately visible in the portal table
+                setUpcoming(prev => {
+                  if (prev.some(x => x.bookingReference === urlRef)) return prev;
+                  return [loaded, ...prev];
+                });
+              }
+            })
+            .catch(() => {});
         }
       }
     } catch (err: any) {
@@ -186,10 +206,15 @@ export const ManageBookingPage: React.FC = () => {
       });
 
       setActionSuccess(`Appointment ${selectedAppt.bookingReference} rescheduled successfully!`);
+      toast.success('Appointment Rescheduled', {
+        description: `New slot confirmed for ${selectedAppt.bookingReference}`
+      });
       setShowReschedule(false);
       if (customer?.id) loadCustomerPortal(customer.id);
     } catch (err: any) {
-      setError(err.message || 'Failed to reschedule appointment. The slot may be taken.');
+      const errMsg = err.message || 'Failed to reschedule appointment. The slot may be taken.';
+      setError(errMsg);
+      toast.error('Reschedule Failed', { description: errMsg });
     } finally {
       setRescheduling(false);
     }
@@ -212,9 +237,14 @@ export const ManageBookingPage: React.FC = () => {
       });
 
       setActionSuccess(`Appointment ${selectedAppt.bookingReference} has been cancelled.`);
+      toast.info('Appointment Cancelled', {
+        description: `Booking ${selectedAppt.bookingReference} has been cancelled.`
+      });
       if (customer?.id) loadCustomerPortal(customer.id);
     } catch (err: any) {
-      setError(err.message || 'Failed to cancel appointment.');
+      const errMsg = err.message || 'Failed to cancel appointment.';
+      setError(errMsg);
+      toast.error('Cancellation Failed', { description: errMsg });
     } finally {
       setCancelling(false);
     }
@@ -238,9 +268,14 @@ export const ManageBookingPage: React.FC = () => {
         });
         setActiveTab('upcoming');
         setActionSuccess(`Loaded appointment ${res.booking.bookingReference}`);
+        toast.success('Appointment Located!', {
+          description: `Loaded ${res.booking.bookingReference} (${res.booking.serviceName})`
+        });
       }
     } catch (err: any) {
-      setLookupError('Could not find that appointment reference. Please verify the code.');
+      const errMsg = 'Could not find that appointment reference. Please verify the code.';
+      setLookupError(errMsg);
+      toast.error('Not Found', { description: errMsg });
     } finally {
       setLookupLoading(false);
     }
@@ -396,14 +431,14 @@ export const ManageBookingPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Tab Controls */}
-        <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3 mb-6">
-          <div className="flex space-x-2">
+        {/* Tab Controls and In-Portal Search Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 dark:border-stone-800 pb-3 mb-6">
+          <div className="flex space-x-2 overflow-x-auto">
             <button
               onClick={() => setActiveTab('upcoming')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
+              className={`px-4 py-2 rounded-xl text-xs font-semibold transition shrink-0 ${
                 activeTab === 'upcoming'
-                  ? 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 shadow-sm'
+                  ? 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 shadow-sm font-bold'
                   : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
               }`}
             >
@@ -411,9 +446,9 @@ export const ManageBookingPage: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('history')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
+              className={`px-4 py-2 rounded-xl text-xs font-semibold transition shrink-0 ${
                 activeTab === 'history'
-                  ? 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 shadow-sm'
+                  ? 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 shadow-sm font-bold'
                   : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
               }`}
             >
@@ -421,46 +456,97 @@ export const ManageBookingPage: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('lookup')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center space-x-1 ${
+              className={`px-4 py-2 rounded-xl text-xs font-semibold transition shrink-0 flex items-center space-x-1.5 ${
                 activeTab === 'lookup'
-                  ? 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 shadow-sm'
+                  ? 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 shadow-sm font-bold'
                   : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
               }`}
             >
-              <Search className="w-3 h-3" />
+              <Search className="w-3.5 h-3.5" />
               <span>Find by Code</span>
             </button>
           </div>
 
-          <button
-            onClick={() => loadCustomerPortal(customer?.id)}
-            className="p-2 rounded-xl text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
-            title="Refresh appointments"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+          <div className="flex items-center space-x-2">
+            {activeTab !== 'lookup' && (
+              <div className="relative flex-1 sm:w-56">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-stone-400" />
+                <input
+                  type="text"
+                  placeholder="Filter by ref, service..."
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
+            )}
+            <button
+              onClick={() => {
+                loadCustomerPortal(customer?.id);
+                toast.success('Appointments refreshed');
+              }}
+              className="p-2 rounded-xl text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition shrink-0"
+              title="Refresh appointments"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </div>
 
         {/* TAB 1: UPCOMING APPOINTMENTS */}
         {activeTab === 'upcoming' && (
           <div className="space-y-4">
-            {upcoming.length === 0 ? (
+            {upcoming.filter(a => {
+              if (!searchFilter.trim()) return true;
+              const q = searchFilter.toLowerCase();
+              return (
+                a.bookingReference.toLowerCase().includes(q) ||
+                a.serviceName.toLowerCase().includes(q) ||
+                a.businessName.toLowerCase().includes(q) ||
+                a.staffName.toLowerCase().includes(q)
+              );
+            }).length === 0 ? (
               <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center max-w-md mx-auto space-y-3">
                 <CalendarDays className="w-10 h-10 text-stone-300 dark:text-stone-600 mx-auto" />
-                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">No Upcoming Appointments</h3>
+                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                  {searchFilter ? 'No Matching Appointments' : 'No Upcoming Appointments'}
+                </h3>
                 <p className="text-xs text-stone-600 dark:text-stone-300 font-medium">
-                  You don't have any pending or confirmed bookings. Explore providers to book your next appointment.
+                  {searchFilter 
+                    ? `No appointment matched "${searchFilter}". Clear search or check your reference code.`
+                    : "You don't have any pending or confirmed bookings. Explore providers to book your next appointment."
+                  }
                 </p>
-                <button
-                  onClick={() => navigate('/browse')}
-                  className="bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-stone-800 dark:hover:bg-amber-300 transition"
-                >
-                  Explore Directory
-                </button>
+                {searchFilter ? (
+                  <button
+                    onClick={() => setSearchFilter('')}
+                    className="bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-stone-800 dark:hover:bg-amber-300 transition"
+                  >
+                    Clear Filter
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => navigate('/browse')}
+                    className="bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-stone-800 dark:hover:bg-amber-300 transition"
+                  >
+                    Explore Directory
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {upcoming.map((appt) => (
+                {upcoming
+                  .filter(a => {
+                    if (!searchFilter.trim()) return true;
+                    const q = searchFilter.toLowerCase();
+                    return (
+                      a.bookingReference.toLowerCase().includes(q) ||
+                      a.serviceName.toLowerCase().includes(q) ||
+                      a.businessName.toLowerCase().includes(q) ||
+                      a.staffName.toLowerCase().includes(q)
+                    );
+                  })
+                  .map((appt) => (
                   <div
                     key={appt.id}
                     onClick={() => { setSelectedAppt(appt); setShowReschedule(false); }}
@@ -518,15 +604,50 @@ export const ManageBookingPage: React.FC = () => {
         {/* TAB 2: HISTORY & PAST */}
         {activeTab === 'history' && (
           <div className="space-y-3">
-            {[...past, ...cancelled].length === 0 ? (
+            {[...past, ...cancelled].filter(a => {
+              if (!searchFilter.trim()) return true;
+              const q = searchFilter.toLowerCase();
+              return (
+                a.bookingReference.toLowerCase().includes(q) ||
+                a.serviceName.toLowerCase().includes(q) ||
+                a.businessName.toLowerCase().includes(q) ||
+                a.staffName.toLowerCase().includes(q)
+              );
+            }).length === 0 ? (
               <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center max-w-md mx-auto space-y-2">
                 <History className="w-10 h-10 text-stone-400 dark:text-stone-500 mx-auto" />
-                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">No History Yet</h3>
-                <p className="text-xs text-stone-600 dark:text-stone-300 font-medium">Past completed and cancelled visits will be archived here.</p>
+                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                  {searchFilter ? 'No Matching Records' : 'No History Yet'}
+                </h3>
+                <p className="text-xs text-stone-600 dark:text-stone-300 font-medium">
+                  {searchFilter 
+                    ? `No past visits matched "${searchFilter}".`
+                    : 'Past completed and cancelled visits will be archived here.'
+                  }
+                </p>
+                {searchFilter && (
+                  <button
+                    onClick={() => setSearchFilter('')}
+                    className="mt-2 bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-stone-800 dark:hover:bg-amber-300 transition"
+                  >
+                    Clear Filter
+                  </button>
+                )}
               </div>
             ) : (
               <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 overflow-hidden divide-y divide-stone-100 dark:divide-stone-800 shadow-sm">
-                {[...past, ...cancelled].map((appt) => (
+                {[...past, ...cancelled]
+                  .filter(a => {
+                    if (!searchFilter.trim()) return true;
+                    const q = searchFilter.toLowerCase();
+                    return (
+                      a.bookingReference.toLowerCase().includes(q) ||
+                      a.serviceName.toLowerCase().includes(q) ||
+                      a.businessName.toLowerCase().includes(q) ||
+                      a.staffName.toLowerCase().includes(q)
+                    );
+                  })
+                  .map((appt) => (
                   <div
                     key={appt.id}
                     onClick={() => { setSelectedAppt(appt); setShowReschedule(false); }}
@@ -576,14 +697,34 @@ export const ManageBookingPage: React.FC = () => {
             <form onSubmit={handleManualLookup} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">Booking Reference</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. APT-UP-14"
-                  value={lookupRef}
-                  onChange={(e) => setLookupRef(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs uppercase font-mono focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. APT-UP-14"
+                    value={lookupRef}
+                    onChange={(e) => setLookupRef(e.target.value)}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs uppercase font-mono focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const clipText = await navigator.clipboard.readText();
+                        if (clipText) {
+                          setLookupRef(clipText.trim());
+                          toast.success('Pasted from clipboard!', { description: clipText.trim() });
+                        }
+                      } catch (_) {
+                        toast.error('Unable to paste', { description: 'Please paste code directly into input.' });
+                      }
+                    }}
+                    className="px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 text-xs font-semibold transition shrink-0"
+                    title="Paste from clipboard"
+                  >
+                    Paste
+                  </button>
+                </div>
               </div>
 
               <button

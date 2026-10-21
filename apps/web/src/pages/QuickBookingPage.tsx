@@ -6,6 +6,7 @@ import { AppointmoLogo } from '../components/AppointmoLogo';
 import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { DemoTopNav } from '../components/DemoTopNav';
+import { toast } from 'sonner';
 
 interface Service {
   id: string;
@@ -75,6 +76,31 @@ export const QuickBookingPage: React.FC = () => {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [completedBooking, setCompletedBooking] = useState<any | null>(null);
 
+  // Auto-fill customer details from active demo user or previous booking session
+  useEffect(() => {
+    // 1. Try fetching current demo customer portal profile
+    apiFetch<any>('/demo/admin/customer-portal')
+      .then(res => {
+        if (res?.customer) {
+          if (!customerName) setCustomerName(res.customer.name || '');
+          if (!customerEmail) setCustomerEmail(res.customer.email || '');
+          if (!customerPhone) setCustomerPhone(res.customer.phone || '');
+        }
+      })
+      .catch(() => {
+        // 2. Fallback to localStorage if available
+        const stored = localStorage.getItem('appointmo_latest_booking');
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            if (parsed.customerName && !customerName) setCustomerName(parsed.customerName);
+            if (parsed.customerEmail && !customerEmail) setCustomerEmail(parsed.customerEmail);
+            if (parsed.customerPhone && !customerPhone) setCustomerPhone(parsed.customerPhone);
+          } catch (_) {}
+        }
+      });
+  }, []);
+
   // 1. Fetch Business Profile
   useEffect(() => {
     apiFetch<{ business: BusinessProfile }>(`/business?slug=${businessSlug}`)
@@ -143,6 +169,9 @@ export const QuickBookingPage: React.FC = () => {
       });
 
       setCompletedBooking(res.booking);
+      toast.success('Appointment booked successfully!', {
+        description: `Booking Reference: ${res.booking.bookingReference}`
+      });
 
       // Persist latest booking reference and management token to localStorage for instant 1-click management access
       if (res?.booking?.bookingReference && res?.booking?.managementToken) {
@@ -150,12 +179,18 @@ export const QuickBookingPage: React.FC = () => {
           bookingReference: res.booking.bookingReference,
           managementToken: res.booking.managementToken,
           customerName,
+          customerEmail,
+          customerPhone,
           serviceName: selectedService.name,
           createdAt: new Date().toISOString()
         }));
       }
     } catch (err: any) {
-      setBookingError(err.message || 'This appointment slot was just taken. Please choose another slot.');
+      const errMsg = err.message || 'This appointment slot was just taken. Please choose another slot.';
+      setBookingError(errMsg);
+      toast.error('Booking failed', {
+        description: errMsg
+      });
     } finally {
       setBookingLoading(false);
     }

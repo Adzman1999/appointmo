@@ -10,6 +10,7 @@ import { AdminLoginPage } from './pages/AdminLoginPage';
 import { OwnerDashboardPage } from './pages/OwnerDashboardPage';
 import { SetupPasswordPage } from './pages/SetupPasswordPage';
 import { DemoAdminDashboardPage } from './pages/DemoAdminDashboardPage';
+import { Toaster } from 'sonner';
 import { SHOW_PRODUCTION_AUTH } from './config';
 
 // Protected Admin / Owner Route Guard for production management
@@ -66,6 +67,15 @@ export const App: React.FC = () => {
         {/* Catch-all redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <Toaster 
+        position="top-right" 
+        richColors 
+        closeButton 
+        theme="system"
+        toastOptions={{
+          style: { borderRadius: '1rem', padding: '0.875rem 1rem' }
+        }}
+      />
     </ThemeProvider>
   );
 };
