@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import { LandingPage } from './pages/LandingPage';
 import { DiscoveryPage } from './pages/DiscoveryPage';
 import { QuickBookingPage } from './pages/QuickBookingPage';
@@ -23,46 +24,48 @@ const ProtectedOwnerRoute: React.FC<{ children: React.ReactElement }> = ({ child
 
 export const App: React.FC = () => {
   return (
-    <Routes>
-      {/* 1. Public Landing Page */}
-      <Route path="/" element={<LandingPage />} />
+    <ThemeProvider>
+      <Routes>
+        {/* 1. Public Landing Page */}
+        <Route path="/" element={<LandingPage />} />
 
-      {/* 2. Customer Demo Experiences (Zero Accounts Required) */}
-      <Route path="/browse" element={<DiscoveryPage />} />
-      <Route path="/discover" element={<DiscoveryPage />} />
-      <Route path="/demo/book" element={<QuickBookingPage />} />
-      <Route path="/demo/concierge" element={<ConciergePage />} />
-      <Route path="/concierge" element={<ConciergePage />} />
+        {/* 2. Customer Demo Experiences (Zero Accounts Required) */}
+        <Route path="/browse" element={<DiscoveryPage />} />
+        <Route path="/discover" element={<DiscoveryPage />} />
+        <Route path="/demo/book" element={<QuickBookingPage />} />
+        <Route path="/demo/concierge" element={<ConciergePage />} />
+        <Route path="/concierge" element={<ConciergePage />} />
 
-      {/* 3. Interactive Admin Demo (Isolated Fictional Demo Business) */}
-      <Route path="/demo/admin" element={<DemoAdminDashboardPage />} />
-      <Route path="/admin/dashboard" element={<DemoAdminDashboardPage />} />
+        {/* 3. Interactive Admin Demo (Isolated Fictional Demo Business) */}
+        <Route path="/demo/admin" element={<DemoAdminDashboardPage />} />
+        <Route path="/admin/dashboard" element={<DemoAdminDashboardPage />} />
 
-      {/* 4. Customer Secure Booking Lookup & Management */}
-      <Route path="/manage" element={<ManageBookingPage />} />
+        {/* 4. Customer Secure Booking Lookup & Management */}
+        <Route path="/manage" element={<ManageBookingPage />} />
 
-      {/* 5. Production Authentication (Hidden from public links, but functional) */}
-      <Route path="/admin/login" element={<AdminLoginPage />} />
-      <Route path="/setup-password" element={<SetupPasswordPage />} />
-      <Route
-        path="/owner/access-requests"
-        element={
-          <ProtectedOwnerRoute>
-            <OwnerDashboardPage />
-          </ProtectedOwnerRoute>
-        }
-      />
-      <Route
-        path="/admin/platform"
-        element={
-          <ProtectedOwnerRoute>
-            <OwnerDashboardPage />
-          </ProtectedOwnerRoute>
-        }
-      />
+        {/* 5. Production Authentication (Hidden from public links, but functional) */}
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/setup-password" element={<SetupPasswordPage />} />
+        <Route
+          path="/owner/access-requests"
+          element={
+            <ProtectedOwnerRoute>
+              <OwnerDashboardPage />
+            </ProtectedOwnerRoute>
+          }
+        />
+        <Route
+          path="/admin/platform"
+          element={
+            <ProtectedOwnerRoute>
+              <OwnerDashboardPage />
+            </ProtectedOwnerRoute>
+          }
+        />
 
-      {/* Catch-all redirect */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Catch-all redirect */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </ThemeProvider>
   );
 };

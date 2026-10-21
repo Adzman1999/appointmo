@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { BusinessLogo } from '../components/BusinessLogo';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export const DemoAdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -400,6 +401,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
             {/* Business Switcher Dropdown */}
             <div className="flex items-center space-x-1 bg-stone-50 border border-stone-200 rounded-xl px-2 py-1">
               <Building2 className="w-3.5 h-3.5 text-stone-500 ml-1" />

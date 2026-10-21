@@ -4,6 +4,7 @@ import { Calendar as CalendarIcon, Clock, User, CheckCircle2, AlertCircle, Spark
 import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { BusinessLogo } from '../components/BusinessLogo';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 interface Service {
   id: string;
@@ -141,6 +142,17 @@ export const QuickBookingPage: React.FC = () => {
       });
 
       setCompletedBooking(res.booking);
+
+      // Persist latest booking reference and management token to localStorage for instant 1-click management access
+      if (res?.booking?.bookingReference && res?.booking?.managementToken) {
+        localStorage.setItem('appointmo_latest_booking', JSON.stringify({
+          bookingReference: res.booking.bookingReference,
+          managementToken: res.booking.managementToken,
+          customerName,
+          serviceName: selectedService.name,
+          createdAt: new Date().toISOString()
+        }));
+      }
     } catch (err: any) {
       setBookingError(err.message || 'This appointment slot was just taken. Please choose another slot.');
     } finally {
@@ -149,7 +161,7 @@ export const QuickBookingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 pb-20">
+    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20 transition-colors">
       {/* Top Banner indicating Fictional Demo Environment */}
       <div className="bg-stone-900 text-stone-300 py-2 px-4 text-xs">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -176,14 +188,14 @@ export const QuickBookingPage: React.FC = () => {
       </div>
 
       {/* Main Header */}
-      <div className="bg-white border-b border-stone-200 py-4 px-6 mb-8 shadow-sm">
+      <div className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-4 px-6 mb-8 shadow-sm">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-6">
             <div className="cursor-pointer" onClick={() => navigate('/')}>
               <AppointmoLogo size="sm" showText={false} />
             </div>
 
-            <div className="h-6 w-px bg-stone-200 hidden sm:block"></div>
+            <div className="h-6 w-px bg-stone-200 dark:bg-stone-800 hidden sm:block"></div>
 
             <div className="flex items-center space-x-3">
               <BusinessLogo
@@ -193,22 +205,23 @@ export const QuickBookingPage: React.FC = () => {
                 size="md"
               />
               <div>
-                <h1 className="text-base font-bold text-stone-900">{business?.name || 'Appointmo Booking'}</h1>
-                <p className="text-xs text-stone-500">{business?.category || 'Intelligent Scheduling'}</p>
+                <h1 className="text-base font-bold text-stone-900 dark:text-stone-100">{business?.name || 'Appointmo Booking'}</h1>
+                <p className="text-xs text-stone-500 dark:text-stone-400">{business?.category || 'Intelligent Scheduling'}</p>
               </div>
             </div>
           </div>
           <div className="flex items-center space-x-3">
+            <ThemeToggle />
             <button
               onClick={() => navigate(`/demo/concierge?business=${business?.slug || ''}`)}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 text-xs font-semibold hover:bg-amber-100 transition shadow-sm"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/60 transition shadow-sm"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               <span>Concierge Finder</span>
             </button>
             <button
               onClick={() => navigate('/browse')}
-              className="px-3 py-1.5 rounded-xl border border-stone-200 text-stone-600 hover:text-stone-900 transition text-xs font-semibold"
+              className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition text-xs font-semibold"
             >
               Directory
             </button>
@@ -262,46 +275,46 @@ export const QuickBookingPage: React.FC = () => {
 
         {/* Confirmation Screen */}
         {completedBooking ? (
-          <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm space-y-6 text-center animate-in fade-in">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-sm">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-8 shadow-sm space-y-6 text-center animate-in fade-in">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-sm">
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-stone-900">Appointment Confirmed!</h2>
-              <p className="text-xs text-stone-500 mt-1">
+              <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Appointment Confirmed!</h2>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
                 Your appointment has been booked and synchronized with our business calendar.
               </p>
             </div>
 
-            <div className="bg-stone-50 rounded-2xl p-6 border border-stone-200 text-xs text-left max-w-md mx-auto space-y-3 font-mono">
-              <div className="flex justify-between border-b border-stone-200 pb-2">
-                <span className="text-stone-500 font-sans">Booking Ref:</span>
-                <span className="font-bold text-stone-900">{completedBooking.bookingReference}</span>
+            <div className="bg-stone-50 dark:bg-stone-800/60 rounded-2xl p-6 border border-stone-200 dark:border-stone-700 text-xs text-left max-w-md mx-auto space-y-3 font-mono">
+              <div className="flex justify-between border-b border-stone-200 dark:border-stone-700 pb-2">
+                <span className="text-stone-500 dark:text-stone-400 font-sans">Booking Ref:</span>
+                <span className="font-bold text-stone-900 dark:text-stone-100">{completedBooking.bookingReference}</span>
               </div>
-              <div className="flex justify-between border-b border-stone-200 pb-2">
-                <span className="text-stone-500 font-sans">Service:</span>
-                <span className="text-stone-800">{selectedService?.name}</span>
+              <div className="flex justify-between border-b border-stone-200 dark:border-stone-700 pb-2">
+                <span className="text-stone-500 dark:text-stone-400 font-sans">Service:</span>
+                <span className="text-stone-800 dark:text-stone-200">{selectedService?.name}</span>
               </div>
-              <div className="flex justify-between border-b border-stone-200 pb-2">
-                <span className="text-stone-500 font-sans">Staff Specialist:</span>
-                <span className="text-stone-800">{selectedSlot?.staffName}</span>
+              <div className="flex justify-between border-b border-stone-200 dark:border-stone-700 pb-2">
+                <span className="text-stone-500 dark:text-stone-400 font-sans">Staff Specialist:</span>
+                <span className="text-stone-800 dark:text-stone-200">{selectedSlot?.staffName}</span>
               </div>
-              <div className="flex justify-between border-b border-stone-200 pb-2">
-                <span className="text-stone-500 font-sans">Schedule:</span>
-                <span className="text-stone-800">
+              <div className="flex justify-between border-b border-stone-200 dark:border-stone-700 pb-2">
+                <span className="text-stone-500 dark:text-stone-400 font-sans">Schedule:</span>
+                <span className="text-stone-800 dark:text-stone-200">
                   {new Date(selectedSlot?.startTime || '').toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-stone-500 font-sans">Price:</span>
-                <span className="font-bold text-stone-900">₱{selectedService?.price}</span>
+                <span className="text-stone-500 dark:text-stone-400 font-sans">Price:</span>
+                <span className="font-bold text-stone-900 dark:text-stone-100">₱{selectedService?.price}</span>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
               <button
                 onClick={() => navigate(`/manage?ref=${completedBooking.bookingReference}&token=${completedBooking.managementToken}`)}
-                className="bg-stone-900 text-white font-semibold px-5 py-2.5 rounded-xl hover:bg-stone-800 transition text-xs shadow flex items-center space-x-1.5"
+                className="bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 font-semibold px-5 py-2.5 rounded-xl hover:bg-stone-800 dark:hover:bg-stone-200 transition text-xs shadow flex items-center space-x-1.5"
               >
                 <span>Manage My Booking</span>
                 <span>&rarr;</span>
@@ -311,7 +324,7 @@ export const QuickBookingPage: React.FC = () => {
                   navigator.clipboard.writeText(`Booking Ref: ${completedBooking.bookingReference}\nToken: ${completedBooking.managementToken}`);
                   alert('Booking details copied to clipboard!');
                 }}
-                className="bg-stone-100 border border-stone-200 text-stone-700 font-semibold px-4 py-2.5 rounded-xl hover:bg-stone-200 transition text-xs"
+                className="bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-semibold px-4 py-2.5 rounded-xl hover:bg-stone-200 dark:hover:bg-stone-700 transition text-xs"
               >
                 Copy Reference &amp; Token
               </button>
@@ -320,7 +333,7 @@ export const QuickBookingPage: React.FC = () => {
                   setCompletedBooking(null);
                   setSelectedSlot(null);
                 }}
-                className="text-stone-500 hover:text-stone-900 text-xs underline"
+                className="text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 text-xs underline"
               >
                 Book another appointment
               </button>

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export const ConciergePage: React.FC = () => {
   const navigate = useNavigate();
@@ -103,43 +104,44 @@ export const ConciergePage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-20">
+    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20 transition-colors">
       {/* Top Bar */}
-      <div className="bg-white border-b border-stone-200 py-4 px-6 mb-8">
+      <div className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-4 px-6 mb-8">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-6">
             <div className="cursor-pointer" onClick={() => navigate('/')}>
               <AppointmoLogo size="sm" showText={false} />
             </div>
 
-            <div className="h-6 w-px bg-stone-200 hidden sm:block"></div>
+            <div className="h-6 w-px bg-stone-200 dark:bg-stone-800 hidden sm:block"></div>
 
             <div className="flex items-center space-x-2">
-              <div className="p-2 rounded-xl bg-amber-100 text-amber-900">
-                <Sparkles className="w-4 h-4 text-amber-600" />
+              <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200">
+                <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <h1 className="text-base font-bold text-stone-900">Explainable Concierge Booking</h1>
-                <p className="text-xs text-stone-500">Multi-business appointment recommendation engine with live slot checking</p>
+                <h1 className="text-base font-bold text-stone-900 dark:text-stone-100">Explainable Concierge Booking</h1>
+                <p className="text-xs text-stone-500 dark:text-stone-400">Multi-business appointment recommendation engine with live slot checking</p>
               </div>
             </div>
           </div>
           <div className="flex items-center space-x-3">
+            <ThemeToggle />
             <button
               onClick={() => navigate('/browse')}
-              className="text-xs font-semibold text-stone-600 hover:text-stone-900 px-3 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 transition"
+              className="text-xs font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white px-3 py-1.5 rounded-lg border border-stone-200 dark:border-stone-800 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
             >
               Browse Directory
             </button>
             <button
               onClick={() => navigate('/demo/book')}
-              className="text-xs font-semibold text-stone-600 hover:text-stone-900 px-3 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 transition"
+              className="text-xs font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white px-3 py-1.5 rounded-lg border border-stone-200 dark:border-stone-800 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
             >
               Quick Booking
             </button>
             <button
               onClick={() => navigate('/demo/admin')}
-              className="text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg transition"
+              className="text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 px-3 py-1.5 rounded-lg transition"
             >
               Admin Demo &rarr;
             </button>

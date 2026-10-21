@@ -51,12 +51,12 @@ export const AppointmoLogo: React.FC<AppointmoLogoProps> = ({
       {showText && (
         <div className="flex flex-col leading-tight">
           <div className="flex items-center space-x-1.5">
-            <span className={`font-bold tracking-tight text-stone-900 ${textSizeClasses}`}>
-              Appoint<span className="text-amber-600">mo</span>
+            <span className={`font-bold tracking-tight text-stone-900 dark:text-stone-100 ${textSizeClasses}`}>
+              Appoint<span className="text-amber-600 dark:text-amber-400">mo</span>
             </span>
           </div>
           {subtitle && (
-            <span className="text-[10px] uppercase font-semibold tracking-wider text-stone-400">
+            <span className="text-[10px] uppercase font-semibold tracking-wider text-stone-400 dark:text-stone-400">
               {subtitle}
             </span>
           )}

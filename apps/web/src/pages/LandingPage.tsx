@@ -7,13 +7,14 @@ import {
 import { SHOW_PRODUCTION_AUTH } from '../config';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { BusinessCreationModal } from '../components/BusinessCreationModal';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 selection:bg-stone-200">
+    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 selection:bg-stone-200 dark:selection:bg-stone-800 transition-colors">
       {/* Top Banner introducing Fictional Demo Environment */}
       <div className="bg-stone-900 text-stone-300 py-2 px-4 text-xs">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -34,31 +35,31 @@ export const LandingPage: React.FC = () => {
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-stone-200">
+      <header className="sticky top-0 z-40 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md border-b border-stone-200 dark:border-stone-800">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
             <AppointmoLogo size="md" subtitle="Intelligent Scheduling" />
           </div>
 
-          <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-stone-600">
+          <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-stone-600 dark:text-stone-300">
             <button
               onClick={() => navigate('/browse')}
-              className="hover:text-stone-900 transition-colors text-stone-800 font-semibold text-sm flex items-center space-x-1"
+              className="hover:text-stone-900 dark:hover:text-white transition-colors text-stone-800 dark:text-stone-200 font-semibold text-sm flex items-center space-x-1"
             >
               <span>Explore Businesses</span>
             </button>
-            <a href="#how-it-works" className="hover:text-stone-900 transition-colors">How It Works</a>
-            <a href="#concierge" className="hover:text-stone-900 transition-colors">Concierge Booking</a>
+            <a href="#how-it-works" className="hover:text-stone-900 dark:hover:text-white transition-colors">How It Works</a>
+            <a href="#concierge" className="hover:text-stone-900 dark:hover:text-white transition-colors">Concierge Booking</a>
             <button
               onClick={() => navigate('/manage')}
-              className="hover:text-stone-900 transition-colors text-stone-700 font-medium text-sm"
+              className="hover:text-stone-900 dark:hover:text-white transition-colors text-stone-700 dark:text-stone-300 font-medium text-sm"
             >
               Manage Booking
             </button>
             {SHOW_PRODUCTION_AUTH && (
               <button
                 onClick={() => navigate('/admin/login')}
-                className="hover:text-stone-900 transition-colors text-stone-800 font-semibold text-xs"
+                className="hover:text-stone-900 dark:hover:text-white transition-colors text-stone-800 dark:text-stone-200 font-semibold text-xs"
               >
                 Sign In
               </button>
@@ -66,17 +67,18 @@ export const LandingPage: React.FC = () => {
           </nav>
 
           <div className="flex items-center space-x-3">
+            <ThemeToggle />
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-xs hover:bg-amber-200 transition shadow-sm"
+              className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 font-semibold text-xs hover:bg-amber-200 dark:hover:bg-amber-900/80 transition shadow-sm"
               title="Launch a new business and take appointments"
             >
-              <Plus className="w-3.5 h-3.5 text-amber-700" />
+              <Plus className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300" />
               <span>Create Business</span>
             </button>
             <button
               onClick={() => navigate('/demo/admin')}
-              className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-stone-800 font-semibold text-xs hover:bg-stone-50 transition shadow-sm"
+              className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold text-xs hover:bg-stone-50 dark:hover:bg-stone-700 transition shadow-sm"
             >
               <Building2 className="w-3.5 h-3.5 text-stone-500" />
               <span>Admin Demo</span>

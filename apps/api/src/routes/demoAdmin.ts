@@ -45,6 +45,71 @@ router.get('/businesses', async (_req: Request, res: Response) => {
   }
 });
 
+// 0c. Customer Portal Demo Helper: Get Active Demo Booking for Instant Management
+router.get('/demo-active-booking', async (_req: Request, res: Response) => {
+  try {
+    // 1. Check for most recently confirmed upcoming appointment
+    const upcoming = await query(`
+      SELECT a.booking_reference AS "bookingReference",
+             s.name AS "serviceName",
+             c.name AS "customerName",
+             a.start_time AS "startTime",
+             b.name AS "businessName"
+      FROM appointments a
+      JOIN services s ON a.service_id = s.id
+      JOIN customers c ON a.customer_id = c.id
+      JOIN businesses b ON a.business_id = b.id
+      WHERE a.status = 'confirmed' AND a.start_time > NOW()
+      ORDER BY a.created_at DESC, a.start_time ASC
+      LIMIT 1
+    `);
+
+    if (upcoming.rows.length > 0) {
+      const row = upcoming.rows[0];
+      // Synthetic demo seed tokens are reference + 'secret'
+      const demoToken = `${row.bookingReference}secret`;
+      return res.json({
+        bookingReference: row.bookingReference,
+        token: demoToken,
+        serviceName: row.serviceName,
+        customerName: row.customerName,
+        businessName: row.businessName,
+      });
+    }
+
+    // 2. Fallback to any active appointment
+    const anyAppt = await query(`
+      SELECT a.booking_reference AS "bookingReference",
+             s.name AS "serviceName",
+             c.name AS "customerName",
+             a.start_time AS "startTime",
+             b.name AS "businessName"
+      FROM appointments a
+      JOIN services s ON a.service_id = s.id
+      JOIN customers c ON a.customer_id = c.id
+      JOIN businesses b ON a.business_id = b.id
+      WHERE a.status != 'cancelled'
+      ORDER BY a.created_at DESC
+      LIMIT 1
+    `);
+
+    if (anyAppt.rows.length > 0) {
+      const row = anyAppt.rows[0];
+      return res.json({
+        bookingReference: row.bookingReference,
+        token: `${row.bookingReference}secret`,
+        serviceName: row.serviceName,
+        customerName: row.customerName,
+        businessName: row.businessName,
+      });
+    }
+
+    res.status(404).json({ error: 'No demo appointments available' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to find active demo booking' });
+  }
+});
+
 // 0b. Create New Fictional Demo Business from Admin Studio Wizard
 router.post('/create-business', async (req: Request, res: Response) => {
   const client = await pool.connect();
