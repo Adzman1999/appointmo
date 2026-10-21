@@ -77,6 +77,7 @@ describe('Full Appointment Workflow, Sorting, Rescheduling & Two-Way Notificatio
       });
 
     expect(bookRes.status).toBe(201);
+    expect(bookRes.body.booking.appointment.status).toBe('pending');
     bookingRef1 = bookRes.body.booking.bookingReference;
     token1 = bookRes.body.booking.managementToken;
     apptId1 = bookRes.body.booking.appointment.id;
@@ -142,12 +143,12 @@ describe('Full Appointment Workflow, Sorting, Rescheduling & Two-Way Notificatio
     expect(newestNotif.message).toContain('Second Booker');
   });
 
-  // 5. Customer receives booking confirmed notification
-  it('5. Customer receives confirmed notification via their management token', async () => {
+  // 5. Customer receives booking notification
+  it('5. Customer receives pending confirmation notification via their management token', async () => {
     const custNotifRes = await request(app).get(`/api/bookings/${bookingRef1}/notifications?token=${token1}`);
     expect(custNotifRes.status).toBe(200);
     expect(custNotifRes.body.notifications.length).toBeGreaterThan(0);
-    expect(custNotifRes.body.notifications[0].title).toContain('confirmed');
+    expect(custNotifRes.body.notifications[0].title).toContain('pending');
   });
 
   // 6. View Details & Audit History endpoint
@@ -156,7 +157,7 @@ describe('Full Appointment Workflow, Sorting, Rescheduling & Two-Way Notificatio
     expect(detailRes.status).toBe(200);
     expect(detailRes.body.appointment.customerName).toBe('First Booker');
     expect(detailRes.body.history.length).toBeGreaterThan(0);
-    expect(detailRes.body.history[0].newStatus).toBe('confirmed');
+    expect(detailRes.body.history[0].newStatus).toBe('pending');
   });
 
   // 7. Safe Rescheduling: Updates date/time, history and notifies both sides

@@ -187,7 +187,7 @@ router.get('/customer-portal', async (req: Request, res: Response) => {
       JOIN businesses b ON a.business_id = b.id
       JOIN branches br ON a.branch_id = br.id
       WHERE a.customer_id = $1
-      ORDER BY a.start_time DESC
+      ORDER BY a.created_at DESC, a.id DESC
     `, [targetCustId]);
 
     // Format appointments and attach demo management tokens
@@ -196,9 +196,9 @@ router.get('/customer-portal', async (req: Request, res: Response) => {
       managementToken: `${appt.bookingReference}secret`
     }));
 
-    // Categorize
-    const upcoming = appointments.filter(a => a.status === 'confirmed' && new Date(a.startTime) > new Date());
-    const past = appointments.filter(a => a.status === 'completed' || (new Date(a.startTime) <= new Date() && a.status !== 'cancelled'));
+    // Categorize: upcoming includes both 'confirmed' and 'pending' bookings scheduled in future
+    const upcoming = appointments.filter(a => (a.status === 'confirmed' || a.status === 'pending') && new Date(a.startTime) > new Date());
+    const past = appointments.filter(a => a.status === 'completed' || (new Date(a.startTime) <= new Date() && a.status !== 'cancelled' && a.status !== 'pending'));
     const cancelled = appointments.filter(a => a.status === 'cancelled');
 
     // 3. Customer Notifications

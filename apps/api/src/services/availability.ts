@@ -246,12 +246,12 @@ export class AvailabilityService {
       const rawManagementToken = crypto.randomBytes(24).toString('hex');
       const tokenHash = crypto.createHash('sha256').update(rawManagementToken).digest('hex');
 
-      // 6. Insert Appointment
+      // 6. Insert Appointment with initial status: pending
       const apptRes = await client.query(`
         INSERT INTO appointments (
           booking_reference, business_id, branch_id, customer_id, service_id, staff_id,
           start_time, end_time, status, price_snapshot, currency, notes, management_token_hash
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'confirmed', $9, $10, $11, $12)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $10, $11, $12)
         RETURNING id, booking_reference, start_time, end_time, status
       `, [
         bookingRef,
@@ -270,7 +270,7 @@ export class AvailabilityService {
 
       await client.query(`
         INSERT INTO appointment_status_history (appointment_id, new_status, changed_by, reason)
-        VALUES ($1, 'confirmed', 'guest_customer', 'Initial booking creation')
+        VALUES ($1, 'pending', 'guest_customer', 'Initial booking request created (pending confirmation)')
       `, [apptRes.rows[0].id]);
 
       // 7. Generate Two-Way Notifications
@@ -282,21 +282,21 @@ export class AvailabilityService {
       `, [
         businessId,
         apptRes.rows[0].id,
-        `New appointment booked: ${srv.name}`,
-        `New appointment booked by ${params.customerName} for ${srv.name} on ${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}. (Ref: ${bookingRef})`
+        `New booking received: ${srv.name}`,
+        `New booking request by ${params.customerName} for ${srv.name} on ${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}. (Ref: ${bookingRef})`
       ]);
 
       // B. Customer notification
       await client.query(`
         INSERT INTO notifications (
           business_id, appointment_id, recipient_type, recipient_identifier, type, title, message
-        ) VALUES ($1, $2, 'customer', $3, 'booking_confirmed', $4, $5)
+        ) VALUES ($1, $2, 'customer', $3, 'booking_created', $4, $5)
       `, [
         businessId,
         apptRes.rows[0].id,
         bookingRef,
-        'Your appointment is confirmed!',
-        `Good news! Your booking for ${srv.name} is confirmed for ${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} with ${srv.name}.`
+        'Booking received & pending confirmation',
+        `Your booking request for ${srv.name} on ${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} has been received and is awaiting studio confirmation.`
       ]);
 
       await client.query('COMMIT');

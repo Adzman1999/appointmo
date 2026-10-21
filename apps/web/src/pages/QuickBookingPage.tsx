@@ -290,13 +290,16 @@ export const QuickBookingPage: React.FC = () => {
         {/* Confirmation Screen */}
         {completedBooking ? (
           <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-8 shadow-sm space-y-6 text-center animate-in fade-in">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-sm">
-              <CheckCircle2 className="w-8 h-8" />
+            <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto shadow-sm">
+              <Clock className="w-8 h-8" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Appointment Confirmed!</h2>
-              <p className="text-xs text-stone-600 dark:text-stone-300 mt-1 font-medium">
-                Your appointment has been booked and synchronized with our business calendar.
+              <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Booking Request Received!</h2>
+              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold text-xs mt-2 uppercase tracking-wider">
+                <span>Status: Pending Confirmation</span>
+              </div>
+              <p className="text-xs text-stone-600 dark:text-stone-300 mt-2 font-medium">
+                Your appointment request has been scheduled and sent to the studio for review.
               </p>
             </div>
 

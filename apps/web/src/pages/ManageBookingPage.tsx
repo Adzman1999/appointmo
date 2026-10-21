@@ -53,6 +53,9 @@ export const ManageBookingPage: React.FC = () => {
   // Search filter across appointments list
   const [searchFilter, setSearchFilter] = useState('');
 
+  // Business store filter (e.g. 'all' or business name/slug)
+  const [storeFilter, setStoreFilter] = useState('all');
+
   // Customer Data
   const [customer, setCustomer] = useState<CustomerProfile | null>(null);
   const [appointments, setAppointments] = useState<CustomerAppointment[]>([]);
@@ -467,18 +470,32 @@ export const ManageBookingPage: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
             {activeTab !== 'lookup' && (
-              <div className="relative flex-1 sm:w-56">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-stone-400" />
-                <input
-                  type="text"
-                  placeholder="Filter by ref, service..."
-                  value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                />
-              </div>
+              <>
+                {/* Store Filter Dropdown */}
+                <select
+                  value={storeFilter}
+                  onChange={(e) => setStoreFilter(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 text-xs font-semibold focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 cursor-pointer"
+                >
+                  <option value="all">All Stores / Businesses</option>
+                  {Array.from(new Set(appointments.map(a => a.businessName))).map(name => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+
+                <div className="relative flex-1 sm:w-52">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-stone-400" />
+                  <input
+                    type="text"
+                    placeholder="Filter ref, service..."
+                    value={searchFilter}
+                    onChange={(e) => setSearchFilter(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  />
+                </div>
+              </>
             )}
             <button
               onClick={() => {
@@ -497,6 +514,7 @@ export const ManageBookingPage: React.FC = () => {
         {activeTab === 'upcoming' && (
           <div className="space-y-4">
             {upcoming.filter(a => {
+              if (storeFilter !== 'all' && a.businessName !== storeFilter) return false;
               if (!searchFilter.trim()) return true;
               const q = searchFilter.toLowerCase();
               return (
@@ -509,20 +527,20 @@ export const ManageBookingPage: React.FC = () => {
               <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center max-w-md mx-auto space-y-3">
                 <CalendarDays className="w-10 h-10 text-stone-300 dark:text-stone-600 mx-auto" />
                 <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">
-                  {searchFilter ? 'No Matching Appointments' : 'No Upcoming Appointments'}
+                  {searchFilter || storeFilter !== 'all' ? 'No Matching Appointments' : 'No Upcoming Appointments'}
                 </h3>
                 <p className="text-xs text-stone-600 dark:text-stone-300 font-medium">
-                  {searchFilter 
-                    ? `No appointment matched "${searchFilter}". Clear search or check your reference code.`
+                  {searchFilter || storeFilter !== 'all'
+                    ? 'No appointments matched the current store and search filters. Try resetting filters.'
                     : "You don't have any pending or confirmed bookings. Explore providers to book your next appointment."
                   }
                 </p>
-                {searchFilter ? (
+                {searchFilter || storeFilter !== 'all' ? (
                   <button
-                    onClick={() => setSearchFilter('')}
+                    onClick={() => { setSearchFilter(''); setStoreFilter('all'); }}
                     className="bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-stone-800 dark:hover:bg-amber-300 transition"
                   >
-                    Clear Filter
+                    Reset Filters
                   </button>
                 ) : (
                   <button
@@ -537,6 +555,7 @@ export const ManageBookingPage: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {upcoming
                   .filter(a => {
+                    if (storeFilter !== 'all' && a.businessName !== storeFilter) return false;
                     if (!searchFilter.trim()) return true;
                     const q = searchFilter.toLowerCase();
                     return (
@@ -561,7 +580,13 @@ export const ManageBookingPage: React.FC = () => {
                         <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300">
                           {appt.bookingReference}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          appt.status === 'confirmed'
+                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+                            : appt.status === 'pending'
+                            ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300'
+                            : 'bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-300'
+                        }`}>
                           {appt.status}
                         </span>
                       </div>
@@ -605,6 +630,7 @@ export const ManageBookingPage: React.FC = () => {
         {activeTab === 'history' && (
           <div className="space-y-3">
             {[...past, ...cancelled].filter(a => {
+              if (storeFilter !== 'all' && a.businessName !== storeFilter) return false;
               if (!searchFilter.trim()) return true;
               const q = searchFilter.toLowerCase();
               return (
@@ -617,20 +643,20 @@ export const ManageBookingPage: React.FC = () => {
               <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center max-w-md mx-auto space-y-2">
                 <History className="w-10 h-10 text-stone-400 dark:text-stone-500 mx-auto" />
                 <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">
-                  {searchFilter ? 'No Matching Records' : 'No History Yet'}
+                  {searchFilter || storeFilter !== 'all' ? 'No Matching Records' : 'No History Yet'}
                 </h3>
                 <p className="text-xs text-stone-600 dark:text-stone-300 font-medium">
-                  {searchFilter 
-                    ? `No past visits matched "${searchFilter}".`
+                  {searchFilter || storeFilter !== 'all'
+                    ? 'No past visits matched the current filters.'
                     : 'Past completed and cancelled visits will be archived here.'
                   }
                 </p>
-                {searchFilter && (
+                {(searchFilter || storeFilter !== 'all') && (
                   <button
-                    onClick={() => setSearchFilter('')}
+                    onClick={() => { setSearchFilter(''); setStoreFilter('all'); }}
                     className="mt-2 bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-stone-800 dark:hover:bg-amber-300 transition"
                   >
-                    Clear Filter
+                    Reset Filters
                   </button>
                 )}
               </div>
@@ -638,6 +664,7 @@ export const ManageBookingPage: React.FC = () => {
               <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 overflow-hidden divide-y divide-stone-100 dark:divide-stone-800 shadow-sm">
                 {[...past, ...cancelled]
                   .filter(a => {
+                    if (storeFilter !== 'all' && a.businessName !== storeFilter) return false;
                     if (!searchFilter.trim()) return true;
                     const q = searchFilter.toLowerCase();
                     return (
@@ -751,6 +778,8 @@ export const ManageBookingPage: React.FC = () => {
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                       selectedAppt.status === 'confirmed'
                         ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+                        : selectedAppt.status === 'pending'
+                        ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300'
                         : selectedAppt.status === 'cancelled'
                         ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
                         : 'bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200'
