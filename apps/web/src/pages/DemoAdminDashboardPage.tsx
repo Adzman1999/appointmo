@@ -4,7 +4,7 @@ import {
   Calendar, Users, DollarSign, CheckCircle2, RotateCcw, 
   Search, Filter, Clock, ArrowRight, Sparkles, Building2, 
   Check, X, AlertTriangle, Shield, Bell, ChevronRight, UserCheck, 
-  RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store, MapPin
+  RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store, MapPin, Lightbulb, TrendingUp
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { BusinessLogo } from '../components/BusinessLogo';
@@ -92,6 +92,79 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   const [creatingBusiness, setCreatingBusiness] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  // Suggested & Best Business Ideas Modal State
+  const [isIdeasModalOpen, setIsIdeasModalOpen] = useState(false);
+
+  // High-converting business concepts curated for appointment scheduling
+  const businessIdeas = [
+    {
+      title: 'Aesthetic Skin & Laser Clinic',
+      category: 'Beauty & Wellness',
+      recommendedCity: 'Taguig / BGC',
+      description: 'Medical-grade hydra-facials, gentle chemical peels, and laser skin rejuvenation with certified dermatological specialists.',
+      pricingRange: '₱1,500 – ₱4,500',
+      keyServices: ['Hydra-Facial Infusion', 'Laser Carbon Peel', 'Collagen Microneedling'],
+      whyItWorks: 'High customer retention with recurring 4-week appointment cycles and premium per-session margins.',
+    },
+    {
+      title: 'Cosmetic Dentistry & Smile Studio',
+      category: 'Dental Services',
+      recommendedCity: 'Makati',
+      description: 'Laser teeth whitening, clear aligner consultations, and preventive ultrasonic dental prophylaxis.',
+      pricingRange: '₱1,200 – ₱6,000',
+      keyServices: ['Laser Teeth Whitening', 'Oral Prophylaxis', 'Aligner Consultation'],
+      whyItWorks: 'High trust threshold and guaranteed booking commitments with structured lead-time requirements.',
+    },
+    {
+      title: 'Modern Veterinary & Pet Wellness Center',
+      category: 'Veterinary Services',
+      recommendedCity: 'San Juan / Greenhills',
+      description: 'Comprehensive annual companion wellness exams, puppy vaccinations, microchipping, and medicated grooming.',
+      pricingRange: '₱650 – ₱2,200',
+      keyServices: ['Comprehensive Wellness Exam', '5-in-1 Puppy Vaccine', 'Medicated Pet Grooming'],
+      whyItWorks: 'Emotion-driven family spending where online appointment clarity eliminates clinic wait times.',
+    },
+    {
+      title: 'Corporate Legal & Startup Advisory',
+      category: 'Professional Consultations',
+      recommendedCity: 'Pasig / Ortigas',
+      description: 'Retainer consultations for SEC business registration, trademark filing, software licensing, and contract audits.',
+      pricingRange: '₱2,500 – ₱7,500',
+      keyServices: ['Contract Risk Review', 'Trademark & IP Consultation', 'Commercial Lease Advisory'],
+      whyItWorks: 'Zero inventory, high hourly realization rate, and time-block scheduling that protects professional billable hours.',
+    },
+    {
+      title: 'Precision Auto Detailing & Ceramic Studio',
+      category: 'Automotive & Detailing',
+      recommendedCity: 'Quezon City',
+      description: 'Multi-stage paint correction, 9H graphene ceramic coating, and interior steam sanitation.',
+      pricingRange: '₱2,000 – ₱12,000',
+      keyServices: ['Multi-Stage Paint Correction', 'Ceramic Shield Coating', 'Interior Steam Sterilization'],
+      whyItWorks: 'Bay capacity constraints make slot-based scheduling essential for workflow balance.',
+    },
+    {
+      title: 'Private Athletic Recovery & Physical Therapy',
+      category: 'Health & Fitness',
+      recommendedCity: 'Mandaluyong',
+      description: 'Targeted myofascial release, sports injury rehabilitation, cold plunge recovery, and posture optimization.',
+      pricingRange: '₱1,200 – ₱3,000',
+      keyServices: ['Deep Sports Recovery', 'Dry Needling Therapy', 'Kinesiology Assessment'],
+      whyItWorks: 'Active professionals seeking rapid injury turnaround value punctual slot availability.',
+    },
+  ];
+
+  const handleApplyBusinessIdea = (idea: typeof businessIdeas[0]) => {
+    setCreateName(idea.title);
+    setCreateCategory(idea.category);
+    setIsCustomCategory(false);
+    setCreateDescription(idea.description);
+    setCreateBranchCity(idea.recommendedCity);
+    setIsCustomCity(false);
+    setCreateBranchName(`${idea.title} - Flagship`);
+    setIsIdeasModalOpen(false);
+    setIsCreateModalOpen(true);
+  };
 
   const fetchBusinesses = async () => {
     try {
@@ -589,13 +662,21 @@ export const DemoAdminDashboardPage: React.FC = () => {
               Appointments sorted by <strong>creation date (newest first)</strong>. Auto-refreshes every 5 seconds.
             </p>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2.5">
             <button
-              onClick={() => navigate('/demo/concierge')}
+              onClick={() => setIsIdeasModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 bg-amber-500/10 text-amber-900 border border-amber-300 text-xs font-semibold px-3.5 py-2 rounded-xl hover:bg-amber-100 transition shadow-sm"
+              title="Explore high-converting appointment business ideas"
+            >
+              <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
+              <span>Suggested &amp; Best Business Ideas</span>
+            </button>
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
               className="inline-flex items-center space-x-1.5 bg-stone-900 text-white text-xs font-semibold px-3.5 py-2 rounded-xl hover:bg-stone-800 transition shadow"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Test Concierge Booking</span>
+              <Plus className="w-3.5 h-3.5 text-amber-300" />
+              <span>Create New Business</span>
             </button>
           </div>
         </div>
@@ -1292,6 +1373,86 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 5: SUGGESTED & BEST BUSINESS IDEAS */}
+      {isIdeasModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-100 mb-4">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center">
+                  <Lightbulb className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-stone-900">Suggested &amp; Best Business Ideas</h3>
+                  <p className="text-xs text-stone-500">High-converting appointment concepts pre-optimized for Appointmo</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsIdeasModalOpen(false)}
+                className="text-stone-400 hover:text-stone-700 p-1 rounded-full hover:bg-stone-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200 text-xs text-stone-600">
+                <span className="font-semibold text-stone-900">💡 Instant Launch: </span>
+                Click <strong>"Use This Idea"</strong> on any suggestion below to pre-populate the Business Setup Studio wizard with verified synthetic catalogue details, location, and service structure.
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {businessIdeas.map((idea, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-white rounded-2xl border border-stone-200 p-5 shadow-sm hover:border-amber-400 transition flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200">
+                          {idea.category}
+                        </span>
+                        <span className="text-[11px] font-bold text-stone-900">
+                          {idea.pricingRange}
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-bold text-stone-900 mb-1">{idea.title}</h4>
+                      <p className="text-[11px] text-stone-500 leading-relaxed mb-3">
+                        {idea.description}
+                      </p>
+
+                      <div className="space-y-1.5 mb-3 bg-stone-50 p-2.5 rounded-xl text-[10px] text-stone-600">
+                        <div className="font-semibold text-stone-700">Recommended Location:</div>
+                        <div className="flex items-center space-x-1 text-stone-600">
+                          <MapPin className="w-3 h-3 text-stone-400" />
+                          <span>{idea.recommendedCity}</span>
+                        </div>
+                        <div className="font-semibold text-stone-700 pt-1">Key High-Demand Services:</div>
+                        <div className="text-stone-500">
+                          {idea.keyServices.join(' • ')}
+                        </div>
+                      </div>
+
+                      <div className="text-[10px] text-emerald-800 bg-emerald-50/70 p-2 rounded-lg border border-emerald-100 mb-4">
+                        <strong>Why it succeeds:</strong> {idea.whyItWorks}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleApplyBusinessIdea(idea)}
+                      className="w-full py-2 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition flex items-center justify-center space-x-1.5 shadow"
+                    >
+                      <span>Use This Idea</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
