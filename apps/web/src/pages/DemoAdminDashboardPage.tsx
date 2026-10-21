@@ -361,8 +361,14 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20 transition-colors">
-      {/* Top Segmented Navigation Bar */}
-      <DemoTopNav currentRole="admin" />
+      {/* Top Segmented Navigation Bar with Global Reset */}
+      <DemoTopNav 
+        currentRole="admin" 
+        onResetComplete={() => {
+          fetchDashboardData();
+          fetchNotifications();
+        }}
+      />
 
       {/* Main Navbar */}
       <header className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-3.5 px-6 shadow-sm sticky top-0 z-30">

@@ -13,6 +13,30 @@ export const seedData = async () => {
   try {
     await client.query('BEGIN');
 
+    // Clean dynamically created user businesses and orphan demo data
+    const canonicalSlugs = [
+      'lumiere-beauty-studio',
+      'apex-dental-ortho',
+      'paws-whiskers-clinic',
+      'vanguard-legal-advisory'
+    ];
+
+    // Remove any appointments, reviews, and businesses created dynamically outside the canonical demo set
+    await client.query(`
+      DELETE FROM appointments 
+      WHERE business_id NOT IN (SELECT id FROM businesses WHERE slug = ANY($1))
+    `, [canonicalSlugs]);
+
+    await client.query(`
+      DELETE FROM reviews 
+      WHERE business_id NOT IN (SELECT id FROM businesses WHERE slug = ANY($1))
+    `, [canonicalSlugs]);
+
+    await client.query(`
+      DELETE FROM businesses 
+      WHERE slug != ALL($1)
+    `, [canonicalSlugs]);
+
     // 1. Check or Clean demo dataset (isolated to lumiere)
     const existingBiz = await client.query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio'");
     let businessId: string;

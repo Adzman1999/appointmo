@@ -296,8 +296,11 @@ export const ManageBookingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-24 transition-colors">
-      {/* Top Segmented Navigation Bar */}
-      <DemoTopNav currentRole="customer" />
+      {/* Top Segmented Navigation Bar with Global Reset */}
+      <DemoTopNav 
+        currentRole="customer" 
+        onResetComplete={() => loadCustomerPortal(customer?.id)}
+      />
 
       {/* Top Customer Portal Navigation Bar */}
       <header className="sticky top-0 z-40 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200 dark:border-stone-800">
