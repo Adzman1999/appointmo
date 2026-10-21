@@ -8,6 +8,7 @@ import { SHOW_PRODUCTION_AUTH } from '../config';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { BusinessCreationModal } from '../components/BusinessCreationModal';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { DemoTopNav } from '../components/DemoTopNav';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -15,24 +16,8 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 selection:bg-stone-200 dark:selection:bg-stone-800 transition-colors">
-      {/* Top Banner introducing Fictional Demo Environment */}
-      <div className="bg-stone-900 text-stone-300 py-2 px-4 text-xs">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center space-x-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span className="font-semibold text-white">Demo-First Showcase:</span>
-            <span>Explore both Admin and Customer experiences immediately with synthetic demo data.</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/demo/admin')}
-              className="text-white hover:text-amber-300 font-medium underline text-xs"
-            >
-              Open Admin Demo &rarr;
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Top Demo Navigation Bar with Direct Reset Button */}
+      <DemoTopNav currentRole="customer" />
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md border-b border-stone-200 dark:border-stone-800">
