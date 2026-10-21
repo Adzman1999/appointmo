@@ -8,7 +8,7 @@ const router = Router();
 
 // Dedicated Demo Isolation Scope: Can operate against requested business slug or default to Lumière
 async function getDemoBusinessId(req?: Request): Promise<string> {
-  const querySlug = req?.query?.slug as string | undefined;
+  const querySlug = (req?.query?.slug as string | undefined) || (req?.body?.slug as string | undefined);
   const targetSlug = querySlug && querySlug.trim() ? querySlug.trim() : 'lumiere-beauty-studio';
 
   const bizRes = await query("SELECT id FROM businesses WHERE slug = $1", [targetSlug]);
@@ -463,7 +463,6 @@ router.get('/appointments', async (req: Request, res: Response) => {
 router.get('/appointments/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const businessId = await getDemoBusinessId(req);
 
     const apptRes = await query(`
       SELECT 
@@ -478,22 +477,24 @@ router.get('/appointments/:id', async (req: Request, res: Response) => {
       JOIN services s ON a.service_id = s.id
       JOIN staff_profiles sp ON a.staff_id = sp.id
       JOIN customers c ON a.customer_id = c.id
-      WHERE a.id = $1 AND a.business_id = $2
-    `, [id, businessId]);
+      WHERE (a.id::text = $1 OR a.booking_reference = $1)
+    `, [id]);
 
     if (apptRes.rows.length === 0) {
       return res.status(404).json({ error: 'Appointment not found in demo business records' });
     }
+
+    const appt = apptRes.rows[0];
 
     const historyRes = await query(`
       SELECT id, previous_status AS "previousStatus", new_status AS "newStatus", reason, changed_by AS "changedBy", created_at AS "createdAt"
       FROM appointment_status_history
       WHERE appointment_id = $1
       ORDER BY created_at ASC
-    `, [id]);
+    `, [appt.id]);
 
     res.json({
-      appointment: apptRes.rows[0],
+      appointment: appt,
       history: historyRes.rows,
     });
   } catch (err: any) {
@@ -507,7 +508,6 @@ router.patch('/appointments/:id/status', async (req: Request, res: Response) => 
   try {
     const { id } = req.params;
     const { status, reason } = req.body;
-    const businessId = await getDemoBusinessId();
 
     const validStatuses = ['pending', 'confirmed', 'completed', 'cancelled'];
     if (!validStatuses.includes(status)) {
@@ -517,12 +517,12 @@ router.patch('/appointments/:id/status', async (req: Request, res: Response) => 
     await client.query('BEGIN');
 
     const existingRes = await client.query(`
-      SELECT a.id, a.status, a.booking_reference, a.start_time, s.name AS service_name, c.name AS customer_name, c.email AS customer_email
+      SELECT a.id, a.business_id, a.status, a.booking_reference, a.start_time, s.name AS service_name, c.name AS customer_name, c.email AS customer_email
       FROM appointments a
       JOIN services s ON a.service_id = s.id
       JOIN customers c ON a.customer_id = c.id
-      WHERE a.id = $1 AND a.business_id = $2
-    `, [id, businessId]);
+      WHERE (a.id::text = $1 OR a.booking_reference = $1)
+    `, [id]);
 
     if (existingRes.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -530,6 +530,8 @@ router.patch('/appointments/:id/status', async (req: Request, res: Response) => 
     }
 
     const appt = existingRes.rows[0];
+    const actualApptId = appt.id;
+    const businessId = appt.business_id;
     const prevStatus = appt.status;
 
     if (prevStatus === status) {
@@ -539,13 +541,13 @@ router.patch('/appointments/:id/status', async (req: Request, res: Response) => 
 
     await client.query(
       'UPDATE appointments SET status = $1, cancellation_reason = $2, updated_at = NOW() WHERE id = $3 AND business_id = $4',
-      [status, status === 'cancelled' ? (reason || 'Cancelled by admin') : null, id, businessId]
+      [status, status === 'cancelled' ? (reason || 'Cancelled by admin') : null, actualApptId, businessId]
     );
 
     await client.query(`
       INSERT INTO appointment_status_history (appointment_id, previous_status, new_status, reason, changed_by)
       VALUES ($1, $2, $3, $4, 'admin')
-    `, [id, prevStatus, status, reason || `Status updated to ${status} by admin`]);
+    `, [actualApptId, prevStatus, status, reason || `Status updated to ${status} by admin`]);
 
     // Send customer notification
     let custTitle = `Appointment update: ${status.toUpperCase()}`;
@@ -565,7 +567,7 @@ router.patch('/appointments/:id/status', async (req: Request, res: Response) => 
       ) VALUES ($1, $2, 'customer', $3, $4, $5, $6)
     `, [
       businessId,
-      id,
+      actualApptId,
       appt.booking_reference,
       `booking_${status}`,
       custTitle,
@@ -589,7 +591,6 @@ router.post('/appointments/:id/reschedule', async (req: Request, res: Response) 
   try {
     const { id } = req.params;
     const { newStartTime, newStaffId, reason } = req.body;
-    const businessId = await getDemoBusinessId();
 
     if (!newStartTime) {
       return res.status(400).json({ error: 'New start time is required for rescheduling' });
@@ -599,21 +600,23 @@ router.post('/appointments/:id/reschedule', async (req: Request, res: Response) 
 
     // 1. Fetch current appointment details with service info
     const apptRes = await client.query(`
-      SELECT a.id, a.booking_reference, a.status, a.staff_id, a.start_time, a.end_time,
+      SELECT a.id, a.business_id, a.booking_reference, a.status, a.staff_id, a.start_time, a.end_time,
              s.id AS service_id, s.name AS service_name, s.duration_minutes,
              c.name AS customer_name, c.email AS customer_email
       FROM appointments a
       JOIN services s ON a.service_id = s.id
       JOIN customers c ON a.customer_id = c.id
-      WHERE a.id = $1 AND a.business_id = $2
-    `, [id, businessId]);
+      WHERE (a.id::text = $1 OR a.booking_reference = $1)
+    `, [id]);
 
     if (apptRes.rows.length === 0) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Appointment not found' });
+      return res.status(404).json({ error: 'Appointment not found in demo business records' });
     }
 
     const appt = apptRes.rows[0];
+    const actualApptId = appt.id;
+    const businessId = appt.business_id;
     const targetStaffId = newStaffId || appt.staff_id;
 
     // Verify staff is qualified
@@ -636,7 +639,7 @@ router.post('/appointments/:id/reschedule', async (req: Request, res: Response) 
       WHERE staff_id = $1 AND id != $2 AND status NOT IN ('cancelled')
         AND start_time < $3 AND end_time > $4
       FOR UPDATE
-    `, [targetStaffId, id, end, start]);
+    `, [targetStaffId, actualApptId, end, start]);
 
     if (conflictRes.rows.length > 0) {
       await client.query('ROLLBACK');
@@ -648,13 +651,13 @@ router.post('/appointments/:id/reschedule', async (req: Request, res: Response) 
       UPDATE appointments
       SET start_time = $1, end_time = $2, staff_id = $3, status = 'confirmed', updated_at = NOW()
       WHERE id = $4 AND business_id = $5
-    `, [start, end, targetStaffId, id, businessId]);
+    `, [start, end, targetStaffId, actualApptId, businessId]);
 
     // 3. Add History
     await client.query(`
       INSERT INTO appointment_status_history (appointment_id, previous_status, new_status, reason, changed_by)
       VALUES ($1, $2, 'confirmed', $3, 'admin')
-    `, [id, appt.status, reason || `Rescheduled to ${start.toISOString()} by admin`]);
+    `, [actualApptId, appt.status, reason || `Rescheduled to ${start.toISOString()} by admin`]);
 
     // 4. Send Two-Way Notifications
     const formattedDate = start.toLocaleDateString('en-US', {
@@ -671,7 +674,7 @@ router.post('/appointments/:id/reschedule', async (req: Request, res: Response) 
       ) VALUES ($1, $2, 'customer', $3, 'booking_rescheduled', $4, $5)
     `, [
       businessId,
-      id,
+      actualApptId,
       appt.booking_reference,
       'Your appointment was rescheduled',
       `Your ${appt.service_name} appointment has been rescheduled to ${formattedDate}. Open your booking details to review.`
@@ -684,7 +687,7 @@ router.post('/appointments/:id/reschedule', async (req: Request, res: Response) 
       ) VALUES ($1, $2, 'admin', 'admin', 'booking_rescheduled', $3, $4)
     `, [
       businessId,
-      id,
+      actualApptId,
       `Rescheduled: ${appt.booking_reference}`,
       `Appointment ${appt.booking_reference} (${appt.customer_name}) was rescheduled to ${formattedDate}.`
     ]);
@@ -710,7 +713,6 @@ router.post('/appointments/:id/reassign-staff', async (req: Request, res: Respon
   try {
     const { id } = req.params;
     const { staffId } = req.body;
-    const businessId = await getDemoBusinessId();
 
     if (!staffId) {
       return res.status(400).json({ error: 'Target staff member is required' });
@@ -719,18 +721,20 @@ router.post('/appointments/:id/reassign-staff', async (req: Request, res: Respon
     await client.query('BEGIN');
 
     const apptRes = await client.query(`
-      SELECT a.id, a.service_id, a.start_time, a.end_time, a.status, sp.name AS current_staff_name
+      SELECT a.id, a.business_id, a.service_id, a.start_time, a.end_time, a.status, sp.name AS current_staff_name
       FROM appointments a
       JOIN staff_profiles sp ON a.staff_id = sp.id
-      WHERE a.id = $1 AND a.business_id = $2
-    `, [id, businessId]);
+      WHERE (a.id::text = $1 OR a.booking_reference = $1)
+    `, [id]);
 
     if (apptRes.rows.length === 0) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Appointment not found' });
+      return res.status(404).json({ error: 'Appointment not found in demo business records' });
     }
 
     const appt = apptRes.rows[0];
+    const actualApptId = appt.id;
+    const businessId = appt.business_id;
 
     // Check target staff qualifications
     const qualRes = await client.query(`
@@ -752,7 +756,7 @@ router.post('/appointments/:id/reassign-staff', async (req: Request, res: Respon
       WHERE staff_id = $1 AND id != $2 AND status NOT IN ('cancelled')
         AND start_time < $3 AND end_time > $4
       FOR UPDATE
-    `, [staffId, id, appt.end_time, appt.start_time]);
+    `, [staffId, actualApptId, appt.end_time, appt.start_time]);
 
     if (conflictRes.rows.length > 0) {
       await client.query('ROLLBACK');
@@ -761,13 +765,13 @@ router.post('/appointments/:id/reassign-staff', async (req: Request, res: Respon
 
     await client.query(
       'UPDATE appointments SET staff_id = $1, updated_at = NOW() WHERE id = $2 AND business_id = $3',
-      [staffId, id, businessId]
+      [staffId, actualApptId, businessId]
     );
 
     await client.query(`
       INSERT INTO appointment_status_history (appointment_id, previous_status, new_status, reason, changed_by)
       VALUES ($1, $2, $2, $3, 'admin')
-    `, [id, appt.status, `Reassigned specialist from ${appt.current_staff_name} to ${targetStaffName}`]);
+    `, [actualApptId, appt.status, `Reassigned specialist from ${appt.current_staff_name} to ${targetStaffName}`]);
 
     await client.query('COMMIT');
 

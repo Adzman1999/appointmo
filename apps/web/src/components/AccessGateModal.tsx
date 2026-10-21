@@ -86,26 +86,26 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-white rounded-3xl border border-stone-200 shadow-2xl p-6 sm:p-8 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-stone-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-2xl p-6 sm:p-8 overflow-hidden text-stone-900 dark:text-stone-100">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-1.5 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition"
+          className="absolute top-5 right-5 p-1.5 rounded-full text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Modal Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-stone-100 text-stone-700 text-xs font-semibold mb-3">
-            <Sparkles className="w-3.5 h-3.5 text-stone-900" />
+          <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 text-xs font-semibold mb-3">
+            <Sparkles className="w-3.5 h-3.5 text-stone-900 dark:text-amber-400" />
             <span>Interactive Demo</span>
           </div>
-          <h2 className="text-2xl font-bold tracking-tight text-stone-900">
+          <h2 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
             {tab === 'request' ? 'Request Demo Access' : 'Sign In to Demo'}
           </h2>
-          <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
+          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 max-w-sm mx-auto">
             {tab === 'request'
               ? 'Tell us a bit about your business and we will approve your preview access promptly.'
               : 'Sign in with your approved account to explore the interactive appointment platform.'}
@@ -113,7 +113,7 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex bg-stone-100 p-1 rounded-2xl mb-6">
+        <div className="flex bg-stone-100 dark:bg-stone-800/80 p-1 rounded-2xl mb-6">
           <button
             type="button"
             onClick={() => {
@@ -121,7 +121,7 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
               setRequestError(null);
             }}
             className={`flex-1 py-2 text-xs font-semibold rounded-xl transition ${
-              tab === 'request' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-800'
+              tab === 'request' ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
             }`}
           >
             Request Access
@@ -133,7 +133,7 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
               setLoginError(null);
             }}
             className={`flex-1 py-2 text-xs font-semibold rounded-xl transition ${
-              tab === 'login' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-800'
+              tab === 'login' ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
             }`}
           >
             Approved Sign In
@@ -144,9 +144,9 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
         {tab === 'request' && (
           <div>
             {requestSuccess ? (
-              <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs space-y-3 animate-in fade-in">
-                <div className="flex items-center space-x-2 font-bold text-sm text-emerald-800">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs space-y-3 animate-in fade-in">
+                <div className="flex items-center space-x-2 font-bold text-sm text-emerald-800 dark:text-emerald-300">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                   <span>Request Received</span>
                 </div>
                 <p className="text-xs leading-relaxed">{requestSuccess}</p>
@@ -154,7 +154,7 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setTab('login')}
-                    className="w-full bg-emerald-700 text-white font-semibold py-2.5 rounded-xl hover:bg-emerald-800 transition text-xs shadow"
+                    className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2.5 rounded-xl transition text-xs shadow"
                   >
                     Already received your approval? Sign in
                   </button>
@@ -163,62 +163,62 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
             ) : (
               <form onSubmit={handleRequestAccess} className="space-y-3.5 text-xs">
                 {requestError && (
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center space-x-2">
+                  <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center space-x-2">
                     <AlertCircle className="w-4 h-4 shrink-0" />
                     <span>{requestError}</span>
                   </div>
                 )}
 
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Your Full Name</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Your Full Name</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Elena Rostova"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 transition"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Email Address</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Email Address</label>
                   <input
                     type="email"
                     required
                     placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 transition"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Business Name (Optional)</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Business Name (Optional)</label>
                   <input
                     type="text"
                     placeholder="e.g. Rostova Hair Studio"
                     value={businessName}
                     onChange={(e) => setBusinessName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 transition"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Message or Use Case (Optional)</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Message or Use Case (Optional)</label>
                   <textarea
                     rows={2}
                     placeholder="Tell us what you're looking for..."
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 transition resize-none"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition resize-none"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={requestLoading || !fullName || !email}
-                  className="w-full bg-stone-900 text-white font-semibold py-3 rounded-xl hover:bg-stone-800 transition text-xs shadow disabled:opacity-50 flex items-center justify-center space-x-2 mt-2"
+                  className="w-full bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-semibold py-3 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition text-xs shadow disabled:opacity-50 flex items-center justify-center space-x-2 mt-2"
                 >
                   <Mail className="w-4 h-4" />
                   <span>{requestLoading ? 'Submitting...' : 'Submit Access Request'}</span>
@@ -232,14 +232,14 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
         {tab === 'login' && (
           <form onSubmit={handleApprovedLogin} className="space-y-4 text-xs">
             {loginError && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center space-x-2">
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center space-x-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{loginError}</span>
               </div>
             )}
 
             <div>
-              <label className="block font-semibold text-stone-700 mb-1">Approved Email Address</label>
+              <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Approved Email Address</label>
               <div className="relative">
                 <input
                   type="email"
@@ -247,14 +247,14 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
                   placeholder="name@company.com"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 transition"
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition"
                 />
                 <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
               </div>
             </div>
 
             <div>
-              <label className="block font-semibold text-stone-700 mb-1">Password</label>
+              <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Password</label>
               <div className="relative">
                 <input
                   type="password"
@@ -262,7 +262,7 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
                   placeholder="••••••••••••"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 transition"
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition"
                 />
                 <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
               </div>
@@ -271,7 +271,7 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
             <button
               type="submit"
               disabled={loginLoading || !loginEmail || !loginPassword}
-              className="w-full bg-stone-900 text-white font-semibold py-3.5 rounded-xl hover:bg-stone-800 transition text-xs shadow disabled:opacity-50 flex items-center justify-center space-x-2"
+              className="w-full bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-semibold py-3.5 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition text-xs shadow disabled:opacity-50 flex items-center justify-center space-x-2"
             >
               <span>{loginLoading ? 'Signing in...' : 'Sign In to Interactive Demo'}</span>
               <ArrowRight className="w-4 h-4" />
@@ -281,7 +281,7 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
               <button
                 type="button"
                 onClick={() => setTab('request')}
-                className="text-[11px] text-stone-500 hover:text-stone-900 transition underline"
+                className="text-[11px] text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 transition underline"
               >
                 Haven't requested access yet? Submit a request
               </button>
