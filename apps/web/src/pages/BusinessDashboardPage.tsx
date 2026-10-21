@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Users, DollarSign, CheckCircle2, RotateCcw, Search, Filter, LogOut } from 'lucide-react';
+import { Calendar, Users, DollarSign, CheckCircle2, Search, Filter, LogOut } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 export const BusinessDashboardPage: React.FC = () => {
@@ -10,7 +10,6 @@ export const BusinessDashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [resetting, setResetting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   const fetchDashboardData = async () => {
@@ -54,20 +53,6 @@ export const BusinessDashboardPage: React.FC = () => {
     }
   };
 
-  const handleResetDemoData = async () => {
-    if (!confirm('Reset Lumière demo data to original deterministic state (125 bookings)?')) return;
-    setResetting(true);
-    try {
-      const res: any = await apiFetch('/admin/demo/reset', { method: 'POST' });
-      setNotice(res.message);
-      fetchDashboardData();
-    } catch (err: any) {
-      alert(err.message || 'Reset failed');
-    } finally {
-      setResetting(false);
-    }
-  };
-
   const handleLogout = () => {
     localStorage.removeItem('appointmo_token');
     localStorage.removeItem('appointmo_user');
@@ -89,14 +74,6 @@ export const BusinessDashboardPage: React.FC = () => {
               className="text-xs font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white"
             >
               Platform Requests
-            </button>
-            <button
-              onClick={handleResetDemoData}
-              disabled={resetting}
-              className="inline-flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/80 transition"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
-              <span>{resetting ? 'Resetting...' : 'Reset Demo Data'}</span>
             </button>
             <button
               onClick={handleLogout}

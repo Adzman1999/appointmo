@@ -320,6 +320,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   // Mark notification read
   const handleMarkNotifRead = async (id: string, apptId?: string) => {
+    // Optimistic UI update
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    setUnreadCount(prev => Math.max(0, prev - 1));
     try {
       await apiFetch(`/demo/admin/notifications/${id}/read`, { method: 'PATCH' });
       fetchNotifications();
@@ -334,8 +337,11 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   // Mark all notifications read
   const handleMarkAllNotifsRead = async () => {
+    // Optimistic UI update
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    setUnreadCount(0);
     try {
-      await apiFetch('/demo/admin/notifications/mark-all-read', { method: 'POST' });
+      await apiFetch(`/demo/admin/notifications/mark-all-read`, { method: 'POST' });
       fetchNotifications();
     } catch (err) {
       console.error(err);

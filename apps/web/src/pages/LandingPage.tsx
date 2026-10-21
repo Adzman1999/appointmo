@@ -183,7 +183,7 @@ export const LandingPage: React.FC = () => {
               </li>
               <li className="flex items-center space-x-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>Dedicated safe reset for synthetic demo data</span>
+                <span>Deterministic customer and store-level scheduling</span>
               </li>
             </ul>
             <div className="pt-4">

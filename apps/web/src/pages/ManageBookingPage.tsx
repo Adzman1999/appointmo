@@ -284,14 +284,24 @@ export const ManageBookingPage: React.FC = () => {
     }
   };
 
-  const handleMarkNotificationRead = async (notifId: number, refCode: string) => {
+  const handleMarkNotificationRead = async (notifId: string | number, refCode?: string) => {
+    // Immediately mark as read in local state
+    setNotifications(prev => prev.map(n => String(n.id) === String(notifId) ? { ...n, isRead: true } : n));
     try {
-      await apiFetch(`/bookings/${refCode}/notifications/${notifId}/read`, {
-        method: 'PATCH',
-        body: JSON.stringify({ token: `${refCode}secret` })
-      });
-      setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, isRead: true } : n));
-    } catch (_) {}
+      if (refCode) {
+        await apiFetch(`/bookings/${refCode}/notifications/${notifId}/read`, {
+          method: 'PATCH',
+          body: JSON.stringify({ token: `${refCode}secret` })
+        });
+      } else {
+        await apiFetch(`/demo/admin/notifications/${notifId}/read`, {
+          method: 'PATCH',
+        });
+      }
+    } catch (_) {
+      // In demo mode, fallback to demo/admin endpoint
+      apiFetch(`/demo/admin/notifications/${notifId}/read`, { method: 'PATCH' }).catch(() => {});
+    }
   };
 
   return (
@@ -388,8 +398,12 @@ export const ManageBookingPage: React.FC = () => {
                   <p className="text-[11px] text-stone-600 dark:text-stone-300">{n.message}</p>
                 </div>
                 <button
-                  onClick={() => handleMarkNotificationRead(n.id, n.bookingReference)}
-                  className="px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-900 text-amber-900 dark:text-amber-100 text-[10px] font-bold shrink-0 ml-3"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMarkNotificationRead(n.id, n.bookingReference);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/80 dark:hover:bg-amber-800 text-amber-900 dark:text-amber-100 text-[10px] font-bold shrink-0 ml-3 transition cursor-pointer active:scale-95 shadow-sm"
                 >
                   Mark Read
                 </button>
