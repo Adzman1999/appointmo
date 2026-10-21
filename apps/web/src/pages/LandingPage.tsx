@@ -255,7 +255,7 @@ export const LandingPage: React.FC = () => {
             <span className="text-stone-600 dark:text-stone-300">— Intelligent Scheduling Platform. Powered by Concierge Discovery.</span>
           </div>
           <div className="flex space-x-6 text-[11px] text-stone-500 dark:text-stone-400">
-            <span>All rights reserved © <script>document.write(new Date().getFullYear())</script></span>
+            <span>© {new Date().getFullYear()} All rights reserved.</span>
           </div>
         </div>
       </footer>
