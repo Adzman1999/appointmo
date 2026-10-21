@@ -548,29 +548,29 @@ export const DemoAdminDashboardPage: React.FC = () => {
         {/* KPI Metric Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
-            <div className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Today's Bookings</div>
+            <div className="text-[11px] font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">Today's Bookings</div>
             <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-2">{metrics?.todayCount ?? '—'}</div>
-            <div className="text-[11px] text-stone-400 dark:text-stone-500 mt-1">Confirmed appointments for today</div>
+            <div className="text-[11px] text-stone-600 dark:text-stone-300 mt-1 font-medium">Confirmed appointments for today</div>
           </div>
 
           <div className="bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
-            <div className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Upcoming Confirmed</div>
+            <div className="text-[11px] font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">Upcoming Confirmed</div>
             <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400 mt-2">{metrics?.upcomingCount ?? '—'}</div>
-            <div className="text-[11px] text-stone-400 dark:text-stone-500 mt-1">Scheduled next 7 days</div>
+            <div className="text-[11px] text-stone-600 dark:text-stone-300 mt-1 font-medium">Scheduled next 7 days</div>
           </div>
 
           <div className="bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
-            <div className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Completed Sessions</div>
+            <div className="text-[11px] font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">Completed Sessions</div>
             <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-2">{metrics?.completedCount ?? '—'}</div>
-            <div className="text-[11px] text-stone-400 dark:text-stone-500 mt-1">Past 30 days</div>
+            <div className="text-[11px] text-stone-600 dark:text-stone-300 mt-1 font-medium">Past 30 days</div>
           </div>
 
           <div className="bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
-            <div className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Completed Revenue</div>
+            <div className="text-[11px] font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">Completed Revenue</div>
             <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-2">
               ₱{metrics ? Number(metrics.totalRevenue).toLocaleString() : '—'}
             </div>
-            <div className="text-[11px] text-stone-400 dark:text-stone-500 mt-1">Synthetic studio earnings</div>
+            <div className="text-[11px] text-stone-600 dark:text-stone-300 mt-1 font-medium">Synthetic studio earnings</div>
           </div>
         </div>
 

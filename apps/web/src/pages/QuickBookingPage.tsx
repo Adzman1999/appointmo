@@ -281,32 +281,32 @@ export const QuickBookingPage: React.FC = () => {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Appointment Confirmed!</h2>
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+              <p className="text-xs text-stone-600 dark:text-stone-300 mt-1 font-medium">
                 Your appointment has been booked and synchronized with our business calendar.
               </p>
             </div>
 
             <div className="bg-stone-50 dark:bg-stone-800/60 rounded-2xl p-6 border border-stone-200 dark:border-stone-700 text-xs text-left max-w-md mx-auto space-y-3 font-mono">
               <div className="flex justify-between border-b border-stone-200 dark:border-stone-700 pb-2">
-                <span className="text-stone-500 dark:text-stone-400 font-sans">Booking Ref:</span>
+                <span className="text-stone-600 dark:text-stone-300 font-sans font-medium">Booking Ref:</span>
                 <span className="font-bold text-stone-900 dark:text-stone-100">{completedBooking.bookingReference}</span>
               </div>
               <div className="flex justify-between border-b border-stone-200 dark:border-stone-700 pb-2">
-                <span className="text-stone-500 dark:text-stone-400 font-sans">Service:</span>
-                <span className="text-stone-800 dark:text-stone-200">{selectedService?.name}</span>
+                <span className="text-stone-600 dark:text-stone-300 font-sans font-medium">Service:</span>
+                <span className="text-stone-800 dark:text-stone-200 font-medium">{selectedService?.name}</span>
               </div>
               <div className="flex justify-between border-b border-stone-200 dark:border-stone-700 pb-2">
-                <span className="text-stone-500 dark:text-stone-400 font-sans">Staff Specialist:</span>
-                <span className="text-stone-800 dark:text-stone-200">{selectedSlot?.staffName}</span>
+                <span className="text-stone-600 dark:text-stone-300 font-sans font-medium">Staff Specialist:</span>
+                <span className="text-stone-800 dark:text-stone-200 font-medium">{selectedSlot?.staffName}</span>
               </div>
               <div className="flex justify-between border-b border-stone-200 dark:border-stone-700 pb-2">
-                <span className="text-stone-500 dark:text-stone-400 font-sans">Schedule:</span>
-                <span className="text-stone-800 dark:text-stone-200">
+                <span className="text-stone-600 dark:text-stone-300 font-sans font-medium">Schedule:</span>
+                <span className="text-stone-800 dark:text-stone-200 font-medium">
                   {new Date(selectedSlot?.startTime || '').toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-stone-500 dark:text-stone-400 font-sans">Price:</span>
+                <span className="text-stone-600 dark:text-stone-300 font-sans font-medium">Price:</span>
                 <span className="font-bold text-stone-900 dark:text-stone-100">₱{selectedService?.price}</span>
               </div>
             </div>

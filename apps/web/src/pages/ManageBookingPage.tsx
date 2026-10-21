@@ -280,7 +280,7 @@ export const ManageBookingPage: React.FC = () => {
                     Active Demo User
                   </span>
                 </div>
-                <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                <p className="text-[11px] text-stone-600 dark:text-stone-300 font-medium">
                   {customer?.email || 'customer@example.com'} • {customer?.phone || '+63 900 000 0000'}
                 </p>
               </div>
@@ -356,36 +356,36 @@ export const ManageBookingPage: React.FC = () => {
         {/* Dashboard Metric Overview Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           <div className="bg-white dark:bg-stone-900 p-5 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm">
-            <div className="text-stone-400 dark:text-stone-500 text-xs font-medium">Upcoming Bookings</div>
+            <div className="text-stone-600 dark:text-stone-300 text-xs font-semibold">Upcoming Bookings</div>
             <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1">{upcoming.length}</div>
-            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center space-x-1">
+            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center space-x-1 font-medium">
               <Clock className="w-3 h-3" />
               <span>Ready for visit</span>
             </div>
           </div>
 
           <div className="bg-white dark:bg-stone-900 p-5 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm">
-            <div className="text-stone-400 dark:text-stone-500 text-xs font-medium">Completed Visits</div>
+            <div className="text-stone-600 dark:text-stone-300 text-xs font-semibold">Completed Visits</div>
             <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1">{past.length}</div>
-            <div className="text-[10px] text-stone-400 mt-1 flex items-center space-x-1">
+            <div className="text-[10px] text-stone-600 dark:text-stone-300 mt-1 flex items-center space-x-1 font-medium">
               <History className="w-3 h-3" />
               <span>Past appointments</span>
             </div>
           </div>
 
           <div className="bg-white dark:bg-stone-900 p-5 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm">
-            <div className="text-stone-400 dark:text-stone-500 text-xs font-medium">Cancelled</div>
+            <div className="text-stone-600 dark:text-stone-300 text-xs font-semibold">Cancelled</div>
             <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1">{cancelled.length}</div>
-            <div className="text-[10px] text-rose-500 mt-1 flex items-center space-x-1">
+            <div className="text-[10px] text-rose-600 dark:text-rose-400 mt-1 flex items-center space-x-1 font-medium">
               <XCircle className="w-3 h-3" />
               <span>Archived</span>
             </div>
           </div>
 
           <div className="bg-white dark:bg-stone-900 p-5 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm">
-            <div className="text-stone-400 dark:text-stone-500 text-xs font-medium">Total Bookings</div>
+            <div className="text-stone-600 dark:text-stone-300 text-xs font-semibold">Total Bookings</div>
             <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1">{appointments.length}</div>
-            <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center space-x-1">
+            <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center space-x-1 font-medium">
               <Sparkles className="w-3 h-3" />
               <span>Lifetime demo activity</span>
             </div>
@@ -444,7 +444,7 @@ export const ManageBookingPage: React.FC = () => {
               <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center max-w-md mx-auto space-y-3">
                 <CalendarDays className="w-10 h-10 text-stone-300 dark:text-stone-600 mx-auto" />
                 <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">No Upcoming Appointments</h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400">
+                <p className="text-xs text-stone-600 dark:text-stone-300 font-medium">
                   You don't have any pending or confirmed bookings. Explore providers to book your next appointment.
                 </p>
                 <button
@@ -477,21 +477,21 @@ export const ManageBookingPage: React.FC = () => {
                       </div>
 
                       <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base">{appt.serviceName}</h3>
-                      <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 font-medium">{appt.businessName}</p>
+                      <p className="text-xs text-stone-600 dark:text-stone-300 mt-0.5 font-medium">{appt.businessName}</p>
 
-                      <div className="space-y-1.5 mt-4 text-xs text-stone-600 dark:text-stone-300 bg-stone-50 dark:bg-stone-800/60 p-3.5 rounded-2xl border border-stone-200 dark:border-stone-700">
+                      <div className="space-y-1.5 mt-4 text-xs text-stone-700 dark:text-stone-200 bg-stone-50 dark:bg-stone-800/60 p-3.5 rounded-2xl border border-stone-200 dark:border-stone-700">
                         <div className="flex items-center space-x-2">
-                          <Calendar className="w-3.5 h-3.5 text-stone-400" />
+                          <Calendar className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
                           <span className="font-semibold text-stone-900 dark:text-stone-100">
                             {new Date(appt.startTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <User className="w-3.5 h-3.5 text-stone-400" />
-                          <span>Specialist: <strong>{appt.staffName}</strong></span>
+                          <User className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
+                          <span>Specialist: <strong className="text-stone-900 dark:text-stone-100">{appt.staffName}</strong></span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <MapPin className="w-3.5 h-3.5 text-stone-400" />
+                          <MapPin className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
                           <span className="truncate">{appt.branchName}</span>
                         </div>
                       </div>
@@ -516,9 +516,9 @@ export const ManageBookingPage: React.FC = () => {
           <div className="space-y-3">
             {[...past, ...cancelled].length === 0 ? (
               <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center max-w-md mx-auto space-y-2">
-                <History className="w-10 h-10 text-stone-300 dark:text-stone-600 mx-auto" />
+                <History className="w-10 h-10 text-stone-400 dark:text-stone-500 mx-auto" />
                 <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">No History Yet</h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400">Past completed and cancelled visits will be archived here.</p>
+                <p className="text-xs text-stone-600 dark:text-stone-300 font-medium">Past completed and cancelled visits will be archived here.</p>
               </div>
             ) : (
               <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 overflow-hidden divide-y divide-stone-100 dark:divide-stone-800 shadow-sm">
@@ -530,20 +530,20 @@ export const ManageBookingPage: React.FC = () => {
                   >
                     <div className="space-y-1">
                       <div className="flex items-center space-x-2">
-                        <span className="font-mono font-bold text-stone-700 dark:text-stone-300">{appt.bookingReference}</span>
+                        <span className="font-mono font-bold text-stone-800 dark:text-stone-200">{appt.bookingReference}</span>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                           appt.status === 'completed'
-                            ? 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
+                            ? 'bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200'
                             : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
                         }`}>
                           {appt.status}
                         </span>
                       </div>
                       <div className="font-bold text-sm text-stone-900 dark:text-stone-100">{appt.serviceName}</div>
-                      <div className="text-stone-500 dark:text-stone-400">{appt.businessName} • Specialist: {appt.staffName}</div>
+                      <div className="text-stone-600 dark:text-stone-300 font-medium">{appt.businessName} • Specialist: {appt.staffName}</div>
                     </div>
 
-                    <div className="flex sm:flex-col sm:items-end justify-between text-stone-500 dark:text-stone-400">
+                    <div className="flex sm:flex-col sm:items-end justify-between text-stone-600 dark:text-stone-300 font-medium">
                       <div>{new Date(appt.startTime).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                       <div className="font-bold text-stone-900 dark:text-stone-100">₱{appt.price}</div>
                     </div>
@@ -558,7 +558,7 @@ export const ManageBookingPage: React.FC = () => {
         {activeTab === 'lookup' && (
           <div className="max-w-md mx-auto bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-8 shadow-sm">
             <h3 className="font-bold text-base text-stone-900 dark:text-stone-100 mb-1">Find Booking by Reference</h3>
-            <p className="text-xs text-stone-500 dark:text-stone-400 mb-6">
+            <p className="text-xs text-stone-600 dark:text-stone-300 mb-6 font-medium">
               Enter any booking reference code to quickly load and manage that appointment.
             </p>
 
@@ -628,25 +628,25 @@ export const ManageBookingPage: React.FC = () => {
               {/* Appointment details summary card */}
               <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 space-y-2.5 text-xs text-stone-700 dark:text-stone-300">
                 <div className="flex justify-between">
-                  <span className="text-stone-400">Scheduled Time</span>
+                  <span className="text-stone-600 dark:text-stone-300 font-medium">Scheduled Time</span>
                   <span className="font-bold text-stone-900 dark:text-stone-100">
                     {new Date(selectedAppt.startTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-stone-400">Staff Specialist</span>
+                  <span className="text-stone-600 dark:text-stone-300 font-medium">Staff Specialist</span>
                   <span className="font-semibold text-stone-900 dark:text-stone-100">{selectedAppt.staffName}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-stone-400">Duration</span>
-                  <span>{selectedAppt.durationMinutes} mins</span>
+                  <span className="text-stone-600 dark:text-stone-300 font-medium">Duration</span>
+                  <span className="font-semibold text-stone-900 dark:text-stone-100">{selectedAppt.durationMinutes} mins</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-stone-400">Location</span>
-                  <span className="truncate max-w-[200px]">{selectedAppt.branchName}</span>
+                  <span className="text-stone-600 dark:text-stone-300 font-medium">Location</span>
+                  <span className="truncate max-w-[200px] font-semibold text-stone-900 dark:text-stone-100">{selectedAppt.branchName}</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-stone-200 dark:border-stone-700">
-                  <span className="text-stone-400">Total Price</span>
+                  <span className="text-stone-600 dark:text-stone-300 font-medium">Total Price</span>
                   <span className="font-bold text-stone-900 dark:text-stone-100">₱{selectedAppt.price}</span>
                 </div>
               </div>
@@ -683,11 +683,11 @@ export const ManageBookingPage: React.FC = () => {
                       <div>
                         <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Available Openings</label>
                         {loadingSlots ? (
-                          <p className="p-3 bg-stone-50 dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-400 text-center">
+                          <p className="p-3 bg-stone-50 dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 text-center font-medium">
                             Checking calendar openings...
                           </p>
                         ) : availableSlots.length === 0 ? (
-                          <p className="p-3 bg-stone-50 dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-500 text-center">
+                          <p className="p-3 bg-stone-50 dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-center font-medium">
                             No open slots on this date with your specialist. Please pick another date.
                           </p>
                         ) : (

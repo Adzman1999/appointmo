@@ -101,11 +101,11 @@ export const LandingPage: React.FC = () => {
           <span>Interactive Demo Platform • Zero Registration Required</span>
         </div>
 
-        <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-stone-900 dark:text-stone-100 mb-6 leading-tight">
+        <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-stone-900 dark:text-stone-50 mb-6 leading-tight">
           Intelligent, guided appointment scheduling for any service business.
         </h1>
 
-        <p className="text-base sm:text-lg text-stone-600 dark:text-stone-400 max-w-2xl mx-auto mb-10 leading-relaxed font-normal">
+        <p className="text-base sm:text-lg text-stone-700 dark:text-stone-200 max-w-2xl mx-auto mb-10 leading-relaxed font-normal">
           Designed for studios, clinics, salons, wellness centres, and professional services. Explore Appointmo with synthetic data right now — featuring two-way live sync and instant self-service appointment management.
         </p>
 
@@ -145,10 +145,10 @@ export const LandingPage: React.FC = () => {
               <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               <span>The Appointmo Advantage</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-100 mb-3">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50 mb-3">
               "Not sure what to book? Tell us what you need, and we'll help you find the right service and time."
             </h2>
-            <p className="text-sm text-stone-600 dark:text-stone-400 leading-relaxed mb-6">
+            <p className="text-sm text-stone-700 dark:text-stone-200 leading-relaxed mb-6 font-normal">
               Instead of forcing customers to interpret a complex service catalogue, Appointmo's Concierge interprets preferences, specialized needs, and budget in natural language, matching them directly to genuine calendar openings.
             </p>
             <div className="flex flex-wrap items-center gap-3">
@@ -173,31 +173,31 @@ export const LandingPage: React.FC = () => {
       {/* How it Works */}
       <section id="how-it-works" className="py-16 max-w-5xl mx-auto px-4">
         <div className="text-center mb-12">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Two Seamless Demo Experiences</h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400 mt-2">Connected in real-time through an isolated synthetic PostgreSQL database.</p>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50">Two Seamless Demo Experiences</h2>
+          <p className="text-xs text-stone-600 dark:text-stone-300 mt-2 font-medium">Connected in real-time through an isolated synthetic PostgreSQL database.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Admin Demo Card */}
           <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-8 shadow-sm space-y-4 hover:border-stone-400 dark:hover:border-stone-700 transition">
             <div className="w-10 h-10 rounded-2xl bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100 flex items-center justify-center font-bold">
-              <Building2 className="w-5 h-5" />
+              <Building2 className="w-5 h-5 text-stone-700 dark:text-stone-200" />
             </div>
-            <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">Admin Operations Demo</h3>
-            <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
+            <h3 className="text-lg font-bold text-stone-900 dark:text-stone-50">Admin Operations Demo</h3>
+            <p className="text-xs text-stone-700 dark:text-stone-300 leading-relaxed font-normal">
               Experience the complete business operations dashboard: real-time revenue, incoming appointment feed, status approvals, reschedule coordination, and instant synchronization.
             </p>
-            <ul className="text-xs text-stone-600 dark:text-stone-400 space-y-2 pt-2">
+            <ul className="text-xs text-stone-700 dark:text-stone-300 space-y-2 pt-2 font-medium">
               <li className="flex items-center space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>Live dashboard metrics from 125 persisted records</span>
               </li>
               <li className="flex items-center space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>One-click status management (Complete, Cancel, Confirm)</span>
               </li>
               <li className="flex items-center space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>Dedicated safe reset for synthetic demo data</span>
               </li>
             </ul>
@@ -216,21 +216,21 @@ export const LandingPage: React.FC = () => {
             <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 flex items-center justify-center font-bold">
               <Sparkles className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             </div>
-            <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">Customer Booking &amp; Self-Management</h3>
-            <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
+            <h3 className="text-lg font-bold text-stone-900 dark:text-stone-50">Customer Booking &amp; Self-Management</h3>
+            <p className="text-xs text-stone-700 dark:text-stone-300 leading-relaxed font-normal">
               Book appointments directly with genuine availability, then reschedule or cancel anytime through the private self-service portal.
             </p>
-            <ul className="text-xs text-stone-600 dark:text-stone-400 space-y-2 pt-2">
+            <ul className="text-xs text-stone-700 dark:text-stone-300 space-y-2 pt-2 font-medium">
               <li className="flex items-center space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>Quick Booking with instant service selection</span>
               </li>
               <li className="flex items-center space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>Natural-language Concierge discovery</span>
               </li>
               <li className="flex items-center space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>Full self-service management (reschedule &amp; cancel anytime)</span>
               </li>
             </ul>
@@ -247,15 +247,15 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-stone-200 dark:border-stone-800 py-10 bg-white dark:bg-stone-900 text-xs text-stone-500 dark:text-stone-400">
+      <footer className="border-t border-stone-200 dark:border-stone-800 py-10 bg-white dark:bg-stone-900 text-xs text-stone-600 dark:text-stone-300">
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
             <AppointmoLogo size="sm" showText={false} />
             <span className="font-semibold text-stone-900 dark:text-stone-100">Appointmo</span>
-            <span>— Intelligent Scheduling Platform. Powered by Concierge Discovery.</span>
+            <span className="text-stone-600 dark:text-stone-300">— Intelligent Scheduling Platform. Powered by Concierge Discovery.</span>
           </div>
-          <div className="flex space-x-6 text-[11px]">
-            <span>Fictional Demonstration Studio: Lumière Beauty Studio</span>
+          <div className="flex space-x-6 text-[11px] text-stone-500 dark:text-stone-400">
+            <span>Allrights resere dynamic year her</span>
           </div>
         </div>
       </footer>
