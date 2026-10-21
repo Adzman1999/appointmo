@@ -1,13 +1,19 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Sparkles, ArrowRight, CheckCircle2, Calendar, Clock, 
-  User, AlertCircle, HelpCircle, DollarSign, ShieldCheck 
+  User, AlertCircle, HelpCircle, DollarSign, ShieldCheck,
+  Building2, Award, Zap, ThumbsUp
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 export const ConciergePage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const slugParam = searchParams.get('slug') || 'lumiere-beauty-studio';
+
+  const [businesses, setBusinesses] = useState<any[]>([]);
+  const [selectedSlug, setSelectedSlug] = useState<string>(slugParam);
   const [query, setQuery] = useState('I want a facial tomorrow afternoon under ₱1,500 suitable for sensitive skin');
   const [loading, setLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -25,18 +31,26 @@ export const ConciergePage: React.FC = () => {
   const [bookingSuccess, setBookingSuccess] = useState<any | null>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
-  const handleInquire = async (e?: React.FormEvent) => {
+  useEffect(() => {
+    apiFetch('/demo/admin/businesses')
+      .then((res: any) => setBusinesses(res.businesses || []))
+      .catch((err) => console.error(err));
+  }, []);
+
+  const handleInquire = async (e?: React.FormEvent, customQuery?: string, customSlug?: string) => {
     if (e) e.preventDefault();
-    if (!query.trim()) return;
+    const activeQuery = customQuery !== undefined ? customQuery : query;
+    const activeTargetSlug = customSlug || selectedSlug;
+    if (!activeQuery.trim()) return;
 
     setLoading(true);
     setError(null);
     setBookingSuccess(null);
 
     try {
-      const res: any = await apiFetch('/concierge', {
+      const res: any = await apiFetch(`/concierge?slug=${encodeURIComponent(activeTargetSlug)}`, {
         method: 'POST',
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query: activeQuery }),
       });
 
       setRecommendations(res.recommendations || []);
@@ -80,10 +94,11 @@ export const ConciergePage: React.FC = () => {
   };
 
   const sampleQueries = [
-    'I want a facial tomorrow afternoon under ₱1,500 suitable for sensitive skin',
-    'Relaxation massage this weekend under 1200',
-    'Manicure and pedicure tomorrow morning',
-    'Deep cleansing facial under ₱2,000 with extraction',
+    { text: 'I want a facial tomorrow afternoon under ₱1,500 suitable for sensitive skin', slug: 'lumiere-beauty-studio' },
+    { text: 'Teeth cleaning and whitening tomorrow morning under ₱3,500', slug: 'apex-dental-ortho' },
+    { text: 'Comprehensive veterinary checkup and vaccination for my puppy', slug: 'paws-whiskers-clinic' },
+    { text: 'Corporate contract and intellectual property legal consultation', slug: 'vanguard-legal-advisory' },
+    { text: 'Relaxation massage this weekend under ₱1,500', slug: 'lumiere-beauty-studio' },
   ];
 
   return (
@@ -96,22 +111,28 @@ export const ConciergePage: React.FC = () => {
               <Sparkles className="w-4 h-4 text-amber-600" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-stone-900">Concierge Booking</h1>
-              <p className="text-xs text-stone-500">Intelligent service discovery matched against real synthetic availability</p>
+              <h1 className="text-base font-bold text-stone-900">Explainable Concierge Booking</h1>
+              <p className="text-xs text-stone-500">Multi-business appointment recommendation engine with live slot checking</p>
             </div>
           </div>
           <div className="flex items-center space-x-3">
             <button
+              onClick={() => navigate('/browse')}
+              className="text-xs font-semibold text-stone-600 hover:text-stone-900 px-3 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 transition"
+            >
+              Browse Directory
+            </button>
+            <button
               onClick={() => navigate('/demo/book')}
               className="text-xs font-semibold text-stone-600 hover:text-stone-900 px-3 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 transition"
             >
-              Switch to Quick Booking
+              Quick Booking
             </button>
             <button
               onClick={() => navigate('/demo/admin')}
               className="text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg transition"
             >
-              View in Admin Demo &rarr;
+              Admin Demo &rarr;
             </button>
           </div>
         </div>
@@ -120,20 +141,43 @@ export const ConciergePage: React.FC = () => {
       <div className="max-w-3xl mx-auto px-4 space-y-8">
         {/* Inquire Box */}
         <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 shadow-sm">
-          <div className="mb-4">
-            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-900 text-xs font-semibold mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-              <span>Tell Us What You Need</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div>
+              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-900 text-xs font-semibold mb-2">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <span>Conversational Assistant</span>
+              </div>
+              <h2 className="text-xl font-bold tracking-tight text-stone-900">
+                Help Me Find the Right Appointment
+              </h2>
+              <p className="text-xs text-stone-500 mt-1">
+                Tell us your goals, budget, or preferred schedule. Concierge matches against actual provider catalogues and availability.
+              </p>
             </div>
-            <h2 className="text-xl font-bold tracking-tight text-stone-900">
-              Help Me Find the Right Appointment
-            </h2>
-            <p className="text-xs text-stone-500 mt-1">
-              No need to browse our entire catalogue. Describe your goals, preferred date, budget, or preferences, and our concierge will recommend verified open slots.
-            </p>
+
+            {/* Business Scope Selector */}
+            <div className="bg-stone-50 border border-stone-200 rounded-2xl p-2.5 shrink-0">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">
+                Target Business
+              </label>
+              <div className="flex items-center space-x-1.5">
+                <Building2 className="w-3.5 h-3.5 text-stone-500" />
+                <select
+                  value={selectedSlug}
+                  onChange={(e) => setSelectedSlug(e.target.value)}
+                  className="bg-transparent text-xs font-semibold text-stone-800 pr-1 py-0.5 focus:outline-none cursor-pointer"
+                >
+                  {businesses.map((b) => (
+                    <option key={b.id} value={b.slug}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
 
-          <form onSubmit={handleInquire} className="space-y-4">
+          <form onSubmit={(e) => handleInquire(e)} className="space-y-4">
             <div className="relative">
               <textarea
                 rows={3}
@@ -159,11 +203,13 @@ export const ConciergePage: React.FC = () => {
                   key={i}
                   type="button"
                   onClick={() => {
-                    setQuery(sq);
+                    setQuery(sq.text);
+                    setSelectedSlug(sq.slug);
+                    handleInquire(undefined, sq.text, sq.slug);
                   }}
-                  className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] transition text-left"
+                  className="px-2.5 py-1 rounded-xl bg-stone-100 text-stone-600 hover:bg-amber-100 hover:text-amber-900 transition text-[11px]"
                 >
-                  "{sq}"
+                  {sq.text.length > 40 ? sq.text.substring(0, 40) + '...' : sq.text}
                 </button>
               ))}
             </div>
@@ -241,10 +287,23 @@ export const ConciergePage: React.FC = () => {
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
                     <div>
-                      <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 text-[11px] font-semibold mb-1.5">
-                        <span>{rec.category}</span>
-                        <span>•</span>
-                        <span>{rec.durationMinutes} mins</span>
+                      <div className="flex items-center space-x-2 mb-1.5">
+                        <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 text-[11px] font-semibold">
+                          <span>{rec.category}</span>
+                          <span>•</span>
+                          <span>{rec.durationMinutes} mins</span>
+                        </div>
+                        {rec.badge && (
+                          <span className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            rec.badge === 'Best Match' 
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300' 
+                              : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                          }`}>
+                            {rec.badge === 'Best Match' && <Award className="w-3 h-3 text-amber-600" />}
+                            {rec.badge === 'Top Value' && <DollarSign className="w-3 h-3 text-emerald-600" />}
+                            <span>{rec.badge}</span>
+                          </span>
+                        )}
                       </div>
                       <h4 className="text-lg font-bold text-stone-900">{rec.serviceName}</h4>
                     </div>

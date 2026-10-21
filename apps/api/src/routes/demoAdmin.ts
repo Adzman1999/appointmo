@@ -6,19 +6,118 @@ import { AvailabilityService } from '../services/availability';
 
 const router = Router();
 
-// Dedicated Demo Isolation Scope: Only operates against the synthetic demo business
-async function getDemoBusinessId(): Promise<string> {
-  const bizRes = await query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio'");
+// Dedicated Demo Isolation Scope: Can operate against requested business slug or default to Lumière
+async function getDemoBusinessId(req?: Request): Promise<string> {
+  const querySlug = req?.query?.slug as string | undefined;
+  const targetSlug = querySlug && querySlug.trim() ? querySlug.trim() : 'lumiere-beauty-studio';
+
+  const bizRes = await query("SELECT id FROM businesses WHERE slug = $1", [targetSlug]);
   if (bizRes.rows.length === 0) {
-    throw new Error('Synthetic demo business not initialized');
+    // Fallback to first available business
+    const anyBiz = await query("SELECT id FROM businesses LIMIT 1");
+    if (anyBiz.rows.length === 0) {
+      throw new Error('Synthetic demo business not initialized');
+    }
+    return anyBiz.rows[0].id;
   }
   return bizRes.rows[0].id;
 }
 
+// 0. Get current active business info and all switchable demo businesses
+router.get('/businesses', async (_req: Request, res: Response) => {
+  try {
+    const listRes = await query(`
+      SELECT b.id, b.name, b.slug, b.category, b.description,
+             COUNT(DISTINCT br.id)::int AS "branchCount",
+             COUNT(DISTINCT s.id)::int AS "serviceCount",
+             COUNT(DISTINCT sp.id)::int AS "staffCount"
+      FROM businesses b
+      LEFT JOIN branches br ON b.id = br.business_id AND br.is_active = true
+      LEFT JOIN services s ON b.id = s.business_id AND s.is_active = true
+      LEFT JOIN staff_profiles sp ON b.id = sp.business_id AND sp.is_active = true
+      GROUP BY b.id
+      ORDER BY b.name ASC
+    `);
+
+    res.json({ businesses: listRes.rows });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to fetch demo businesses' });
+  }
+});
+
+// 0b. Create New Fictional Demo Business from Admin Studio Wizard
+router.post('/create-business', async (req: Request, res: Response) => {
+  const client = await pool.connect();
+  try {
+    const { name, category, description, currency, timezone, branchName, branchAddress, branchCity, branchPhone } = req.body;
+
+    if (!name || !category) {
+      return res.status(400).json({ error: 'Business name and category are required' });
+    }
+
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Math.random().toString(36).substring(2, 6);
+
+    await client.query('BEGIN');
+
+    // 1. Create Business
+    const bRes = await client.query(`
+      INSERT INTO businesses (name, slug, description, category, currency, timezone)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, name, slug, category, description
+    `, [name, slug, description || `Demo studio offering ${category}`, currency || 'PHP', timezone || 'Asia/Manila']);
+    const newBiz = bRes.rows[0];
+
+    // 2. Create Initial Branch
+    const brRes = await client.query(`
+      INSERT INTO branches (business_id, name, address, city, phone, location_description)
+      VALUES ($1, $2, $3, $4, $5, 'Primary Demonstration Branch')
+      RETURNING id, name
+    `, [newBiz.id, branchName || `${name} Main Branch`, branchAddress || '101 Demonstration Ave', branchCity || 'Quezon City', branchPhone || '+63 2 8999 0001']);
+
+    // 3. Create default service
+    const sRes = await client.query(`
+      INSERT INTO services (business_id, name, description, duration_minutes, price, category)
+      VALUES ($1, 'Standard Consultation', 'Initial comprehensive consultation and assessment session.', 45, 1000, 'Consultation')
+      RETURNING id
+    `, [newBiz.id]);
+
+    // 4. Create default staff
+    const spRes = await client.query(`
+      INSERT INTO staff_profiles (business_id, name, bio)
+      VALUES ($1, 'Lead Practitioner', 'Experienced practitioner and service specialist.')
+      RETURNING id
+    `, [newBiz.id]);
+
+    // Link staff service
+    await client.query(`INSERT INTO staff_services (staff_id, service_id) VALUES ($1, $2)`, [spRes.rows[0].id, sRes.rows[0].id]);
+
+    // Set working hours Mon-Sat
+    for (let day = 1; day <= 6; day++) {
+      await client.query(`
+        INSERT INTO staff_working_hours (staff_id, day_of_week, start_time, end_time, break_start, break_end, is_working)
+        VALUES ($1, $2, '09:00:00', '18:00:00', '12:00:00', '13:00:00', true)
+      `, [spRes.rows[0].id, day]);
+    }
+
+    await client.query('COMMIT');
+
+    res.status(201).json({
+      message: 'Demo business created successfully!',
+      business: newBiz,
+      branch: brRes.rows[0]
+    });
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'Failed to create business: ' + err.message });
+  } finally {
+    client.release();
+  }
+});
+
 // 1. Live Calculated Dashboard Metrics
 router.get('/metrics', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId();
+    const businessId = await getDemoBusinessId(req);
 
     const statusRes = await query(`
       SELECT status, COUNT(*)::int AS count
@@ -82,7 +181,7 @@ router.get('/metrics', async (req: Request, res: Response) => {
 router.get('/appointments', async (req: Request, res: Response) => {
   try {
     const { status, search, limit = '50', offset = '0', sort = 'newest' } = req.query;
-    const businessId = await getDemoBusinessId();
+    const businessId = await getDemoBusinessId(req);
 
     let sql = `
       SELECT 
@@ -131,7 +230,7 @@ router.get('/appointments', async (req: Request, res: Response) => {
 router.get('/appointments/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const businessId = await getDemoBusinessId();
+    const businessId = await getDemoBusinessId(req);
 
     const apptRes = await query(`
       SELECT 
@@ -498,8 +597,10 @@ router.post('/reset', async (req: Request, res: Response) => {
 // 11. Services and Working Hours Overview for Admin Demo
 router.get('/settings', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId();
+    const businessId = await getDemoBusinessId(req);
 
+    const bizRes = await query('SELECT id, name, slug, category, description, currency, timezone FROM businesses WHERE id = $1', [businessId]);
+    const branchesRes = await query('SELECT id, name, address, city, phone, location_description AS "locationDescription" FROM branches WHERE business_id = $1 AND is_active = true', [businessId]);
     const servicesRes = await query('SELECT id, name, description, duration_minutes AS "durationMinutes", price, category FROM services WHERE business_id = $1 ORDER BY price ASC', [businessId]);
     const staffRes = await query('SELECT id, name, bio FROM staff_profiles WHERE business_id = $1', [businessId]);
     const hoursRes = await query(`
@@ -511,6 +612,8 @@ router.get('/settings', async (req: Request, res: Response) => {
     `, [businessId]);
 
     res.json({
+      business: bizRes.rows[0],
+      branches: branchesRes.rows,
       services: servicesRes.rows,
       staff: staffRes.rows,
       workingHours: hoursRes.rows,

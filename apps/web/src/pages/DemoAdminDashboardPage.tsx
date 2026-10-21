@@ -4,12 +4,16 @@ import {
   Calendar, Users, DollarSign, CheckCircle2, RotateCcw, 
   Search, Filter, Clock, ArrowRight, Sparkles, Building2, 
   Check, X, AlertTriangle, Shield, Bell, ChevronRight, UserCheck, 
-  RefreshCw, Info, Edit3, XCircle, AlertCircle
+  RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 export const DemoAdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const [businesses, setBusinesses] = useState<any[]>([]);
+  const [activeSlug, setActiveSlug] = useState<string>('lumiere-beauty-studio');
+  const [currentBusiness, setCurrentBusiness] = useState<any | null>(null);
+
   const [metrics, setMetrics] = useState<any | null>(null);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -45,17 +49,41 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [cancelReason, setCancelReason] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
 
+  // New Demo Business Creation Wizard Modal State
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createCategory, setCreateCategory] = useState('Beauty & Wellness');
+  const [createDescription, setCreateDescription] = useState('');
+  const [createBranchName, setCreateBranchName] = useState('');
+  const [createBranchCity, setCreateBranchCity] = useState('Quezon City');
+  const [createBranchAddress, setCreateBranchAddress] = useState('');
+  const [createBranchPhone, setCreateBranchPhone] = useState('+63 2 8999 0001');
+  const [creatingBusiness, setCreatingBusiness] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const fetchBusinesses = async () => {
+    try {
+      const bRes: any = await apiFetch('/demo/admin/businesses');
+      setBusinesses(bRes.businesses || []);
+    } catch (err) {
+      console.error('Failed to fetch businesses', err);
+    }
+  };
+
   const fetchDashboardData = async () => {
     try {
-      const mRes: any = await apiFetch('/demo/admin/metrics');
+      const mRes: any = await apiFetch(`/demo/admin/metrics?slug=${encodeURIComponent(activeSlug)}`);
       setMetrics(mRes.metrics);
 
-      let apptUrl = `/demo/admin/appointments?status=${statusFilter}&sort=newest`;
+      let apptUrl = `/demo/admin/appointments?slug=${encodeURIComponent(activeSlug)}&status=${statusFilter}&sort=newest`;
       if (search.trim()) {
         apptUrl += `&search=${encodeURIComponent(search.trim())}`;
       }
       const aRes: any = await apiFetch(apptUrl);
       setAppointments(aRes.appointments || []);
+
+      const sRes: any = await apiFetch(`/demo/admin/settings?slug=${encodeURIComponent(activeSlug)}`);
+      setCurrentBusiness(sRes.business || null);
     } catch (err: any) {
       console.error(err);
       setErrorNotice(err.message || 'Failed to load demo dashboard');
@@ -74,9 +102,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   // Initial load
   useEffect(() => {
+    fetchBusinesses();
+  }, []);
+
+  useEffect(() => {
     setLoading(true);
     Promise.all([fetchDashboardData(), fetchNotifications()]).finally(() => setLoading(false));
-  }, [statusFilter]);
+  }, [activeSlug, statusFilter]);
 
   // Periodic polling every 5 seconds to guarantee live updates without manual page reload
   useEffect(() => {
@@ -85,7 +117,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       fetchNotifications();
     }, 5000);
     return () => clearInterval(interval);
-  }, [statusFilter, search]);
+  }, [activeSlug, statusFilter, search]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,6 +275,45 @@ export const DemoAdminDashboardPage: React.FC = () => {
     }
   };
 
+  // Create Demo Business
+  const handleCreateBusinessSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createName.trim()) return;
+
+    setCreatingBusiness(true);
+    setCreateError(null);
+
+    try {
+      const res: any = await apiFetch('/demo/admin/create-business', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: createName.trim(),
+          category: createCategory,
+          description: createDescription.trim(),
+          branchName: createBranchName.trim() || undefined,
+          branchCity: createBranchCity,
+          branchAddress: createBranchAddress.trim() || undefined,
+          branchPhone: createBranchPhone.trim() || undefined,
+        }),
+      });
+
+      setNotice(`Created new business "${res.business.name}" successfully! Switched to its admin view.`);
+      setIsCreateModalOpen(false);
+      setCreateName('');
+      setCreateDescription('');
+      setCreateBranchName('');
+      setCreateBranchAddress('');
+
+      // Refresh business list & select new one
+      await fetchBusinesses();
+      setActiveSlug(res.business.slug);
+    } catch (err: any) {
+      setCreateError(err.message || 'Failed to create business');
+    } finally {
+      setCreatingBusiness(false);
+    }
+  };
+
   // Reset Demo Data
   const handleResetDemoData = async () => {
     if (!confirm('Reset Lumière Beauty Studio demo data to original clean synthetic state (125 bookings)?')) return;
@@ -266,15 +337,22 @@ export const DemoAdminDashboardPage: React.FC = () => {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center space-x-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="font-semibold text-white">Interactive Admin Demo:</span>
-            <span>Operating on fictional synthetic business (Lumière Beauty Studio). Real PostgreSQL storage.</span>
+            <span className="font-semibold text-white">Interactive Admin Demo Studio:</span>
+            <span>Switch between synthetic businesses or launch your own. Real PostgreSQL storage.</span>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-4">
             <button
-              onClick={() => navigate('/demo/book')}
+              onClick={() => navigate('/browse')}
+              className="text-stone-300 hover:text-white font-medium text-xs flex items-center space-x-1"
+            >
+              <Store className="w-3.5 h-3.5" />
+              <span>Smart Discovery</span>
+            </button>
+            <button
+              onClick={() => navigate(`/demo/book?slug=${activeSlug}`)}
               className="text-white hover:text-amber-300 font-semibold underline text-xs"
             >
-              Switch to Customer Booking Demo &rarr;
+              Customer Booking Experience &rarr;
             </button>
           </div>
         </div>
@@ -282,23 +360,53 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
       {/* Main Navbar */}
       <header className="bg-white border-b border-stone-200 py-3.5 px-6 shadow-sm sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-stone-900 text-white flex items-center justify-center font-bold text-base shadow">
-              L
+            <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center font-bold text-lg shadow shrink-0">
+              {currentBusiness?.name ? currentBusiness.name.charAt(0) : 'A'}
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-bold text-base text-stone-900">Lumière Beauty Studio</span>
+                <span className="font-bold text-base text-stone-900">
+                  {currentBusiness?.name || 'Loading Business...'}
+                </span>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
-                  Fictional Studio Demo
+                  {currentBusiness?.category || 'Demo Business'}
                 </span>
               </div>
-              <p className="text-[11px] text-stone-500">Suite 404, Fictional Innovation Tower, Quezon City</p>
+              <p className="text-[11px] text-stone-500">
+                {currentBusiness?.description || 'Synthetic appointment provider in Metro Manila'}
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Business Switcher Dropdown */}
+            <div className="flex items-center space-x-1 bg-stone-50 border border-stone-200 rounded-xl px-2 py-1">
+              <Building2 className="w-3.5 h-3.5 text-stone-500 ml-1" />
+              <select
+                value={activeSlug}
+                onChange={(e) => setActiveSlug(e.target.value)}
+                className="bg-transparent text-xs font-semibold text-stone-800 pr-2 py-0.5 focus:outline-none cursor-pointer"
+              >
+                {businesses.map((b) => (
+                  <option key={b.id} value={b.slug}>
+                    {b.name} ({b.category})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Create Demo Business Studio Button */}
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-stone-900 text-white hover:bg-stone-800 transition shadow-sm"
+              title="Launch a new synthetic business"
+            >
+              <Plus className="w-3.5 h-3.5 text-amber-300" />
+              <span>New Business</span>
+            </button>
+
             {/* Notification Bell with Badge */}
             <div className="relative">
               <button
@@ -881,6 +989,155 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 transition shadow"
                 >
                   {cancelLoading ? 'Cancelling...' : 'Confirm Cancellation'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: CREATE DEMO BUSINESS STUDIO WIZARD */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-stone-900">Business Setup Studio</h3>
+                  <p className="text-xs text-stone-500">Configure and launch a fictional demo business</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCreateModalOpen(false)}
+                className="text-stone-400 hover:text-stone-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {createError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs mb-4 flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{createError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateBusinessSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-stone-700 mb-1">
+                  Business Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Apex Dental & Orthodontics, Zenith Wellness"
+                  value={createName}
+                  onChange={(e) => setCreateName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-stone-700 mb-1">Category</label>
+                  <select
+                    value={createCategory}
+                    onChange={(e) => setCreateCategory(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                  >
+                    <option value="Beauty & Wellness">Beauty & Wellness</option>
+                    <option value="Dental Services">Dental Services</option>
+                    <option value="Veterinary Services">Veterinary Services</option>
+                    <option value="Professional Consultations">Professional Consultations</option>
+                    <option value="Automotive & Detailing">Automotive & Detailing</option>
+                    <option value="Health & Fitness">Health & Fitness</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-stone-700 mb-1">Primary City</label>
+                  <select
+                    value={createBranchCity}
+                    onChange={(e) => setCreateBranchCity(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                  >
+                    <option value="Quezon City">Quezon City</option>
+                    <option value="Makati">Makati</option>
+                    <option value="Taguig / BGC">Taguig / BGC</option>
+                    <option value="Pasig / Ortigas">Pasig / Ortigas</option>
+                    <option value="San Juan / Greenhills">San Juan / Greenhills</option>
+                    <option value="Mandaluyong">Mandaluyong</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 mb-1">Business Description</label>
+                <textarea
+                  rows={2}
+                  placeholder="Briefly describe what services or specialties this business provides..."
+                  value={createDescription}
+                  onChange={(e) => setCreateDescription(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                />
+              </div>
+
+              <div className="border-t border-stone-100 pt-3">
+                <span className="font-semibold text-stone-800 block mb-2">Initial Demonstration Branch</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-stone-500 mb-1">Branch Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Flagship Branch"
+                      value={createBranchName}
+                      onChange={(e) => setCreateBranchName(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-stone-500 mb-1">Branch Phone</label>
+                    <input
+                      type="text"
+                      placeholder="+63 2 8999 0001"
+                      value={createBranchPhone}
+                      onChange={(e) => setCreateBranchPhone(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                    />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <label className="block text-stone-500 mb-1">Street Address</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 88 Commercial Ave, Level 2"
+                    value={createBranchAddress}
+                    onChange={(e) => setCreateBranchAddress(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
+                <strong>Studio Generator:</strong> Upon setup, Appointmo automatically seeds an initial active service, certified lead practitioner, and Monday-Saturday working hours to immediately enable live customer bookings.
+              </div>
+
+              <div className="flex space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingBusiness || !createName.trim()}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-stone-900 text-white hover:bg-stone-800 transition shadow disabled:opacity-50"
+                >
+                  {creatingBusiness ? 'Configuring Studio...' : 'Launch Business'}
                 </button>
               </div>
             </form>

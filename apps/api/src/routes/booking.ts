@@ -186,9 +186,21 @@ router.post('/bookings', async (req: Request, res: Response) => {
 router.post('/concierge', async (req: Request, res: Response) => {
   try {
     const parsed = ConciergeInquirySchema.parse(req.body);
+    const querySlug = (req.query.slug as string) || (req.body.slug as string);
 
-    const bizRes = await query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio'");
-    const businessId = bizRes.rows[0].id;
+    let businessId: string;
+    if (querySlug && querySlug.trim()) {
+      const bizRes = await query("SELECT id FROM businesses WHERE slug = $1", [querySlug.trim()]);
+      if (bizRes.rows.length > 0) {
+        businessId = bizRes.rows[0].id;
+      } else {
+        const defaultBiz = await query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio'");
+        businessId = defaultBiz.rows[0].id;
+      }
+    } else {
+      const bizRes = await query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio'");
+      businessId = bizRes.rows[0].id;
+    }
 
     const result = await ConciergeService.getRecommendations(businessId, parsed);
     res.json(result);

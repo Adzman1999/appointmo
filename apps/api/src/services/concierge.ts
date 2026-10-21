@@ -4,6 +4,9 @@ import { AvailabilityService, TimeSlot } from './availability';
 export interface ConciergeRecommendation {
   serviceId: string;
   serviceName: string;
+  businessId?: string;
+  businessName?: string;
+  businessCategory?: string;
   price: number;
   durationMinutes: number;
   category: string;
@@ -11,6 +14,7 @@ export interface ConciergeRecommendation {
   staffName: string;
   slot: TimeSlot;
   matchScore: number;
+  badge?: 'Best Match' | 'Top Value' | 'Soonest Available' | 'Top Rated';
   matchReasons: string[];
 }
 
@@ -37,9 +41,12 @@ export class ConciergeService {
     const isMassage = qLower.includes('massage') || qLower.includes('relax') || qLower.includes('body') || qLower.includes('stress');
     const isFacial = qLower.includes('facial') || qLower.includes('skin') || qLower.includes('face') || qLower.includes('glow');
     const isNails = qLower.includes('nail') || qLower.includes('manicure') || qLower.includes('pedicure') || qLower.includes('feet') || qLower.includes('hands');
+    const isDental = qLower.includes('dental') || qLower.includes('tooth') || qLower.includes('teeth') || qLower.includes('whitening') || qLower.includes('cleaning') || qLower.includes('ortho');
+    const isVet = qLower.includes('pet') || qLower.includes('dog') || qLower.includes('cat') || qLower.includes('vaccine') || qLower.includes('puppy') || qLower.includes('kitten') || qLower.includes('vet');
+    const isLegal = qLower.includes('legal') || qLower.includes('law') || qLower.includes('contract') || qLower.includes('advisory') || qLower.includes('consult') || qLower.includes('attorney');
 
     // Extract stated budget
-    const budgetMatch = qLower.match(/(under|below|budget of|max|less than)?\s*(?:₱|php)?\s*(\d{3,4})/i);
+    const budgetMatch = qLower.match(/(under|below|budget of|max|less than)?\s*(?:₱|php)?\s*(\d{3,5})/i);
     const statedBudget = params.maxBudget || (budgetMatch ? parseInt(budgetMatch[2], 10) : undefined);
 
     // 2. Score candidate services
@@ -48,17 +55,27 @@ export class ConciergeService {
       const reasons: string[] = [];
       const sDesc = (s.description || '').toLowerCase();
       const sName = s.name.toLowerCase();
+      const sCat = (s.category || '').toLowerCase();
 
       // Category matching
-      if (isFacial && s.category === 'Facial') {
+      if (isFacial && (sCat.includes('facial') || sCat.includes('skin'))) {
         score += 80;
         reasons.push('Matches your requested facial & skincare goal');
-      } else if (isMassage && s.category.includes('Body')) {
+      } else if (isMassage && (sCat.includes('body') || sCat.includes('massage') || sCat.includes('wellness'))) {
         score += 80;
         reasons.push('Matches your relaxation and body wellness focus');
-      } else if (isNails && s.category === 'Nails') {
+      } else if (isNails && sCat.includes('nail')) {
         score += 80;
         reasons.push('Matches your nail care grooming preference');
+      } else if (isDental && (sCat.includes('dental') || sCat.includes('preventive') || sCat.includes('cosmetic') || sCat.includes('orthodontics'))) {
+        score += 80;
+        reasons.push('Specialized dental and oral health service');
+      } else if (isVet && (sCat.includes('veterinary') || sCat.includes('pet') || sCat.includes('clinical') || sCat.includes('grooming'))) {
+        score += 80;
+        reasons.push('Qualified veterinary and pet healthcare care');
+      } else if (isLegal && (sCat.includes('legal') || sCat.includes('corporate') || sCat.includes('advisory') || sCat.includes('consultation'))) {
+        score += 80;
+        reasons.push('Professional legal and advisory consultation');
       }
 
       // Specific attributes
@@ -156,6 +173,7 @@ export class ConciergeService {
             filteredSlots = slots.filter(s => new Date(s.startTime).getHours() >= 17);
           }
 
+          const sortedSlots = [...slots].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
           const chosenSlot = filteredSlots.length > 0 ? filteredSlots[0] : slots[0];
           const reasons = [...item.reasons];
           if (timeOfDay && filteredSlots.length > 0) {
@@ -189,8 +207,22 @@ export class ConciergeService {
       }
     }
 
+    // Sort by matchScore and assign badges
+    const sortedRecs = recommendations.sort((a, b) => b.matchScore - a.matchScore).slice(0, 3);
+    if (sortedRecs.length > 0) {
+      sortedRecs[0].badge = 'Best Match';
+      if (sortedRecs.length > 1) {
+        // Assign Top Value to lowest price among remaining
+        let lowestIdx = 1;
+        for (let i = 2; i < sortedRecs.length; i++) {
+          if (sortedRecs[i].price < sortedRecs[lowestIdx].price) lowestIdx = i;
+        }
+        sortedRecs[lowestIdx].badge = 'Top Value';
+      }
+    }
+
     return {
-      recommendations: recommendations.sort((a, b) => b.matchScore - a.matchScore).slice(0, 3),
+      recommendations: sortedRecs,
       alternatives: alternatives.slice(0, 2),
       extractedPreferences: {
         targetDate: targetDateStr,
