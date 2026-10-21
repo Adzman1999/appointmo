@@ -321,8 +321,8 @@ export const QuickBookingPage: React.FC = () => {
         ) : (
           <form onSubmit={handleBookingSubmit} className="space-y-6">
             {/* Step 1: Select Service */}
-            <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-4">
+            <div className="bg-stone-50/80 dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200 mb-4">
                 1. Select a Service
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -333,24 +333,24 @@ export const QuickBookingPage: React.FC = () => {
                     onClick={() => setSelectedService(s)}
                     className={`p-4 rounded-2xl border text-left transition ${
                       selectedService?.id === s.id
-                        ? 'border-stone-900 dark:border-amber-400 ring-2 ring-stone-900 dark:ring-amber-400 bg-stone-50 dark:bg-stone-800 shadow-sm'
-                        : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 bg-white dark:bg-stone-850 text-stone-800 dark:text-stone-200'
+                        ? 'border-stone-900 dark:border-amber-400 ring-2 ring-stone-900 dark:ring-amber-400 bg-stone-100 dark:bg-stone-800 shadow-sm'
+                        : 'border-stone-200 dark:border-stone-800 hover:border-stone-400 dark:hover:border-stone-700 bg-white dark:bg-stone-800/90 text-stone-900 dark:text-stone-100'
                     }`}
                   >
                     <div className="flex justify-between items-start mb-1">
                       <span className="font-bold text-sm text-stone-900 dark:text-stone-100">{s.name}</span>
-                      <span className="font-bold text-sm text-stone-900 dark:text-stone-100">₱{s.price}</span>
+                      <span className="font-bold text-sm text-stone-900 dark:text-amber-400">₱{s.price}</span>
                     </div>
-                    <p className="text-xs text-stone-600 dark:text-stone-300 line-clamp-2 leading-relaxed">{s.description}</p>
-                    <div className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 mt-2">{s.durationMinutes} mins • {s.category}</div>
+                    <p className="text-xs text-stone-700 dark:text-stone-300 line-clamp-2 leading-relaxed">{s.description}</p>
+                    <div className="text-[11px] font-semibold text-stone-600 dark:text-stone-400 mt-2">{s.durationMinutes} mins • {s.category}</div>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Step 2: Date & Available Time Slot */}
-            <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-4">
+            <div className="bg-stone-50/80 dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200 mb-4">
                 2. Choose Date &amp; Available Time
               </h2>
               <div className="mb-4">
@@ -405,8 +405,8 @@ export const QuickBookingPage: React.FC = () => {
             </div>
 
             {/* Step 3: Customer Information */}
-            <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-4">
+            <div className="bg-stone-50/80 dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200 mb-4">
                 3. Customer Contact Info
               </h2>
 

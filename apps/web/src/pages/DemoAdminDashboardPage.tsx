@@ -592,7 +592,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
         <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-stone-50 dark:bg-stone-800/60 border-b border-stone-200 dark:border-stone-700 text-stone-500 dark:text-stone-400 font-semibold uppercase tracking-wider text-[10px]">
+              <thead className="bg-stone-100 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-bold uppercase tracking-wider text-[10px]">
                 <tr>
                   <th className="px-5 py-3.5">Booking Ref</th>
                   <th className="px-5 py-3.5">Customer</th>
@@ -605,65 +605,65 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100">
+              <tbody className="divide-y divide-stone-200 dark:divide-stone-800">
                 {loading && appointments.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-12 text-stone-400">
+                    <td colSpan={9} className="text-center py-12 text-stone-500 dark:text-stone-400 font-medium">
                       Loading appointments from database...
                     </td>
                   </tr>
                 ) : appointments.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-12 text-stone-400">
+                    <td colSpan={9} className="text-center py-12 text-stone-500 dark:text-stone-400 font-medium">
                       No appointments matching this query. Try selecting "All Records".
                     </td>
                   </tr>
                 ) : (
                   appointments.map((appt) => (
-                    <tr key={appt.id} className="hover:bg-stone-50/70 transition">
-                      <td className="px-5 py-3.5 font-mono font-semibold text-stone-900">
+                    <tr key={appt.id} className="hover:bg-stone-50/80 dark:hover:bg-stone-800/50 transition">
+                      <td className="px-5 py-3.5 font-mono font-bold text-stone-900 dark:text-stone-100">
                         <button
                           onClick={() => handleOpenDetails(appt.id)}
-                          className="hover:underline text-stone-900 text-left font-bold"
+                          className="hover:underline text-stone-900 dark:text-amber-400 text-left font-bold"
                           title="Click to view details & audit history"
                         >
                           {appt.bookingReference}
                         </button>
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className="font-semibold text-stone-900">{appt.customerName}</div>
-                        <div className="text-stone-400 text-[11px]">{appt.customerPhone}</div>
+                        <div className="font-semibold text-stone-900 dark:text-stone-100">{appt.customerName}</div>
+                        <div className="text-stone-600 dark:text-stone-300 text-[11px] font-medium">{appt.customerPhone}</div>
                       </td>
-                      <td className="px-5 py-3.5 font-medium text-stone-800">
+                      <td className="px-5 py-3.5 font-medium text-stone-900 dark:text-stone-100">
                         {appt.serviceName}
                       </td>
-                      <td className="px-5 py-3.5 text-stone-600">
+                      <td className="px-5 py-3.5 text-stone-700 dark:text-stone-300 font-medium">
                         {appt.staffName}
                       </td>
-                      <td className="px-5 py-3.5 text-stone-600 whitespace-nowrap">
-                        <div>{new Date(appt.startTime).toLocaleDateString()}</div>
-                        <div className="text-[11px] text-stone-400">
+                      <td className="px-5 py-3.5 text-stone-800 dark:text-stone-200 whitespace-nowrap">
+                        <div className="font-semibold text-stone-900 dark:text-stone-100">{new Date(appt.startTime).toLocaleDateString()}</div>
+                        <div className="text-[11px] text-stone-600 dark:text-stone-300 font-medium">
                           {new Date(appt.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -{' '}
                           {new Date(appt.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 text-stone-500 whitespace-nowrap text-[11px]">
-                        <div>{new Date(appt.createdAt).toLocaleDateString()}</div>
-                        <div className="text-stone-400">{new Date(appt.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                      <td className="px-5 py-3.5 text-stone-700 dark:text-stone-300 whitespace-nowrap text-[11px] font-medium">
+                        <div className="text-stone-800 dark:text-stone-200">{new Date(appt.createdAt).toLocaleDateString()}</div>
+                        <div className="text-stone-600 dark:text-stone-400">{new Date(appt.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                       </td>
-                      <td className="px-5 py-3.5 font-semibold text-stone-900">
+                      <td className="px-5 py-3.5 font-bold text-stone-900 dark:text-stone-100">
                         ₱{Number(appt.price).toLocaleString()}
                       </td>
                       <td className="px-5 py-3.5">
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                             appt.status === 'confirmed'
-                              ? 'bg-emerald-100 text-emerald-800'
+                              ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
                               : appt.status === 'completed'
-                              ? 'bg-stone-100 text-stone-700'
+                              ? 'bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200'
                               : appt.status === 'cancelled'
-                              ? 'bg-rose-100 text-rose-800'
-                              : 'bg-amber-100 text-amber-800'
+                              ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
+                              : 'bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300'
                           }`}
                         >
                           {appt.status}
@@ -673,7 +673,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         {/* Details Button */}
                         <button
                           onClick={() => handleOpenDetails(appt.id)}
-                          className="px-2.5 py-1 rounded-lg border border-stone-200 text-stone-700 font-medium text-[11px] hover:bg-stone-100 transition"
+                          className="px-2.5 py-1 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-semibold text-[11px] hover:bg-stone-100 dark:hover:bg-stone-800 transition"
                           title="View Details & History"
                         >
                           Details
@@ -684,13 +684,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           <>
                             <button
                               onClick={() => handleOpenReschedule(appt)}
-                              className="px-2.5 py-1 rounded-lg bg-stone-100 text-stone-800 font-medium text-[11px] hover:bg-stone-200 transition"
+                              className="px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold text-[11px] hover:bg-stone-200 dark:hover:bg-stone-700 transition"
                             >
                               Reschedule
                             </button>
                             <button
                               onClick={() => handleUpdateStatus(appt.id, 'completed')}
-                              className="px-2.5 py-1 rounded-lg bg-stone-900 text-white font-medium text-[11px] hover:bg-stone-800 transition"
+                              className="px-2.5 py-1 rounded-lg bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-[11px] hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow-sm"
                             >
                               Complete
                             </button>
@@ -699,7 +699,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                                 setCancelModalAppt(appt);
                                 setCancelReason('');
                               }}
-                              className="px-2.5 py-1 rounded-lg border border-rose-200 text-rose-600 font-medium text-[11px] hover:bg-rose-50 transition"
+                              className="px-2.5 py-1 rounded-lg border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 font-semibold text-[11px] hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
                             >
                               Cancel
                             </button>
@@ -710,7 +710,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           <>
                             <button
                               onClick={() => handleUpdateStatus(appt.id, 'confirmed')}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-700 text-white font-medium text-[11px] hover:bg-emerald-800 transition"
+                              className="px-2.5 py-1 rounded-lg bg-emerald-700 dark:bg-emerald-600 text-white font-bold text-[11px] hover:bg-emerald-800 dark:hover:bg-emerald-500 transition shadow-sm"
                             >
                               Approve
                             </button>
@@ -719,7 +719,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                                 setCancelModalAppt(appt);
                                 setCancelReason('');
                               }}
-                              className="px-2.5 py-1 rounded-lg border border-stone-200 text-stone-600 font-medium text-[11px] hover:bg-stone-100 transition"
+                              className="px-2.5 py-1 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 font-semibold text-[11px] hover:bg-stone-100 dark:hover:bg-stone-800 transition"
                             >
                               Decline
                             </button>
@@ -729,7 +729,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         {appt.status === 'cancelled' && (
                           <button
                             onClick={() => handleOpenReschedule(appt)}
-                            className="px-2.5 py-1 rounded-lg border border-stone-300 text-stone-700 font-medium text-[11px] hover:bg-stone-100 transition"
+                            className="px-2.5 py-1 rounded-lg border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-semibold text-[11px] hover:bg-stone-100 dark:hover:bg-stone-800 transition"
                           >
                             Re-book
                           </button>
