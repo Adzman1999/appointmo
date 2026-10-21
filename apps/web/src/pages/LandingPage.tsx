@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Calendar, Sparkles, Shield, Clock, CheckCircle2, 
-  ChevronRight, ArrowRight, Building2, UserCheck, Search, SlidersHorizontal 
+  ChevronRight, ArrowRight, Building2, UserCheck, Search, SlidersHorizontal, Plus 
 } from 'lucide-react';
 import { SHOW_PRODUCTION_AUTH } from '../config';
 import { AppointmoLogo } from '../components/AppointmoLogo';
+import { BusinessCreationModal } from '../components/BusinessCreationModal';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 selection:bg-stone-200">
@@ -65,6 +67,14 @@ export const LandingPage: React.FC = () => {
 
           <div className="flex items-center space-x-3">
             <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-xs hover:bg-amber-200 transition shadow-sm"
+              title="Launch a new business and take appointments"
+            >
+              <Plus className="w-3.5 h-3.5 text-amber-700" />
+              <span>Create Business</span>
+            </button>
+            <button
               onClick={() => navigate('/demo/admin')}
               className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-stone-800 font-semibold text-xs hover:bg-stone-50 transition shadow-sm"
             >
@@ -100,18 +110,26 @@ export const LandingPage: React.FC = () => {
         {/* Primary Call to Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm font-semibold">
           <button
-            onClick={() => navigate('/demo/admin')}
+            onClick={() => setIsCreateModalOpen(true)}
             className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-stone-900 text-white px-7 py-3.5 rounded-xl hover:bg-stone-800 transition shadow"
           >
-            <Building2 className="w-4 h-4 text-amber-300" />
+            <Plus className="w-4 h-4 text-amber-300" />
+            <span>Create Your Business</span>
+          </button>
+
+          <button
+            onClick={() => navigate('/demo/admin')}
+            className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-white text-stone-800 border border-stone-300 px-7 py-3.5 rounded-xl hover:bg-stone-50 transition shadow-sm"
+          >
+            <Building2 className="w-4 h-4 text-stone-500" />
             <span>Explore Admin Demo</span>
           </button>
 
           <button
             onClick={() => navigate('/browse')}
-            className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-white text-stone-800 border border-stone-300 px-7 py-3.5 rounded-xl hover:bg-stone-50 transition shadow-sm"
+            className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-200 px-7 py-3.5 rounded-xl transition"
           >
-            <span>Browse Businesses &amp; Book</span>
+            <span>Browse Directory &amp; Book</span>
             <ArrowRight className="w-4 h-4 text-stone-500" />
           </button>
         </div>
@@ -239,6 +257,15 @@ export const LandingPage: React.FC = () => {
           </div>
         </div>
       </footer>
+      {/* Business Setup Wizard Modal */}
+      <BusinessCreationModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={(newBiz) => {
+          setIsCreateModalOpen(false);
+          navigate(`/demo/admin?slug=${encodeURIComponent(newBiz.slug)}`);
+        }}
+      />
     </div>
   );
 };

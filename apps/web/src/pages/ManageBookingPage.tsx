@@ -34,6 +34,21 @@ export const ManageBookingPage: React.FC = () => {
   const [rescheduleReason, setRescheduleReason] = useState('');
   const [rescheduling, setRescheduling] = useState(false);
 
+  const fetchBookingAndNotifications = async (currentRef: string, currentToken: string) => {
+    try {
+      const [bookingRes, notifRes]: [any, any] = await Promise.all([
+        apiFetch(`/bookings/${currentRef.trim()}?token=${currentToken.trim()}`),
+        apiFetch(`/bookings/${currentRef.trim()}/notifications?token=${currentToken.trim()}`)
+      ]);
+      if (bookingRes?.booking) {
+        setBooking(bookingRes.booking);
+      }
+      setNotifications(notifRes?.notifications || []);
+    } catch (e) {
+      // Non-blocking for periodic polling
+    }
+  };
+
   const fetchNotifications = async (currentRef: string, currentToken: string) => {
     try {
       const res: any = await apiFetch(`/bookings/${currentRef.trim()}/notifications?token=${currentToken.trim()}`);
@@ -74,8 +89,8 @@ export const ManageBookingPage: React.FC = () => {
   useEffect(() => {
     if (!booking || !ref || !token) return;
     const interval = setInterval(() => {
-      fetchNotifications(ref, token);
-    }, 6000);
+      fetchBookingAndNotifications(ref, token);
+    }, 5000);
     return () => clearInterval(interval);
   }, [booking, ref, token]);
 
@@ -178,6 +193,17 @@ export const ManageBookingPage: React.FC = () => {
           <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-start space-x-2">
             <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{actionSuccess}</span>
+          </div>
+        )}
+
+        {/* Live Admin Action Alert */}
+        {notifications.some(n => !n.isRead) && (
+          <div className="mb-4 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start space-x-2.5 animate-pulse">
+            <Bell className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+            <div className="flex-1">
+              <span className="font-semibold">New update from business:</span>{' '}
+              {notifications.find(n => !n.isRead)?.title} - {notifications.find(n => !n.isRead)?.message}
+            </div>
           </div>
         )}
 

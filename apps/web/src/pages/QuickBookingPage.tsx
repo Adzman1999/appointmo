@@ -301,15 +301,19 @@ export const QuickBookingPage: React.FC = () => {
             <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
               <button
                 onClick={() => navigate(`/manage?ref=${completedBooking.bookingReference}&token=${completedBooking.managementToken}`)}
-                className="bg-stone-900 text-white font-semibold px-5 py-2.5 rounded-xl hover:bg-stone-800 transition text-xs shadow"
+                className="bg-stone-900 text-white font-semibold px-5 py-2.5 rounded-xl hover:bg-stone-800 transition text-xs shadow flex items-center space-x-1.5"
               >
-                Manage My Booking &rarr;
+                <span>Manage My Booking</span>
+                <span>&rarr;</span>
               </button>
               <button
-                onClick={() => navigate('/demo/admin')}
-                className="bg-stone-100 border border-stone-200 text-stone-700 font-semibold px-5 py-2.5 rounded-xl hover:bg-stone-200 transition text-xs"
+                onClick={() => {
+                  navigator.clipboard.writeText(`Booking Ref: ${completedBooking.bookingReference}\nToken: ${completedBooking.managementToken}`);
+                  alert('Booking details copied to clipboard!');
+                }}
+                className="bg-stone-100 border border-stone-200 text-stone-700 font-semibold px-4 py-2.5 rounded-xl hover:bg-stone-200 transition text-xs"
               >
-                View on Admin Demo Dashboard
+                Copy Reference &amp; Token
               </button>
               <button
                 onClick={() => {

@@ -597,7 +597,7 @@ router.post('/appointments/:id/reassign-staff', async (req: Request, res: Respon
 // 7. Admin Notifications Feed (Live polling & persistence)
 router.get('/notifications', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId();
+    const businessId = await getDemoBusinessId(req);
     const data = await NotificationService.getAdminNotifications(businessId);
     res.json(data);
   } catch (err: any) {
@@ -619,7 +619,7 @@ router.patch('/notifications/:id/read', async (req: Request, res: Response) => {
 // 9. Mark All Admin Notifications as Read
 router.post('/notifications/mark-all-read', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId();
+    const businessId = await getDemoBusinessId(req);
     await NotificationService.markAllAsRead('admin', 'admin', businessId);
     res.json({ success: true });
   } catch (err: any) {
