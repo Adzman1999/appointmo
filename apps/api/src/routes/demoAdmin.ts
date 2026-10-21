@@ -52,7 +52,10 @@ router.get('/demo-active-booking', async (_req: Request, res: Response) => {
     const upcoming = await query(`
       SELECT a.booking_reference AS "bookingReference",
              s.name AS "serviceName",
+             c.id AS "customerId",
              c.name AS "customerName",
+             c.email AS "customerEmail",
+             c.phone AS "customerPhone",
              a.start_time AS "startTime",
              b.name AS "businessName"
       FROM appointments a
@@ -72,7 +75,10 @@ router.get('/demo-active-booking', async (_req: Request, res: Response) => {
         bookingReference: row.bookingReference,
         token: demoToken,
         serviceName: row.serviceName,
+        customerId: row.customerId,
         customerName: row.customerName,
+        customerEmail: row.customerEmail,
+        customerPhone: row.customerPhone,
         businessName: row.businessName,
       });
     }
@@ -81,7 +87,10 @@ router.get('/demo-active-booking', async (_req: Request, res: Response) => {
     const anyAppt = await query(`
       SELECT a.booking_reference AS "bookingReference",
              s.name AS "serviceName",
+             c.id AS "customerId",
              c.name AS "customerName",
+             c.email AS "customerEmail",
+             c.phone AS "customerPhone",
              a.start_time AS "startTime",
              b.name AS "businessName"
       FROM appointments a
@@ -99,7 +108,10 @@ router.get('/demo-active-booking', async (_req: Request, res: Response) => {
         bookingReference: row.bookingReference,
         token: `${row.bookingReference}secret`,
         serviceName: row.serviceName,
+        customerId: row.customerId,
         customerName: row.customerName,
+        customerEmail: row.customerEmail,
+        customerPhone: row.customerPhone,
         businessName: row.businessName,
       });
     }
@@ -107,6 +119,115 @@ router.get('/demo-active-booking', async (_req: Request, res: Response) => {
     res.status(404).json({ error: 'No demo appointments available' });
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to find active demo booking' });
+  }
+});
+
+// 0d. Customer Portal Demo Dashboard: Get all appointments & history for a customer
+router.get('/customer-portal', async (req: Request, res: Response) => {
+  try {
+    const { customerId, email } = req.query;
+
+    let targetCustId = customerId as string | undefined;
+
+    if (!targetCustId && email) {
+      const custRes = await query("SELECT id FROM customers WHERE email = $1 LIMIT 1", [String(email).trim()]);
+      if (custRes.rows.length > 0) {
+        targetCustId = custRes.rows[0].id;
+      }
+    }
+
+    // If still no target customer, pick default demo customer with active upcoming bookings
+    if (!targetCustId) {
+      const pickCust = await query(`
+        SELECT c.id FROM customers c
+        JOIN appointments a ON c.id = a.customer_id
+        WHERE a.status = 'confirmed' AND a.start_time > NOW()
+        ORDER BY a.start_time ASC
+        LIMIT 1
+      `);
+      if (pickCust.rows.length > 0) {
+        targetCustId = pickCust.rows[0].id;
+      } else {
+        const fallbackCust = await query("SELECT id FROM customers LIMIT 1");
+        if (fallbackCust.rows.length > 0) {
+          targetCustId = fallbackCust.rows[0].id;
+        }
+      }
+    }
+
+    if (!targetCustId) {
+      return res.status(404).json({ error: 'No customer account found' });
+    }
+
+    // 1. Get customer details
+    const custDetails = await query(
+      "SELECT id, name, email, phone, created_at AS \"createdAt\" FROM customers WHERE id = $1",
+      [targetCustId]
+    );
+
+    if (custDetails.rows.length === 0) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    const customer = custDetails.rows[0];
+
+    // 2. Get customer's appointments
+    const apptsRes = await query(`
+      SELECT 
+        a.id, a.booking_reference AS "bookingReference", a.status,
+        a.start_time AS "startTime", a.end_time AS "endTime",
+        a.price_snapshot AS "price", a.currency, a.notes, a.created_at AS "createdAt",
+        s.id AS "serviceId", s.name AS "serviceName", s.duration_minutes AS "durationMinutes",
+        sp.id AS "staffId", sp.name AS "staffName",
+        b.id AS "businessId", b.name AS "businessName", b.slug AS "businessSlug",
+        br.id AS "branchId", br.name AS "branchName", br.address AS "branchAddress"
+      FROM appointments a
+      JOIN services s ON a.service_id = s.id
+      JOIN staff_profiles sp ON a.staff_id = sp.id
+      JOIN businesses b ON a.business_id = b.id
+      JOIN branches br ON a.branch_id = br.id
+      WHERE a.customer_id = $1
+      ORDER BY a.start_time DESC
+    `, [targetCustId]);
+
+    // Format appointments and attach demo management tokens
+    const appointments = apptsRes.rows.map(appt => ({
+      ...appt,
+      managementToken: `${appt.bookingReference}secret`
+    }));
+
+    // Categorize
+    const upcoming = appointments.filter(a => a.status === 'confirmed' && new Date(a.startTime) > new Date());
+    const past = appointments.filter(a => a.status === 'completed' || (new Date(a.startTime) <= new Date() && a.status !== 'cancelled'));
+    const cancelled = appointments.filter(a => a.status === 'cancelled');
+
+    // 3. Customer Notifications
+    const notifsRes = await query(`
+      SELECT n.id, n.type, n.title, n.message, n.is_read AS "isRead", n.created_at AS "createdAt",
+             a.booking_reference AS "bookingReference"
+      FROM notifications n
+      JOIN appointments a ON n.appointment_id = a.id
+      WHERE a.customer_id = $1 AND n.recipient_type = 'customer'
+      ORDER BY n.created_at DESC
+      LIMIT 20
+    `, [targetCustId]);
+
+    res.json({
+      customer,
+      summary: {
+        totalBookings: appointments.length,
+        upcomingCount: upcoming.length,
+        pastCount: past.length,
+        cancelledCount: cancelled.length,
+      },
+      appointments,
+      upcoming,
+      past,
+      cancelled,
+      notifications: notifsRes.rows
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to load customer portal: ' + err.message });
   }
 });
 

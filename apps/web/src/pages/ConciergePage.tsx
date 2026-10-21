@@ -151,35 +151,35 @@ export const ConciergePage: React.FC = () => {
 
       <div className="max-w-3xl mx-auto px-4 space-y-8">
         {/* Inquire Box */}
-        <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 shadow-sm">
+        <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div>
-              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-900 text-xs font-semibold mb-2">
-                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 text-xs font-semibold mb-2">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                 <span>Conversational Assistant</span>
               </div>
-              <h2 className="text-xl font-bold tracking-tight text-stone-900">
+              <h2 className="text-xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
                 Help Me Find the Right Appointment
               </h2>
-              <p className="text-xs text-stone-500 mt-1">
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
                 Tell us your goals, budget, or preferred schedule. Concierge matches against actual provider catalogues and availability.
               </p>
             </div>
 
             {/* Business Scope Selector */}
-            <div className="bg-stone-50 border border-stone-200 rounded-2xl p-2.5 shrink-0">
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">
+            <div className="bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl p-2.5 shrink-0">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-400 mb-1">
                 Target Business
               </label>
               <div className="flex items-center space-x-1.5">
-                <Building2 className="w-3.5 h-3.5 text-stone-500" />
+                <Building2 className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
                 <select
                   value={selectedSlug}
                   onChange={(e) => setSelectedSlug(e.target.value)}
-                  className="bg-transparent text-xs font-semibold text-stone-800 pr-1 py-0.5 focus:outline-none cursor-pointer"
+                  className="bg-transparent text-xs font-semibold text-stone-800 dark:text-stone-200 pr-1 py-0.5 focus:outline-none cursor-pointer"
                 >
                   {businesses.map((b) => (
-                    <option key={b.id} value={b.slug}>
+                    <option key={b.id} value={b.slug} className="dark:bg-stone-800 text-stone-900 dark:text-stone-100">
                       {b.name}
                     </option>
                   ))}
@@ -195,12 +195,12 @@ export const ConciergePage: React.FC = () => {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="e.g. I want a facial tomorrow afternoon under ₱1,500 suitable for sensitive skin"
-                className="w-full p-4 pr-24 rounded-2xl border border-stone-300 text-sm focus:outline-none focus:border-stone-900 transition leading-relaxed"
+                className="w-full p-4 pr-24 rounded-2xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition leading-relaxed"
               />
               <button
                 type="submit"
                 disabled={loading || !query.trim()}
-                className="absolute right-3 bottom-4 bg-stone-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl hover:bg-stone-800 transition flex items-center space-x-1.5 shadow disabled:opacity-50"
+                className="absolute right-3 bottom-4 bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-semibold px-4 py-2.5 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition flex items-center space-x-1.5 shadow disabled:opacity-50"
               >
                 <span>{loading ? 'Analyzing...' : 'Find Matches'}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -218,7 +218,7 @@ export const ConciergePage: React.FC = () => {
                     setSelectedSlug(sq.slug);
                     handleInquire(undefined, sq.text, sq.slug);
                   }}
-                  className="px-2.5 py-1 rounded-xl bg-stone-100 text-stone-600 hover:bg-amber-100 hover:text-amber-900 transition text-[11px]"
+                  className="px-2.5 py-1 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-amber-100 dark:hover:bg-amber-950/60 hover:text-amber-900 dark:hover:text-amber-200 transition text-[11px]"
                 >
                   {sq.text.length > 40 ? sq.text.substring(0, 40) + '...' : sq.text}
                 </button>
@@ -229,7 +229,7 @@ export const ConciergePage: React.FC = () => {
 
         {/* Error message */}
         {error && (
-          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center space-x-2">
+          <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center space-x-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -237,29 +237,29 @@ export const ConciergePage: React.FC = () => {
 
         {/* Booking Completed Card */}
         {bookingSuccess && (
-          <div className="p-6 rounded-3xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-4 animate-in fade-in shadow-sm">
+          <div className="p-6 rounded-3xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 space-y-4 animate-in fade-in shadow-sm">
             <div className="flex items-center space-x-2">
-              <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+              <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <h3 className="text-lg font-bold">Appointment Confirmed via Concierge!</h3>
             </div>
-            <p className="text-xs text-stone-600 leading-relaxed">
+            <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
               Your appointment is recorded directly in PostgreSQL. You can verify it right now on the Admin Demo dashboard.
             </p>
-            <div className="bg-white p-4 rounded-2xl border border-emerald-200 text-xs space-y-2 font-mono">
-              <div>Booking Reference: <strong className="text-stone-900 font-bold">{bookingSuccess.bookingReference}</strong></div>
-              <div>Service: <span className="text-stone-800">{bookingRec?.serviceName || 'Confirmed Service'}</span></div>
-              <div>Price: <span className="text-stone-800">₱{bookingSuccess.priceSnapshot}</span></div>
+            <div className="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-700 text-xs space-y-2 font-mono">
+              <div>Booking Reference: <strong className="text-stone-900 dark:text-stone-100 font-bold">{bookingSuccess.bookingReference}</strong></div>
+              <div>Service: <span className="text-stone-800 dark:text-stone-200">{bookingRec?.serviceName || 'Confirmed Service'}</span></div>
+              <div>Price: <span className="text-stone-800 dark:text-stone-200">₱{bookingSuccess.priceSnapshot}</span></div>
             </div>
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <button
                 onClick={() => navigate(`/manage?ref=${bookingSuccess.bookingReference}&token=${bookingSuccess.managementToken}`)}
-                className="px-4 py-2 rounded-xl bg-emerald-800 text-white text-xs font-semibold hover:bg-emerald-900 transition shadow"
+                className="px-4 py-2 rounded-xl bg-emerald-800 dark:bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-900 dark:hover:bg-emerald-500 transition shadow"
               >
                 Manage My Booking &rarr;
               </button>
               <button
                 onClick={() => navigate('/demo/admin')}
-                className="px-4 py-2 rounded-xl border border-stone-300 bg-white text-stone-800 text-xs font-semibold hover:bg-stone-50 transition"
+                className="px-4 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 text-xs font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 transition"
               >
                 View on Admin Demo Dashboard
               </button>
@@ -269,12 +269,12 @@ export const ConciergePage: React.FC = () => {
 
         {/* Extracted preferences pill */}
         {extracted && (
-          <div className="flex flex-wrap items-center gap-2 text-xs text-stone-600 bg-stone-100 p-3 rounded-2xl border border-stone-200">
-            <span className="font-semibold text-stone-800">Interpreted Goal:</span>
-            {extracted.budget && <span className="px-2 py-0.5 rounded-full bg-white border border-stone-200 font-medium">Budget: &le; ₱{extracted.budget}</span>}
-            <span className="px-2 py-0.5 rounded-full bg-white border border-stone-200 font-medium">Target Date: {extracted.targetDate}</span>
-            <span className="px-2 py-0.5 rounded-full bg-white border border-stone-200 font-medium">Time Frame: {extracted.timeOfDay}</span>
-            {extracted.sensitiveSkin && <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-medium">Sensitive Skin Care</span>}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-stone-800/80 p-3 rounded-2xl border border-stone-200 dark:border-stone-700">
+            <span className="font-semibold text-stone-800 dark:text-stone-100">Interpreted Goal:</span>
+            {extracted.budget && <span className="px-2 py-0.5 rounded-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 font-medium">Budget: &le; ₱{extracted.budget}</span>}
+            <span className="px-2 py-0.5 rounded-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 font-medium">Target Date: {extracted.targetDate}</span>
+            <span className="px-2 py-0.5 rounded-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 font-medium">Time Frame: {extracted.timeOfDay}</span>
+            {extracted.sensitiveSkin && <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-medium">Sensitive Skin Care</span>}
           </div>
         )}
 
@@ -282,10 +282,10 @@ export const ConciergePage: React.FC = () => {
         {recommendations.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-stone-600">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
                 Recommended Options ({recommendations.length} Matches)
               </h3>
-              <span className="text-xs text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+              <span className="text-xs text-emerald-700 dark:text-emerald-300 font-semibold bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                 Live availability verified
               </span>
             </div>
@@ -294,12 +294,12 @@ export const ConciergePage: React.FC = () => {
               {recommendations.map((rec, i) => (
                 <div
                   key={i}
-                  className="bg-white rounded-3xl border border-stone-200 p-6 shadow-sm hover:border-stone-400 transition"
+                  className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm hover:border-stone-400 dark:hover:border-stone-700 transition"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
                     <div>
                       <div className="flex items-center space-x-2 mb-1.5">
-                        <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 text-[11px] font-semibold">
+                        <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 text-[11px] font-semibold">
                           <span>{rec.category}</span>
                           <span>•</span>
                           <span>{rec.durationMinutes} mins</span>
@@ -307,39 +307,39 @@ export const ConciergePage: React.FC = () => {
                         {rec.badge && (
                           <span className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                             rec.badge === 'Best Match' 
-                              ? 'bg-amber-100 text-amber-900 border border-amber-300' 
-                              : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                              ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700' 
+                              : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700'
                           }`}>
-                            {rec.badge === 'Best Match' && <Award className="w-3 h-3 text-amber-600" />}
-                            {rec.badge === 'Top Value' && <DollarSign className="w-3 h-3 text-emerald-600" />}
+                            {rec.badge === 'Best Match' && <Award className="w-3 h-3 text-amber-600 dark:text-amber-400" />}
+                            {rec.badge === 'Top Value' && <DollarSign className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
                             <span>{rec.badge}</span>
                           </span>
                         )}
                       </div>
-                      <h4 className="text-lg font-bold text-stone-900">{rec.serviceName}</h4>
+                      <h4 className="text-lg font-bold text-stone-900 dark:text-stone-100">{rec.serviceName}</h4>
                     </div>
                     <div className="text-right">
-                      <div className="text-xl font-bold text-stone-900">₱{rec.price.toLocaleString()}</div>
+                      <div className="text-xl font-bold text-stone-900 dark:text-stone-100">₱{rec.price.toLocaleString()}</div>
                       <div className="text-[11px] text-stone-400">Guaranteed rate</div>
                     </div>
                   </div>
 
                   {/* Explainable reasons */}
-                  <div className="bg-stone-50 rounded-2xl p-4 border border-stone-200/80 mb-5 text-xs space-y-1.5">
-                    <div className="font-semibold text-stone-800 text-[11px] uppercase tracking-wider">
+                  <div className="bg-stone-50 dark:bg-stone-800/60 rounded-2xl p-4 border border-stone-200/80 dark:border-stone-700/80 mb-5 text-xs space-y-1.5">
+                    <div className="font-semibold text-stone-800 dark:text-stone-200 text-[11px] uppercase tracking-wider">
                       Why this option matches:
                     </div>
                     {rec.matchReasons.map((r: string, rIdx: number) => (
-                      <div key={rIdx} className="flex items-center space-x-2 text-stone-700">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <div key={rIdx} className="flex items-center space-x-2 text-stone-700 dark:text-stone-300">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                         <span>{r}</span>
                       </div>
                     ))}
                   </div>
 
                   {/* Slot Details & Action */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-stone-100">
-                    <div className="flex items-center space-x-4 text-xs text-stone-600 w-full sm:w-auto">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-stone-100 dark:border-stone-800">
+                    <div className="flex items-center space-x-4 text-xs text-stone-600 dark:text-stone-300 w-full sm:w-auto">
                       <div className="flex items-center space-x-1.5">
                         <Calendar className="w-4 h-4 text-stone-400" />
                         <span>{new Date(rec.slot.startTime).toLocaleDateString()}</span>
@@ -361,7 +361,7 @@ export const ConciergePage: React.FC = () => {
                         setBookingRec(rec);
                         setBookingError(null);
                       }}
-                      className="w-full sm:w-auto bg-stone-900 text-white text-xs font-semibold px-5 py-2.5 rounded-xl hover:bg-stone-800 transition flex items-center justify-center space-x-2 shadow"
+                      className="w-full sm:w-auto bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-semibold px-5 py-2.5 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition flex items-center justify-center space-x-2 shadow"
                     >
                       <span>Book Recommended Slot</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -376,18 +376,18 @@ export const ConciergePage: React.FC = () => {
         {/* Alternatives (if any) */}
         {alternatives.length > 0 && recommendations.length < 2 && (
           <div className="space-y-4 pt-4">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-stone-500">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
               Closest Available Alternatives
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {alternatives.map((alt, i) => (
-                <div key={i} className="bg-white p-5 rounded-2xl border border-stone-200 text-xs space-y-2">
-                  <div className="font-bold text-stone-900 text-sm">{alt.serviceName}</div>
-                  <div className="text-stone-600">₱{alt.price} • {alt.durationMinutes} mins</div>
-                  <div className="text-stone-500">Slot: {new Date(alt.slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} with {alt.staffName}</div>
+                <div key={i} className="bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 text-xs space-y-2">
+                  <div className="font-bold text-stone-900 dark:text-stone-100 text-sm">{alt.serviceName}</div>
+                  <div className="text-stone-600 dark:text-stone-300">₱{alt.price} • {alt.durationMinutes} mins</div>
+                  <div className="text-stone-500 dark:text-stone-400">Slot: {new Date(alt.slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} with {alt.staffName}</div>
                   <button
                     onClick={() => setBookingRec(alt)}
-                    className="w-full mt-2 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-semibold transition"
+                    className="w-full mt-2 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 font-semibold transition"
                   >
                     Select Alternative
                   </button>
@@ -401,22 +401,22 @@ export const ConciergePage: React.FC = () => {
       {/* Booking Details Modal */}
       {bookingRec && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-stone-900 mb-1">Confirm Concierge Booking</h3>
-            <p className="text-xs text-stone-500 mb-4">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-md w-full shadow-2xl">
+            <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100 mb-1">Confirm Concierge Booking</h3>
+            <p className="text-xs text-stone-500 dark:text-stone-400 mb-4">
               Enter your synthetic customer contact info to confirm this demo appointment.
             </p>
 
-            <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 mb-4 text-xs space-y-1">
-              <div className="font-semibold text-stone-800">{bookingRec.serviceName}</div>
-              <div className="text-stone-500">₱{bookingRec.price} • Specialist: {bookingRec.staffName}</div>
-              <div className="text-stone-500">
+            <div className="bg-stone-50 dark:bg-stone-800/60 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 mb-4 text-xs space-y-1">
+              <div className="font-semibold text-stone-800 dark:text-stone-200">{bookingRec.serviceName}</div>
+              <div className="text-stone-500 dark:text-stone-400">₱{bookingRec.price} • Specialist: {bookingRec.staffName}</div>
+              <div className="text-stone-500 dark:text-stone-400">
                 Time: {new Date(bookingRec.slot.startTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </div>
             </div>
 
             {bookingError && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs mb-3 flex items-center space-x-2">
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs mb-3 flex items-center space-x-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{bookingError}</span>
               </div>
@@ -424,49 +424,49 @@ export const ConciergePage: React.FC = () => {
 
             <form onSubmit={handleConfirmBooking} className="space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">Full Name</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Full Name</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Elena Rostova"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 transition"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">Email Address</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Email Address</label>
                 <input
                   type="email"
                   required
                   placeholder="customer@example.com"
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 transition"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">Phone Number</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Phone Number</label>
                 <input
                   type="tel"
                   required
                   placeholder="+63 900 000 0000"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 transition"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">Special Notes (Optional)</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Special Notes (Optional)</label>
                 <textarea
                   rows={2}
                   placeholder="Any allergies or preferences..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900 transition resize-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition resize-none"
                 />
               </div>
 
@@ -474,7 +474,7 @@ export const ConciergePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setBookingRec(null)}
-                  className="flex-1 py-2.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-700"
                 >
                   Cancel
                 </button>
