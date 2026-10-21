@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
+import { BusinessLogo } from '../components/BusinessLogo';
 
 interface Branch {
   id: string;
@@ -267,17 +268,13 @@ export const DiscoveryPage: React.FC = () => {
                 <div>
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex items-start space-x-3">
-                      {biz.logoUrl ? (
-                        <img
-                          src={biz.logoUrl}
-                          alt={biz.name}
-                          className="w-10 h-10 rounded-xl object-cover border border-stone-200 shrink-0 mt-0.5"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
-                          {biz.name.charAt(0)}
-                        </div>
-                      )}
+                      <BusinessLogo
+                        name={biz.name}
+                        category={biz.category}
+                        logoUrl={biz.logoUrl}
+                        size="md"
+                        className="mt-0.5"
+                      />
                       <div>
                         <span className="inline-block px-2.5 py-0.5 rounded-full bg-stone-100 border border-stone-200 text-stone-700 text-[10px] font-bold uppercase tracking-wider mb-1">
                           {biz.category}

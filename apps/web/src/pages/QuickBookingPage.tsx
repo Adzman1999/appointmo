@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Calendar as CalendarIcon, Clock, User, CheckCircle2, AlertCircle, Sparkles, ArrowRight, Building2, MapPin } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
+import { BusinessLogo } from '../components/BusinessLogo';
 
 interface Service {
   id: string;
@@ -185,17 +186,12 @@ export const QuickBookingPage: React.FC = () => {
             <div className="h-6 w-px bg-stone-200 hidden sm:block"></div>
 
             <div className="flex items-center space-x-3">
-              {business?.logoUrl ? (
-                <img
-                  src={business.logoUrl}
-                  alt={business.name}
-                  className="w-10 h-10 rounded-xl object-cover border border-stone-200 shadow-sm shrink-0"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center font-bold text-base shadow shrink-0">
-                  {business?.name ? business.name[0] : 'A'}
-                </div>
-              )}
+              <BusinessLogo
+                name={business?.name || 'Appointmo Business'}
+                category={business?.category || ''}
+                logoUrl={business?.logoUrl}
+                size="md"
+              />
               <div>
                 <h1 className="text-base font-bold text-stone-900">{business?.name || 'Appointmo Booking'}</h1>
                 <p className="text-xs text-stone-500">{business?.category || 'Intelligent Scheduling'}</p>

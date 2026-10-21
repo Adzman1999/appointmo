@@ -4,9 +4,10 @@ import {
   Calendar, Users, DollarSign, CheckCircle2, RotateCcw, 
   Search, Filter, Clock, ArrowRight, Sparkles, Building2, 
   Check, X, AlertTriangle, Shield, Bell, ChevronRight, UserCheck, 
-  RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store
+  RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store, MapPin
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { BusinessLogo } from '../components/BusinessLogo';
 
 export const DemoAdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -52,13 +53,43 @@ export const DemoAdminDashboardPage: React.FC = () => {
   // New Demo Business Creation Wizard Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createName, setCreateName] = useState('');
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([
+    'Beauty & Wellness',
+    'Dental Services',
+    'Veterinary Services',
+    'Professional Consultations',
+    'Automotive & Detailing',
+    'Health & Fitness',
+  ]);
   const [createCategory, setCreateCategory] = useState('Beauty & Wellness');
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [customCategoryInput, setCustomCategoryInput] = useState('');
+
   const [createDescription, setCreateDescription] = useState('');
   const [createLogoUrl, setCreateLogoUrl] = useState('');
   const [createBranchName, setCreateBranchName] = useState('');
+  
+  // Dynamic Locations
+  const [cityOptions, setCityOptions] = useState<string[]>([
+    'Quezon City',
+    'Makati',
+    'Taguig / BGC',
+    'Pasig / Ortigas',
+    'San Juan / Greenhills',
+    'Mandaluyong',
+    'Manila',
+    'Alabang / Muntinlupa',
+    'Pasay',
+  ]);
   const [createBranchCity, setCreateBranchCity] = useState('Quezon City');
+  const [isCustomCity, setIsCustomCity] = useState(false);
+  const [customCityInput, setCustomCityInput] = useState('');
   const [createBranchAddress, setCreateBranchAddress] = useState('');
   const [createBranchPhone, setCreateBranchPhone] = useState('+63 2 8999 0001');
+  const [createLatitude, setCreateLatitude] = useState('');
+  const [createLongitude, setCreateLongitude] = useState('');
+  const [createLocationDesc, setCreateLocationDesc] = useState('');
+
   const [creatingBusiness, setCreatingBusiness] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -284,18 +315,35 @@ export const DemoAdminDashboardPage: React.FC = () => {
     setCreatingBusiness(true);
     setCreateError(null);
 
+    const finalCategory = isCustomCategory ? customCategoryInput.trim() : createCategory.trim();
+    if (!finalCategory) {
+      setCreateError('Please specify a category for this business');
+      setCreatingBusiness(false);
+      return;
+    }
+
+    const finalCity = isCustomCity ? customCityInput.trim() : createBranchCity.trim();
+    if (!finalCity) {
+      setCreateError('Please specify a city / location for this branch');
+      setCreatingBusiness(false);
+      return;
+    }
+
     try {
       const res: any = await apiFetch('/demo/admin/create-business', {
         method: 'POST',
         body: JSON.stringify({
           name: createName.trim(),
-          category: createCategory,
+          category: finalCategory,
           description: createDescription.trim(),
           logoUrl: createLogoUrl.trim() || undefined,
           branchName: createBranchName.trim() || undefined,
-          branchCity: createBranchCity,
+          branchCity: finalCity,
           branchAddress: createBranchAddress.trim() || undefined,
           branchPhone: createBranchPhone.trim() || undefined,
+          latitude: createLatitude ? parseFloat(createLatitude) : undefined,
+          longitude: createLongitude ? parseFloat(createLongitude) : undefined,
+          locationDescription: createLocationDesc.trim() || undefined,
         }),
       });
 
@@ -306,6 +354,21 @@ export const DemoAdminDashboardPage: React.FC = () => {
       setCreateLogoUrl('');
       setCreateBranchName('');
       setCreateBranchAddress('');
+      setCustomCategoryInput('');
+      setIsCustomCategory(false);
+      setCustomCityInput('');
+      setIsCustomCity(false);
+      setCreateLatitude('');
+      setCreateLongitude('');
+      setCreateLocationDesc('');
+
+      // Add to category/city options list if not already present
+      if (!categoryOptions.includes(finalCategory)) {
+        setCategoryOptions(prev => [...prev, finalCategory]);
+      }
+      if (!cityOptions.includes(finalCity)) {
+        setCityOptions(prev => [...prev, finalCity]);
+      }
 
       // Refresh business list & select new one
       await fetchBusinesses();
@@ -365,17 +428,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
       <header className="bg-white border-b border-stone-200 py-3.5 px-6 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center space-x-3">
-            {currentBusiness?.logoUrl ? (
-              <img
-                src={currentBusiness.logoUrl}
-                alt={currentBusiness.name}
-                className="w-10 h-10 rounded-xl object-cover border border-stone-200 shadow-sm shrink-0"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center font-bold text-lg shadow shrink-0">
-                {currentBusiness?.name ? currentBusiness.name.charAt(0) : 'A'}
-              </div>
-            )}
+            <BusinessLogo
+              name={currentBusiness?.name || 'Demo Business'}
+              category={currentBusiness?.category || ''}
+              logoUrl={currentBusiness?.logoUrl}
+              size="md"
+            />
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-bold text-base text-stone-900">
@@ -1051,42 +1109,87 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Category Selection with Add New Category */}
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Category</label>
-                  <select
-                    value={createCategory}
-                    onChange={(e) => setCreateCategory(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
-                  >
-                    <option value="Beauty & Wellness">Beauty & Wellness</option>
-                    <option value="Dental Services">Dental Services</option>
-                    <option value="Veterinary Services">Veterinary Services</option>
-                    <option value="Professional Consultations">Professional Consultations</option>
-                    <option value="Automotive & Detailing">Automotive & Detailing</option>
-                    <option value="Health & Fitness">Health & Fitness</option>
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-semibold text-stone-700">Category</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomCategory(!isCustomCategory);
+                        setCustomCategoryInput('');
+                      }}
+                      className="text-[11px] font-semibold text-amber-700 hover:text-amber-900 underline"
+                    >
+                      {isCustomCategory ? 'Choose Existing' : '+ Add New'}
+                    </button>
+                  </div>
+                  {isCustomCategory ? (
+                    <input
+                      type="text"
+                      required
+                      autoFocus
+                      placeholder="e.g. Photography Studio, Pet Grooming"
+                      value={customCategoryInput}
+                      onChange={(e) => setCustomCategoryInput(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-amber-300 bg-amber-50/50 text-xs focus:outline-none focus:border-stone-900"
+                    />
+                  ) : (
+                    <select
+                      value={createCategory}
+                      onChange={(e) => setCreateCategory(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                    >
+                      {categoryOptions.map((cat, i) => (
+                        <option key={i} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
+
+                {/* City / Location Selection with Add Custom Location */}
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Primary City</label>
-                  <select
-                    value={createBranchCity}
-                    onChange={(e) => setCreateBranchCity(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
-                  >
-                    <option value="Quezon City">Quezon City</option>
-                    <option value="Makati">Makati</option>
-                    <option value="Taguig / BGC">Taguig / BGC</option>
-                    <option value="Pasig / Ortigas">Pasig / Ortigas</option>
-                    <option value="San Juan / Greenhills">San Juan / Greenhills</option>
-                    <option value="Mandaluyong">Mandaluyong</option>
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-semibold text-stone-700">Location / City</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomCity(!isCustomCity);
+                        setCustomCityInput('');
+                      }}
+                      className="text-[11px] font-semibold text-amber-700 hover:text-amber-900 underline"
+                    >
+                      {isCustomCity ? 'Choose City' : '+ Add Custom'}
+                    </button>
+                  </div>
+                  {isCustomCity ? (
+                    <input
+                      type="text"
+                      required
+                      autoFocus
+                      placeholder="e.g. Cebu IT Park, Davao City"
+                      value={customCityInput}
+                      onChange={(e) => setCustomCityInput(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-amber-300 bg-amber-50/50 text-xs focus:outline-none focus:border-stone-900"
+                    />
+                  ) : (
+                    <select
+                      value={createBranchCity}
+                      onChange={(e) => setCreateBranchCity(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                    >
+                      {cityOptions.map((c, i) => (
+                        <option key={i} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
               <div>
                 <label className="block font-semibold text-stone-700 mb-1">
-                  Logo / Avatar URL (Optional)
+                  Logo / Avatar URL (Optional — auto-generates branded fallback if empty)
                 </label>
                 <input
                   type="url"
@@ -1109,7 +1212,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
               </div>
 
               <div className="border-t border-stone-100 pt-3">
-                <span className="font-semibold text-stone-800 block mb-2">Initial Demonstration Branch</span>
+                <span className="font-semibold text-stone-800 block mb-2">Initial Demonstration Branch Location</span>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-stone-500 mb-1">Branch Name</label>
@@ -1141,6 +1244,30 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     onChange={(e) => setCreateBranchAddress(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div>
+                    <label className="block text-stone-500 mb-1">Latitude (Optional)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="e.g. 14.5547"
+                      value={createLatitude}
+                      onChange={(e) => setCreateLatitude(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-stone-500 mb-1">Longitude (Optional)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="e.g. 121.0244"
+                      value={createLongitude}
+                      onChange={(e) => setCreateLongitude(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-stone-900"
+                    />
+                  </div>
                 </div>
               </div>
 

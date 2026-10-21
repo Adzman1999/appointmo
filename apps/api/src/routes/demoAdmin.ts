@@ -49,13 +49,20 @@ router.get('/businesses', async (_req: Request, res: Response) => {
 router.post('/create-business', async (req: Request, res: Response) => {
   const client = await pool.connect();
   try {
-    const { name, category, description, currency, timezone, logoUrl, branchName, branchAddress, branchCity, branchPhone } = req.body;
+    const { 
+      name, category, description, currency, timezone, logoUrl, 
+      branchName, branchAddress, branchCity, branchPhone,
+      latitude, longitude, locationDescription
+    } = req.body;
 
     if (!name || !category) {
       return res.status(400).json({ error: 'Business name and category are required' });
     }
 
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Math.random().toString(36).substring(2, 6);
+    const trimmedName = name.trim();
+    const trimmedCategory = category.trim();
+
+    const slug = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Math.random().toString(36).substring(2, 6);
 
     await client.query('BEGIN');
 
@@ -64,15 +71,55 @@ router.post('/create-business', async (req: Request, res: Response) => {
       INSERT INTO businesses (name, slug, description, category, currency, timezone, logo_url)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id, name, slug, category, description, logo_url AS "logoUrl"
-    `, [name, slug, description || `Demo studio offering ${category}`, currency || 'PHP', timezone || 'Asia/Manila', logoUrl || null]);
+    `, [
+      trimmedName, 
+      slug, 
+      description?.trim() || `Demo appointment provider offering ${trimmedCategory}`, 
+      currency || 'PHP', 
+      timezone || 'Asia/Manila', 
+      logoUrl?.trim() || null
+    ]);
     const newBiz = bRes.rows[0];
+
+    // City Coordinates Map fallback for synthetic map placement
+    const cityCoords: Record<string, { lat: number; lng: number }> = {
+      'Quezon City': { lat: 14.6507, lng: 121.0336 },
+      'Makati': { lat: 14.5547, lng: 121.0244 },
+      'Taguig / BGC': { lat: 14.5507, lng: 121.0506 },
+      'Pasig / Ortigas': { lat: 14.5866, lng: 121.0617 },
+      'San Juan / Greenhills': { lat: 14.6015, lng: 121.0503 },
+      'Mandaluyong': { lat: 14.5794, lng: 121.0359 },
+      'Manila': { lat: 14.5995, lng: 120.9842 },
+      'Alabang / Muntinlupa': { lat: 14.4253, lng: 121.0422 },
+      'Pasay': { lat: 14.5378, lng: 120.9993 },
+    };
+
+    const finalCity = branchCity?.trim() || 'Quezon City';
+    const fallbackCoord = cityCoords[finalCity] || { lat: 14.5995, lng: 121.0000 };
+
+    const finalLat = latitude !== undefined && latitude !== null && !isNaN(Number(latitude))
+      ? Number(latitude)
+      : fallbackCoord.lat + (Math.random() * 0.01 - 0.005);
+
+    const finalLng = longitude !== undefined && longitude !== null && !isNaN(Number(longitude))
+      ? Number(longitude)
+      : fallbackCoord.lng + (Math.random() * 0.01 - 0.005);
 
     // 2. Create Initial Branch
     const brRes = await client.query(`
-      INSERT INTO branches (business_id, name, address, city, phone, location_description)
-      VALUES ($1, $2, $3, $4, $5, 'Primary Demonstration Branch')
-      RETURNING id, name
-    `, [newBiz.id, branchName || `${name} Main Branch`, branchAddress || '101 Demonstration Ave', branchCity || 'Quezon City', branchPhone || '+63 2 8999 0001']);
+      INSERT INTO branches (business_id, name, address, city, phone, latitude, longitude, location_description)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id, name, address, city, phone, latitude, longitude, location_description AS "locationDescription"
+    `, [
+      newBiz.id, 
+      branchName?.trim() || `${trimmedName} Main Branch`, 
+      branchAddress?.trim() || `101 Demonstration Ave, ${finalCity}`, 
+      finalCity, 
+      branchPhone?.trim() || '+63 2 8999 0001',
+      finalLat,
+      finalLng,
+      locationDescription?.trim() || `Primary Demonstration Branch in ${finalCity}`
+    ]);
 
     // 3. Create default service
     const sRes = await client.query(`
