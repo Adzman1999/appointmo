@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Calendar, Users, DollarSign, CheckCircle2, RotateCcw, 
+  Calendar, Users, DollarSign, CheckCircle2, 
   Search, Filter, Clock, ArrowRight, Sparkles, Building2, 
   Check, X, AlertTriangle, Shield, Bell, ChevronRight, UserCheck, 
   RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store, MapPin, Lightbulb, TrendingUp
@@ -23,7 +23,6 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [resetting, setResetting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
 
@@ -343,21 +342,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     }
   };
 
-  // Reset Demo Data
-  const handleResetDemoData = async () => {
-    if (!confirm('Reset Lumière Beauty Studio demo data to original clean synthetic state (125 bookings)?')) return;
-    setResetting(true);
-    try {
-      const res: any = await apiFetch('/demo/admin/reset', { method: 'POST' });
-      setNotice(res.message);
-      fetchDashboardData();
-      fetchNotifications();
-    } catch (err: any) {
-      alert(err.message || 'Reset failed');
-    } finally {
-      setResetting(false);
-    }
-  };
+
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20 transition-colors">
@@ -484,16 +469,6 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 </div>
               )}
             </div>
-
-            <button
-              onClick={handleResetDemoData}
-              disabled={resetting}
-              className="inline-flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/80 transition shadow-sm"
-              title="Reset synthetic demo records to original 125 bookings"
-            >
-              <RotateCcw className={`w-3.5 h-3.5 text-amber-700 dark:text-amber-400 ${resetting ? 'animate-spin' : ''}`} />
-              <span>{resetting ? 'Resetting...' : 'Reset Demo Data'}</span>
-            </button>
 
             <button
               onClick={() => navigate('/')}

@@ -244,34 +244,6 @@ export const QuickBookingPage: React.FC = () => {
       </div>
 
       <div className="max-w-3xl mx-auto px-4">
-        {/* Branch Selector if multiple branches exist */}
-        {business && business.branches.length > 1 && (
-          <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-4 mb-6 shadow-sm">
-            <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-2">
-              Select Branch Location
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {business.branches.map((br) => (
-                <button
-                  key={br.id}
-                  type="button"
-                  onClick={() => setSelectedBranchId(br.id)}
-                  className={`p-3 rounded-xl border text-left transition ${
-                    selectedBranchId === br.id
-                      ? 'border-stone-900 dark:border-amber-400 bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 shadow-sm font-bold'
-                      : 'border-stone-200 dark:border-stone-700 hover:border-stone-400 dark:hover:border-stone-600 bg-white dark:bg-stone-800/80 text-stone-800 dark:text-stone-200'
-                  }`}
-                >
-                  <div className="font-bold text-xs">{br.name}</div>
-                  <div className={`text-[11px] truncate mt-0.5 ${selectedBranchId === br.id ? 'text-stone-300 dark:text-stone-900 font-semibold' : 'text-stone-600 dark:text-stone-300'}`}>
-                    {br.address}, {br.city}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Navigation Mode Banner */}
         <div className="bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-amber-950 dark:text-amber-100">
           <div>

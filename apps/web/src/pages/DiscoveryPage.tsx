@@ -297,17 +297,12 @@ export const DiscoveryPage: React.FC = () => {
                     {biz.description}
                   </p>
 
-                  {/* Branches preview */}
-                  <div className="space-y-1.5 mb-4 bg-stone-50 dark:bg-stone-800/60 p-3.5 rounded-2xl border border-stone-200 dark:border-stone-700">
-                    <div className="text-[11px] font-bold text-stone-700 dark:text-stone-300 flex items-center space-x-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
-                      <span>{biz.branches.length} {biz.branches.length === 1 ? 'Location' : 'Locations'}:</span>
+                  {/* Store location preview */}
+                  <div className="space-y-1 mb-4 bg-stone-50 dark:bg-stone-800/60 p-3 rounded-xl border border-stone-200 dark:border-stone-700">
+                    <div className="text-[11px] font-medium text-stone-700 dark:text-stone-300 flex items-center space-x-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400 shrink-0" />
+                      <span>{biz.branches[0]?.address ? `${biz.branches[0].address}, ${biz.branches[0].city}` : (biz.branches[0]?.city || 'Metro Manila')}</span>
                     </div>
-                    {biz.branches.map((br) => (
-                      <div key={br.id} className="text-[11px] text-stone-500 dark:text-stone-400 pl-5">
-                        <strong className="text-stone-700 dark:text-stone-300">{br.name}</strong> • {br.city}
-                      </div>
-                    ))}
                   </div>
 
                   {/* Service pricing & count */}
