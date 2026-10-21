@@ -278,6 +278,9 @@ router.post('/bookings/:reference/cancel', async (req: Request, res: Response) =
     if (appt.status === 'cancelled') {
       return res.status(400).json({ error: 'Appointment is already cancelled' });
     }
+    if (appt.status === 'completed') {
+      return res.status(400).json({ error: 'Completed appointments cannot be cancelled' });
+    }
 
     await query(
       'UPDATE appointments SET status = $1, cancellation_reason = $2, updated_at = NOW() WHERE id = $3',
@@ -364,6 +367,10 @@ router.post('/bookings/:reference/reschedule', async (req: Request, res: Respons
     if (appt.status === 'cancelled') {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Cannot reschedule a cancelled appointment' });
+    }
+    if (appt.status === 'completed') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Completed appointments cannot be rescheduled' });
     }
 
     const start = new Date(newStartTime);
