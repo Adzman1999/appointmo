@@ -184,6 +184,22 @@ export const QuickBookingPage: React.FC = () => {
           serviceName: selectedService.name,
           createdAt: new Date().toISOString()
         }));
+
+        // Also append to customer's personal bookings list in localStorage
+        try {
+          const listRaw = localStorage.getItem('appointmo_user_bookings');
+          const list: any[] = listRaw ? JSON.parse(listRaw) : [];
+          if (!list.some(b => b.bookingReference === res.booking.bookingReference)) {
+            list.unshift({
+              bookingReference: res.booking.bookingReference,
+              managementToken: res.booking.managementToken,
+              serviceName: selectedService.name,
+              customerEmail,
+              createdAt: new Date().toISOString()
+            });
+            localStorage.setItem('appointmo_user_bookings', JSON.stringify(list.slice(0, 50)));
+          }
+        } catch (_) {}
       }
     } catch (err: any) {
       const errMsg = err.message || 'This appointment slot was just taken. Please choose another slot.';

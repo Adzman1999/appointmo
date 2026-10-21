@@ -130,7 +130,7 @@ router.get('/customer-portal', async (req: Request, res: Response) => {
     let targetCustId = customerId as string | undefined;
 
     if (!targetCustId && email) {
-      const custRes = await query("SELECT id FROM customers WHERE email = $1 LIMIT 1", [String(email).trim()]);
+      const custRes = await query("SELECT id FROM customers WHERE LOWER(email) = LOWER($1) ORDER BY created_at DESC LIMIT 1", [String(email).trim()]);
       if (custRes.rows.length > 0) {
         targetCustId = custRes.rows[0].id;
       }
@@ -171,7 +171,7 @@ router.get('/customer-portal', async (req: Request, res: Response) => {
 
     const customer = custDetails.rows[0];
 
-    // 2. Get customer's appointments
+    // 2. Get customer's appointments across all businesses matching either customer ID or email
     const apptsRes = await query(`
       SELECT 
         a.id, a.booking_reference AS "bookingReference", a.status,
@@ -186,9 +186,10 @@ router.get('/customer-portal', async (req: Request, res: Response) => {
       JOIN staff_profiles sp ON a.staff_id = sp.id
       JOIN businesses b ON a.business_id = b.id
       JOIN branches br ON a.branch_id = br.id
-      WHERE a.customer_id = $1
+      JOIN customers c ON a.customer_id = c.id
+      WHERE a.customer_id = $1 OR LOWER(c.email) = LOWER($2)
       ORDER BY a.created_at DESC, a.id DESC
-    `, [targetCustId]);
+    `, [targetCustId, customer.email]);
 
     // Format appointments and attach demo management tokens
     const appointments = apptsRes.rows.map(appt => ({
@@ -201,16 +202,17 @@ router.get('/customer-portal', async (req: Request, res: Response) => {
     const past = appointments.filter(a => a.status === 'completed' || (new Date(a.startTime) <= new Date() && a.status !== 'cancelled' && a.status !== 'pending'));
     const cancelled = appointments.filter(a => a.status === 'cancelled');
 
-    // 3. Customer Notifications
+    // 3. Customer Notifications across all bookings of this customer
     const notifsRes = await query(`
       SELECT n.id, n.type, n.title, n.message, n.is_read AS "isRead", n.created_at AS "createdAt",
              a.booking_reference AS "bookingReference"
       FROM notifications n
       JOIN appointments a ON n.appointment_id = a.id
-      WHERE a.customer_id = $1 AND n.recipient_type = 'customer'
+      JOIN customers c ON a.customer_id = c.id
+      WHERE (a.customer_id = $1 OR LOWER(c.email) = LOWER($2)) AND n.recipient_type = 'customer'
       ORDER BY n.created_at DESC
       LIMIT 20
-    `, [targetCustId]);
+    `, [targetCustId, customer.email]);
 
     res.json({
       customer,

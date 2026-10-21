@@ -125,11 +125,57 @@ export const ManageBookingPage: React.FC = () => {
                   if (prev.some(x => x.bookingReference === urlRef)) return prev;
                   return [loaded, ...prev];
                 });
+                setAppointments(prev => {
+                  if (prev.some(x => x.bookingReference === urlRef)) return prev;
+                  return [loaded, ...prev];
+                });
               }
             })
             .catch(() => {});
         }
       }
+
+      // Check if user has other booked appointments stored in browser session across different stores
+      try {
+        const listRaw = localStorage.getItem('appointmo_user_bookings');
+        if (listRaw) {
+          const list: any[] = JSON.parse(listRaw);
+          const currentRefs = new Set((res.appointments || []).map((a: any) => a.bookingReference));
+          const missing = list.filter(item => !currentRefs.has(item.bookingReference));
+          
+          if (missing.length > 0) {
+            Promise.allSettled(
+              missing.map(item => apiFetch<any>(`/bookings/${item.bookingReference}?token=${item.managementToken || `${item.bookingReference}secret`}`))
+            ).then(results => {
+              const extraAppts: any[] = [];
+              results.forEach((r, idx) => {
+                if (r.status === 'fulfilled' && r.value?.booking) {
+                  extraAppts.push({
+                    ...r.value.booking,
+                    managementToken: missing[idx].managementToken || `${missing[idx].bookingReference}secret`
+                  });
+                }
+              });
+
+              if (extraAppts.length > 0) {
+                setAppointments(prev => [...extraAppts, ...prev]);
+                setUpcoming(prev => {
+                  const newUpcoming = extraAppts.filter(a => a.status === 'confirmed' || a.status === 'pending');
+                  return [...newUpcoming, ...prev];
+                });
+                setPast(prev => {
+                  const newPast = extraAppts.filter(a => a.status === 'completed');
+                  return [...newPast, ...prev];
+                });
+                setCancelled(prev => {
+                  const newCancelled = extraAppts.filter(a => a.status === 'cancelled');
+                  return [...newCancelled, ...prev];
+                });
+              }
+            });
+          }
+        }
+      } catch (_) {}
     } catch (err: any) {
       setError(err.message || 'Failed to load customer appointments.');
     } finally {
