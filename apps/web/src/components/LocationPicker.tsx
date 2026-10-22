@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
-import { Search, MapPin, Loader2, Navigation, Crosshair, Maximize2, Minimize2, Check, Plus, Minus } from 'lucide-react';
+import { Search, MapPin, Loader2, Navigation, Crosshair, Maximize2, Check, Plus, Minus, Layers } from 'lucide-react';
 
 interface LocationPickerProps {
   initialLat?: number;
@@ -8,19 +8,8 @@ interface LocationPickerProps {
   onLocationSelect: (loc: { lat: number; lng: number; address?: string; city?: string }) => void;
 }
 
-// Custom Leaflet Pin Icon with Tailwind amber theme
-const customPinIcon = L.divIcon({
-  className: 'custom-map-pin',
-  html: `
-    <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: grab; pointer-events: auto;">
-      <div style="position: absolute; width: 34px; height: 34px; background-color: #f59e0b; border: 3px solid #1c1917; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 4px 14px rgba(0,0,0,0.45); pointer-events: none;"></div>
-      <div style="position: absolute; width: 14px; height: 14px; background-color: #1c1917; border-radius: 50%; z-index: 10; pointer-events: none;"></div>
-    </div>
-  `,
-  iconSize: [44, 44],
-  iconAnchor: [22, 44],
-  popupAnchor: [0, -44],
-});
+// Available map layer styles (Google Roadmap, Google Satellite Hybrid, Standard OSM)
+type MapLayerStyle = 'google-roadmap' | 'google-hybrid' | 'osm';
 
 export const LocationPicker: React.FC<LocationPickerProps> = ({
   initialLat = 14.5547,
@@ -29,13 +18,16 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
-  const markerRef = useRef<L.Marker | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const debounceTimerRef = useRef<any>(null);
 
   const [coords, setCoords] = useState<{ lat: number; lng: number }>({
     lat: initialLat,
     lng: initialLng,
   });
   const [currentZoom, setCurrentZoom] = useState(16);
+  const [mapStyle, setMapStyle] = useState<MapLayerStyle>('google-roadmap');
+  const [isMapMoving, setIsMapMoving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -44,7 +36,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   // Reverse geocode lat/lng to human address and city
-  const reverseGeocode = async (lat: number, lng: number) => {
+  const reverseGeocode = useCallback(async (lat: number, lng: number) => {
     setReverseLoading(true);
     try {
       const res = await fetch(
@@ -75,6 +67,34 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     } finally {
       setReverseLoading(false);
     }
+  }, [onLocationSelect]);
+
+  // Get tile URL according to selected style
+  const getTileConfig = (style: MapLayerStyle) => {
+    switch (style) {
+      case 'google-hybrid':
+        return {
+          url: 'https://mt{s}.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}',
+          subdomains: ['0', '1', '2', '3'],
+          attribution: '© Google Maps',
+          maxZoom: 20,
+        };
+      case 'osm':
+        return {
+          url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          subdomains: ['a', 'b', 'c'],
+          attribution: '© OpenStreetMap contributors',
+          maxZoom: 19,
+        };
+      case 'google-roadmap':
+      default:
+        return {
+          url: 'https://mt{s}.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}',
+          subdomains: ['0', '1', '2', '3'],
+          attribution: '© Google Maps',
+          maxZoom: 20,
+        };
+    }
   };
 
   // Initialize Map
@@ -84,15 +104,15 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
       mapInstanceRef.current = null;
-      markerRef.current = null;
+      tileLayerRef.current = null;
     }
 
     const map = L.map(mapContainerRef.current, {
       center: [coords.lat, coords.lng],
       zoom: currentZoom,
       minZoom: 3,
-      maxZoom: 19,
-      zoomControl: true,
+      maxZoom: 20,
+      zoomControl: false, // We provide modern styled zoom controls
       dragging: true,
       touchZoom: true,
       scrollWheelZoom: true,
@@ -102,70 +122,87 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       bounceAtZoomLimits: false,
     });
 
-    // High quality OpenStreetMap tiles allowing up to zoom level 19 (building level)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      minZoom: 3,
-      maxZoom: 19,
-      maxNativeZoom: 19,
-      attribution: '© OpenStreetMap contributors',
+    const tileConf = getTileConfig(mapStyle);
+    const tileLayer = L.tileLayer(tileConf.url, {
+      subdomains: tileConf.subdomains,
+      attribution: tileConf.attribution,
+      maxZoom: tileConf.maxZoom,
+      maxNativeZoom: tileConf.maxZoom,
     }).addTo(map);
+    tileLayerRef.current = tileLayer;
 
-    const marker = L.marker([coords.lat, coords.lng], {
-      icon: customPinIcon,
-      draggable: true,
-      autoPan: true,
-    }).addTo(map);
+    // Google Maps style: Track center point smoothly on drag / swipe
+    map.on('movestart', () => {
+      setIsMapMoving(true);
+    });
 
-    // Track zoom level changes
+    map.on('move', () => {
+      const center = map.getCenter();
+      setCoords({ lat: center.lat, lng: center.lng });
+    });
+
+    map.on('moveend', () => {
+      setIsMapMoving(false);
+      const center = map.getCenter();
+      setCoords({ lat: center.lat, lng: center.lng });
+      setCurrentZoom(map.getZoom());
+
+      // Debounce reverse geocode so we don't spam requests while panning
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => {
+        reverseGeocode(center.lat, center.lng);
+      }, 350);
+    });
+
     map.on('zoomend', () => {
       setCurrentZoom(map.getZoom());
     });
 
-    // Click anywhere on map to reposition pin
+    // Clicking anywhere smoothly animates the map center directly to that spot
     map.on('click', (e: L.LeafletMouseEvent) => {
-      const { lat, lng } = e.latlng;
-      marker.setLatLng([lat, lng]);
-      setCoords({ lat, lng });
-      reverseGeocode(lat, lng);
-    });
-
-    // Real-time tracking while dragging the pin
-    marker.on('drag', () => {
-      const pos = marker.getLatLng();
-      setCoords({ lat: pos.lat, lng: pos.lng });
-    });
-
-    // Drag pin to exact position
-    marker.on('dragend', () => {
-      const pos = marker.getLatLng();
-      setCoords({ lat: pos.lat, lng: pos.lng });
-      reverseGeocode(pos.lat, pos.lng);
+      map.panTo(e.latlng, { animate: true, duration: 0.35 });
     });
 
     mapInstanceRef.current = map;
-    markerRef.current = marker;
 
-    // Invalidate size immediately and after layout rendering
+    // Trigger initial geocode
+    reverseGeocode(coords.lat, coords.lng);
+
     const t1 = setTimeout(() => map.invalidateSize(), 80);
     const t2 = setTimeout(() => map.invalidateSize(), 300);
 
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       map.remove();
       mapInstanceRef.current = null;
-      markerRef.current = null;
+      tileLayerRef.current = null;
     };
   }, [isFullScreen]);
+
+  // Update tile layer when style changes
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    if (tileLayerRef.current) {
+      mapInstanceRef.current.removeLayer(tileLayerRef.current);
+    }
+    const tileConf = getTileConfig(mapStyle);
+    const newTileLayer = L.tileLayer(tileConf.url, {
+      subdomains: tileConf.subdomains,
+      attribution: tileConf.attribution,
+      maxZoom: tileConf.maxZoom,
+      maxNativeZoom: tileConf.maxZoom,
+    }).addTo(mapInstanceRef.current);
+    tileLayerRef.current = newTileLayer;
+  }, [mapStyle]);
 
   // Handle map resizing and centering when toggling fullscreen
   useEffect(() => {
     if (mapInstanceRef.current) {
       const t = setTimeout(() => {
         mapInstanceRef.current?.invalidateSize();
-        if (markerRef.current) {
-          mapInstanceRef.current?.setView(markerRef.current.getLatLng(), mapInstanceRef.current.getZoom());
-        }
+        mapInstanceRef.current?.setView([coords.lat, coords.lng], mapInstanceRef.current.getZoom());
       }, 120);
       return () => clearTimeout(t);
     }
@@ -208,9 +245,8 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       setSearchQuery('');
       setCurrentAddress(place.display_name.split(',').slice(0, 3).join(', '));
 
-      if (mapInstanceRef.current && markerRef.current) {
-        mapInstanceRef.current.setView([lat, lng], 17);
-        markerRef.current.setLatLng([lat, lng]);
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.flyTo([lat, lng], 18, { duration: 1.2 });
       }
 
       reverseGeocode(lat, lng);
@@ -225,9 +261,8 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         setCoords({ lat, lng });
-        if (mapInstanceRef.current && markerRef.current) {
-          mapInstanceRef.current.setView([lat, lng], 17);
-          markerRef.current.setLatLng([lat, lng]);
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.flyTo([lat, lng], 18, { duration: 1.2 });
         }
         reverseGeocode(lat, lng);
       },
@@ -235,7 +270,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     );
   };
 
-  // Direct Zoom Controls helper functions
+  // Direct Zoom Controls
   const handleZoomIn = () => {
     if (mapInstanceRef.current) {
       mapInstanceRef.current.zoomIn();
@@ -247,6 +282,19 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       mapInstanceRef.current.zoomOut();
     }
   };
+
+  // Cycle through Google Roadmap, Google Satellite Hybrid, and OSM
+  const cycleMapStyle = () => {
+    if (mapStyle === 'google-roadmap') setMapStyle('google-hybrid');
+    else if (mapStyle === 'google-hybrid') setMapStyle('osm');
+    else setMapStyle('google-roadmap');
+  };
+
+  const mapStyleLabel = {
+    'google-roadmap': 'Google Map',
+    'google-hybrid': 'Satellite',
+    'osm': 'Standard OSM',
+  }[mapStyle];
 
   return (
     <div className="space-y-2">
@@ -261,9 +309,9 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                   <MapPin className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm text-stone-900 dark:text-stone-100">Exact Store Map Pinning</h4>
+                  <h4 className="font-bold text-sm text-stone-900 dark:text-stone-100">Exact Store Pinning</h4>
                   <p className="text-[11px] text-stone-500 dark:text-stone-400 hidden sm:block">
-                    Swipe or drag the map freely. Zoom up to building level (zoom {currentZoom}/19) and pin the entrance.
+                    Swipe or drag the map. The pin stays fixed right in the crosshairs just like Google Maps.
                   </p>
                 </div>
               </div>
@@ -278,10 +326,10 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
               </button>
             </div>
 
-            {/* Search Controls in Fullscreen */}
+            {/* Search & Style Controls in Fullscreen */}
             <div className="p-3 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 relative z-20">
-              <div className="flex gap-2 max-w-xl">
-                <div className="relative flex-1">
+              <div className="flex flex-wrap items-center gap-2 max-w-2xl">
+                <div className="relative flex-1 min-w-[200px]">
                   <input
                     type="text"
                     placeholder="Search address, mall, building or landmark..."
@@ -295,14 +343,14 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                     }}
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                   />
-                  <Search className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+                  <Search className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
                 </div>
 
                 <button
                   type="button"
                   onClick={() => handleSearch()}
                   disabled={searching || !searchQuery.trim()}
-                  className="px-4 py-2 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-semibold hover:bg-stone-800 dark:hover:bg-amber-300 transition shrink-0 flex items-center space-x-1"
+                  className="px-3.5 py-2 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-semibold hover:bg-stone-800 dark:hover:bg-amber-300 transition shrink-0 flex items-center space-x-1"
                 >
                   {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Search</span>}
                 </button>
@@ -311,9 +359,19 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                   type="button"
                   onClick={handleLocateMe}
                   title="Locate my position"
-                  className="p-2.5 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition shrink-0"
+                  className="p-2 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition shrink-0"
                 >
                   <Navigation className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={cycleMapStyle}
+                  className="px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 text-xs font-semibold hover:bg-stone-50 dark:hover:bg-stone-750 transition flex items-center space-x-1.5"
+                  title="Switch Map Style"
+                >
+                  <Layers className="w-3.5 h-3.5 text-amber-500" />
+                  <span>{mapStyleLabel}</span>
                 </button>
               </div>
 
@@ -335,12 +393,31 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
             </div>
 
             {/* Fullscreen Map Canvas */}
-            <div className="flex-1 relative bg-stone-100 dark:bg-stone-800 overflow-hidden">
+            <div className="flex-1 relative bg-stone-100 dark:bg-stone-800 overflow-hidden cursor-grab active:cursor-grabbing">
               <div 
                 ref={mapContainerRef} 
                 className="w-full h-full z-10 select-none" 
                 style={{ minHeight: '100%', height: '100%' }}
               />
+
+              {/* Center Pin Overlay (Google Maps Pin Marker Style) */}
+              <div 
+                className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full z-[450] pointer-events-none transition-transform duration-150 ease-out flex flex-col items-center ${
+                  isMapMoving ? '-translate-y-[115%] scale-110 drop-shadow-2xl' : 'drop-shadow-lg'
+                }`}
+              >
+                <div className="relative flex items-center justify-center">
+                  <div className="w-10 h-10 bg-amber-500 border-2 border-stone-900 rounded-full rounded-br-none -rotate-45 flex items-center justify-center shadow-lg">
+                    <div className="w-4 h-4 bg-stone-950 rounded-full rotate-45" />
+                  </div>
+                </div>
+                {/* Pin Shadow on Ground */}
+                <div 
+                  className={`w-3.5 h-1.5 bg-stone-950/40 rounded-full blur-[1px] mt-0.5 transition-all duration-150 ${
+                    isMapMoving ? 'scale-75 opacity-30 translate-y-2' : 'scale-100 opacity-70'
+                  }`} 
+                />
+              </div>
 
               {/* Quick Floating Zoom In/Out Overlay Controls */}
               <div className="absolute top-4 right-4 z-[400] flex flex-col space-y-1.5">
@@ -367,12 +444,12 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                 <div className="flex items-center space-x-2 truncate">
                   <Crosshair className="w-4 h-4 text-amber-500 shrink-0" />
                   <span className="truncate font-semibold">
-                    {reverseLoading ? 'Resolving pinned address...' : currentAddress || `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`}
+                    {reverseLoading || isMapMoving ? 'Locating address...' : currentAddress || `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`}
                   </span>
                 </div>
                 <div className="flex items-center space-x-3 shrink-0 ml-3">
                   <span className="font-mono text-[11px] text-stone-500 dark:text-stone-400 hidden sm:inline">
-                    {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+                    z{currentZoom} • {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
                   </span>
                   <button
                     type="button"
@@ -428,6 +505,15 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
 
               <button
                 type="button"
+                onClick={cycleMapStyle}
+                title="Switch Map Style"
+                className="p-2 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition shrink-0"
+              >
+                <Layers className="w-4 h-4 text-amber-500" />
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setIsFullScreen(true)}
                 title="Open interactive fullscreen map to pan and zoom"
                 className="px-2.5 py-2 rounded-xl bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900 transition shrink-0 flex items-center space-x-1 text-xs font-bold"
@@ -456,7 +542,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
 
           {/* Normal View Map Canvas */}
           <div 
-            className="relative rounded-2xl overflow-hidden border border-stone-300 dark:border-stone-700 h-64 bg-stone-100 dark:bg-stone-800"
+            className="relative rounded-2xl overflow-hidden border border-stone-300 dark:border-stone-700 h-64 bg-stone-100 dark:bg-stone-800 cursor-grab active:cursor-grabbing"
             onWheel={(e) => e.stopPropagation()}
             onTouchMove={(e) => e.stopPropagation()}
           >
@@ -465,7 +551,25 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
               className="w-full h-full z-10 select-none" 
             />
 
-            {/* Floating Zoom & Fullscreen Controls */}
+            {/* Center Pin Overlay (Google Maps Pin Marker Style) */}
+            <div 
+              className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full z-[450] pointer-events-none transition-transform duration-150 ease-out flex flex-col items-center ${
+                isMapMoving ? '-translate-y-[115%] scale-110 drop-shadow-2xl' : 'drop-shadow-lg'
+              }`}
+            >
+              <div className="relative flex items-center justify-center">
+                <div className="w-9 h-9 bg-amber-500 border-2 border-stone-900 rounded-full rounded-br-none -rotate-45 flex items-center justify-center shadow-lg">
+                  <div className="w-3.5 h-3.5 bg-stone-950 rounded-full rotate-45" />
+                </div>
+              </div>
+              <div 
+                className={`w-3 h-1 bg-stone-950/40 rounded-full blur-[1px] mt-0.5 transition-all duration-150 ${
+                  isMapMoving ? 'scale-75 opacity-30 translate-y-1.5' : 'scale-100 opacity-70'
+                }`} 
+              />
+            </div>
+
+            {/* Floating Style, Zoom & Fullscreen Controls */}
             <div className="absolute top-2 right-2 z-[400] flex flex-col space-y-1.5">
               <button
                 type="button"
@@ -495,6 +599,15 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                   <Minus className="w-3.5 h-3.5" />
                 </button>
               </div>
+
+              <button
+                type="button"
+                onClick={cycleMapStyle}
+                className="bg-white/95 dark:bg-stone-900/95 backdrop-blur-md p-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 shadow hover:bg-amber-50 dark:hover:bg-stone-800 transition flex items-center justify-center"
+                title={`Current layer: ${mapStyleLabel}. Click to switch.`}
+              >
+                <Layers className="w-4 h-4 text-amber-500" />
+              </button>
             </div>
 
             {/* Bottom Current Location Coordinates Badge */}
@@ -502,16 +615,16 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
               <div className="flex items-center space-x-1.5 truncate">
                 <Crosshair className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                 <span className="truncate font-medium">
-                  {reverseLoading ? 'Resolving address...' : currentAddress || `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`}
+                  {reverseLoading || isMapMoving ? 'Locating address...' : currentAddress || `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`}
                 </span>
               </div>
               <span className="text-[10px] text-stone-500 dark:text-stone-400 shrink-0 ml-2 font-mono">
-                z{currentZoom} • {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
+                {mapStyleLabel} • z{currentZoom}
               </span>
             </div>
           </div>
           <p className="text-[10px] text-stone-500 dark:text-stone-400 italic">
-            💡 Swipe or drag the map directly. Zoom in with mouse wheel or <kbd className="px-1 py-0.5 rounded bg-stone-200 dark:bg-stone-800 font-mono font-bold">+</kbd> / <kbd className="px-1 py-0.5 rounded bg-stone-200 dark:bg-stone-800 font-mono font-bold">-</kbd> up to building level.
+            💡 Swipe or drag anywhere to place the pin directly on your store entrance (Google Maps style).
           </p>
         </>
       )}
