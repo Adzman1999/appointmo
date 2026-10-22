@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
-import { Search, MapPin, Loader2, Navigation, Crosshair, Maximize2, Check, Plus, Minus, Layers } from 'lucide-react';
+import { Search, MapPin, Loader2, Navigation, Crosshair, Maximize2, Check, Plus, Minus, Layers, ExternalLink } from 'lucide-react';
 
 interface LocationPickerProps {
   initialLat?: number;
@@ -8,7 +8,7 @@ interface LocationPickerProps {
   onLocationSelect: (loc: { lat: number; lng: number; address?: string; city?: string }) => void;
 }
 
-// Available map layer styles (Google Roadmap, Google Satellite Hybrid, Standard OSM)
+// Reliable, high-performance map styles
 type MapLayerStyle = 'google-roadmap' | 'google-hybrid' | 'osm';
 
 export const LocationPicker: React.FC<LocationPickerProps> = ({
@@ -16,7 +16,8 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
   initialLng = 121.0244,
   onLocationSelect,
 }) => {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const normalMapRef = useRef<HTMLDivElement>(null);
+  const fullMapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const debounceTimerRef = useRef<any>(null);
@@ -69,7 +70,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     }
   }, [onLocationSelect]);
 
-  // Get tile URL according to selected style
+  // Map Tile configuration
   const getTileConfig = (style: MapLayerStyle) => {
     switch (style) {
       case 'google-hybrid':
@@ -97,22 +98,24 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     }
   };
 
-  // Initialize Map
+  // Mount Leaflet map in the active container (fullscreen or normal)
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    const activeContainer = isFullScreen ? fullMapRef.current : normalMapRef.current;
+    if (!activeContainer) return;
 
+    // Destroy existing instance cleanly before creating new one
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
       mapInstanceRef.current = null;
       tileLayerRef.current = null;
     }
 
-    const map = L.map(mapContainerRef.current, {
+    const map = L.map(activeContainer, {
       center: [coords.lat, coords.lng],
       zoom: currentZoom,
       minZoom: 3,
       maxZoom: 20,
-      zoomControl: false, // We provide modern styled zoom controls
+      zoomControl: false,
       dragging: true,
       touchZoom: true,
       scrollWheelZoom: true,
@@ -147,11 +150,10 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       setCoords({ lat: center.lat, lng: center.lng });
       setCurrentZoom(map.getZoom());
 
-      // Debounce reverse geocode so we don't spam requests while panning
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = setTimeout(() => {
         reverseGeocode(center.lat, center.lng);
-      }, 350);
+      }, 300);
     });
 
     map.on('zoomend', () => {
@@ -160,16 +162,14 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
 
     // Clicking anywhere smoothly animates the map center directly to that spot
     map.on('click', (e: L.LeafletMouseEvent) => {
-      map.panTo(e.latlng, { animate: true, duration: 0.35 });
+      map.panTo(e.latlng, { animate: true, duration: 0.3 });
     });
 
     mapInstanceRef.current = map;
 
-    // Trigger initial geocode
-    reverseGeocode(coords.lat, coords.lng);
-
-    const t1 = setTimeout(() => map.invalidateSize(), 80);
-    const t2 = setTimeout(() => map.invalidateSize(), 300);
+    // Initial size calculation
+    const t1 = setTimeout(() => map.invalidateSize(), 60);
+    const t2 = setTimeout(() => map.invalidateSize(), 250);
 
     return () => {
       clearTimeout(t1);
@@ -196,17 +196,6 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     }).addTo(mapInstanceRef.current);
     tileLayerRef.current = newTileLayer;
   }, [mapStyle]);
-
-  // Handle map resizing and centering when toggling fullscreen
-  useEffect(() => {
-    if (mapInstanceRef.current) {
-      const t = setTimeout(() => {
-        mapInstanceRef.current?.invalidateSize();
-        mapInstanceRef.current?.setView([coords.lat, coords.lng], mapInstanceRef.current.getZoom());
-      }, 120);
-      return () => clearTimeout(t);
-    }
-  }, [isFullScreen]);
 
   // Search places via Nominatim API
   const handleSearch = async (e?: React.FormEvent) => {
@@ -246,7 +235,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       setCurrentAddress(place.display_name.split(',').slice(0, 3).join(', '));
 
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.flyTo([lat, lng], 18, { duration: 1.2 });
+        mapInstanceRef.current.flyTo([lat, lng], 18, { duration: 1.0 });
       }
 
       reverseGeocode(lat, lng);
@@ -262,7 +251,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
         const lng = pos.coords.longitude;
         setCoords({ lat, lng });
         if (mapInstanceRef.current) {
-          mapInstanceRef.current.flyTo([lat, lng], 18, { duration: 1.2 });
+          mapInstanceRef.current.flyTo([lat, lng], 18, { duration: 1.0 });
         }
         reverseGeocode(lat, lng);
       },
@@ -296,6 +285,11 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     'osm': 'Standard OSM',
   }[mapStyle];
 
+  // Open location in native Google Maps in a new tab
+  const openExternalGoogleMaps = () => {
+    window.open(`https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`, '_blank');
+  };
+
   return (
     <div className="space-y-2">
       {/* Normal View or Fullscreen Overlay */}
@@ -309,21 +303,33 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                   <MapPin className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm text-stone-900 dark:text-stone-100">Exact Store Pinning</h4>
+                  <h4 className="font-bold text-sm text-stone-900 dark:text-stone-100">Pin Store Location</h4>
                   <p className="text-[11px] text-stone-500 dark:text-stone-400 hidden sm:block">
-                    Swipe or drag the map. The pin stays fixed right in the crosshairs just like Google Maps.
+                    Swipe or drag the map. The pin stays fixed right in the center target.
                   </p>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsFullScreen(false)}
-                className="px-4 py-2 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-semibold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center space-x-1.5 shrink-0"
-              >
-                <Check className="w-4 h-4" />
-                <span>Apply Location &amp; Return</span>
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={openExternalGoogleMaps}
+                  title="View on Google Maps"
+                  className="px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-200 font-medium text-xs hover:bg-stone-50 dark:hover:bg-stone-700 transition flex items-center space-x-1"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Google Maps</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsFullScreen(false)}
+                  className="px-4 py-2 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-semibold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center space-x-1.5 shrink-0"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Apply Location &amp; Return</span>
+                </button>
+              </div>
             </div>
 
             {/* Search & Style Controls in Fullscreen */}
@@ -395,7 +401,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
             {/* Fullscreen Map Canvas */}
             <div className="flex-1 relative bg-stone-100 dark:bg-stone-800 overflow-hidden cursor-grab active:cursor-grabbing">
               <div 
-                ref={mapContainerRef} 
+                ref={fullMapRef} 
                 className="w-full h-full z-10 select-none" 
                 style={{ minHeight: '100%', height: '100%' }}
               />
@@ -543,11 +549,9 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
           {/* Normal View Map Canvas */}
           <div 
             className="relative rounded-2xl overflow-hidden border border-stone-300 dark:border-stone-700 h-64 bg-stone-100 dark:bg-stone-800 cursor-grab active:cursor-grabbing"
-            onWheel={(e) => e.stopPropagation()}
-            onTouchMove={(e) => e.stopPropagation()}
           >
             <div 
-              ref={mapContainerRef} 
+              ref={normalMapRef} 
               className="w-full h-full z-10 select-none" 
             />
 
@@ -624,7 +628,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
             </div>
           </div>
           <p className="text-[10px] text-stone-500 dark:text-stone-400 italic">
-            💡 Swipe or drag anywhere to place the pin directly on your store entrance (Google Maps style).
+            💡 Swipe or drag anywhere to position the pin directly on your store entrance.
           </p>
         </>
       )}
