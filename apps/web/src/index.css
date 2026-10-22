@@ -4,6 +4,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Ensure Leaflet container handles touch, drag, and pinch-zoom without parent scroll interference */
+.leaflet-container {
+  touch-action: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  cursor: grab;
+}
+
+.leaflet-container:active {
+  cursor: grabbing;
+}
+
+/* Custom animated map pin style */
+.custom-map-pin {
+  background: transparent;
+  border: none;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;

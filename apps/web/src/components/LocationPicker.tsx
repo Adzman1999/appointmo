@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { Search, MapPin, Loader2, Navigation, Crosshair, Maximize2, Minimize2, Check } from 'lucide-react';
+import { Search, MapPin, Loader2, Navigation, Crosshair, Maximize2, Minimize2, Check, Plus, Minus } from 'lucide-react';
 
 interface LocationPickerProps {
   initialLat?: number;
@@ -12,14 +12,14 @@ interface LocationPickerProps {
 const customPinIcon = L.divIcon({
   className: 'custom-map-pin',
   html: `
-    <div style="position: relative; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: grab;">
+    <div style="position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: grab; pointer-events: auto;">
       <div style="position: absolute; width: 34px; height: 34px; background-color: #f59e0b; border: 3px solid #1c1917; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 4px 14px rgba(0,0,0,0.45);"></div>
       <div style="position: absolute; width: 14px; height: 14px; background-color: #1c1917; border-radius: 50%; z-index: 10;"></div>
     </div>
   `,
-  iconSize: [38, 38],
-  iconAnchor: [19, 38],
-  popupAnchor: [0, -38],
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -40],
 });
 
 export const LocationPicker: React.FC<LocationPickerProps> = ({
@@ -35,6 +35,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     lat: initialLat,
     lng: initialLng,
   });
+  const [currentZoom, setCurrentZoom] = useState(16);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -51,7 +52,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
         {
           headers: {
             'Accept-Language': 'en',
-            'User-Agent': 'Appointmo-Store-Locator',
+            'User-Agent': 'Appointmo-Store-Locator-App',
           },
         }
       );
@@ -88,7 +89,9 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
 
     const map = L.map(mapContainerRef.current, {
       center: [coords.lat, coords.lng],
-      zoom: 15,
+      zoom: currentZoom,
+      minZoom: 3,
+      maxZoom: 19,
       zoomControl: true,
       dragging: true,
       touchZoom: true,
@@ -96,10 +99,14 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       doubleClickZoom: true,
       boxZoom: true,
       tapHold: true,
+      bounceAtZoomLimits: false,
     });
 
+    // High quality OpenStreetMap tiles allowing up to zoom level 19 (building level)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      minZoom: 3,
       maxZoom: 19,
+      maxNativeZoom: 19,
       attribution: '© OpenStreetMap contributors',
     }).addTo(map);
 
@@ -108,6 +115,11 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       draggable: true,
       autoPan: true,
     }).addTo(map);
+
+    // Track zoom level changes
+    map.on('zoomend', () => {
+      setCurrentZoom(map.getZoom());
+    });
 
     // Click anywhere on map to reposition pin
     map.on('click', (e: L.LeafletMouseEvent) => {
@@ -127,27 +139,29 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     mapInstanceRef.current = map;
     markerRef.current = marker;
 
-    // Invalidate size immediately and after brief animation delay
-    setTimeout(() => {
-      map.invalidateSize();
-    }, 150);
+    // Invalidate size immediately and after layout rendering
+    const t1 = setTimeout(() => map.invalidateSize(), 80);
+    const t2 = setTimeout(() => map.invalidateSize(), 300);
 
     return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
       map.remove();
       mapInstanceRef.current = null;
       markerRef.current = null;
     };
   }, [isFullScreen]);
 
-  // Handle map resizing when toggling fullscreen
+  // Handle map resizing and centering when toggling fullscreen
   useEffect(() => {
     if (mapInstanceRef.current) {
-      setTimeout(() => {
+      const t = setTimeout(() => {
         mapInstanceRef.current?.invalidateSize();
         if (markerRef.current) {
           mapInstanceRef.current?.setView(markerRef.current.getLatLng(), mapInstanceRef.current.getZoom());
         }
-      }, 100);
+      }, 120);
+      return () => clearTimeout(t);
     }
   }, [isFullScreen]);
 
@@ -163,7 +177,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
         {
           headers: {
             'Accept-Language': 'en',
-            'User-Agent': 'Appointmo-Store-Locator',
+            'User-Agent': 'Appointmo-Store-Locator-App',
           },
         }
       );
@@ -189,7 +203,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       setCurrentAddress(place.display_name.split(',').slice(0, 3).join(', '));
 
       if (mapInstanceRef.current && markerRef.current) {
-        mapInstanceRef.current.setView([lat, lng], 16);
+        mapInstanceRef.current.setView([lat, lng], 17);
         markerRef.current.setLatLng([lat, lng]);
       }
 
@@ -206,7 +220,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
         const lng = pos.coords.longitude;
         setCoords({ lat, lng });
         if (mapInstanceRef.current && markerRef.current) {
-          mapInstanceRef.current.setView([lat, lng], 16);
+          mapInstanceRef.current.setView([lat, lng], 17);
           markerRef.current.setLatLng([lat, lng]);
         }
         reverseGeocode(lat, lng);
@@ -215,21 +229,36 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     );
   };
 
+  // Direct Zoom Controls helper functions
+  const handleZoomIn = () => {
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.zoomIn();
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.zoomOut();
+    }
+  };
+
   return (
     <div className="space-y-2">
       {/* Normal View or Fullscreen Overlay */}
       {isFullScreen ? (
-        <div className="fixed inset-0 z-[100] bg-stone-900/80 backdrop-blur-md flex flex-col p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-[100] bg-stone-900/85 backdrop-blur-md flex flex-col p-2 sm:p-4 animate-in fade-in">
           <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-2xl flex-1 flex flex-col overflow-hidden">
             {/* Fullscreen Header Controls */}
-            <div className="p-4 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between gap-3 bg-stone-50 dark:bg-stone-800/60">
-              <div className="flex items-center space-x-2">
+            <div className="p-3.5 sm:p-4 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between gap-3 bg-stone-50 dark:bg-stone-800/60">
+              <div className="flex items-center space-x-2.5">
                 <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold">
                   <MapPin className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
                   <h4 className="font-bold text-sm text-stone-900 dark:text-stone-100">Exact Store Map Pinning</h4>
-                  <p className="text-[11px] text-stone-500 dark:text-stone-400">Search place, drag map to navigate, and click or drag the pin to your exact entrance.</p>
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400 hidden sm:block">
+                    Swipe or drag the map freely. Zoom up to building level (zoom {currentZoom}/19) and pin the entrance.
+                  </p>
                 </div>
               </div>
 
@@ -300,9 +329,34 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
             </div>
 
             {/* Fullscreen Map Canvas */}
-            <div className="flex-1 relative bg-stone-100 dark:bg-stone-800">
-              <div ref={mapContainerRef} className="w-full h-full z-10" />
+            <div className="flex-1 relative bg-stone-100 dark:bg-stone-800 overflow-hidden">
+              <div 
+                ref={mapContainerRef} 
+                className="w-full h-full z-10 touch-none select-none" 
+                style={{ minHeight: '100%', height: '100%' }}
+              />
 
+              {/* Quick Floating Zoom In/Out Overlay Controls */}
+              <div className="absolute top-4 right-4 z-[400] flex flex-col space-y-1.5">
+                <button
+                  type="button"
+                  onClick={handleZoomIn}
+                  className="w-9 h-9 rounded-xl bg-white/95 dark:bg-stone-900/95 border border-stone-200 dark:border-stone-700 shadow-md text-stone-900 dark:text-stone-100 flex items-center justify-center font-bold text-lg hover:bg-amber-50 dark:hover:bg-stone-800 transition"
+                  title="Zoom in"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleZoomOut}
+                  className="w-9 h-9 rounded-xl bg-white/95 dark:bg-stone-900/95 border border-stone-200 dark:border-stone-700 shadow-md text-stone-900 dark:text-stone-100 flex items-center justify-center font-bold text-lg hover:bg-amber-50 dark:hover:bg-stone-800 transition"
+                  title="Zoom out"
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Bottom Address Info Bar */}
               <div className="absolute bottom-4 left-4 right-4 z-[400] bg-white/95 dark:bg-stone-900/95 backdrop-blur-md p-3.5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xl flex items-center justify-between text-xs text-stone-800 dark:text-stone-200">
                 <div className="flex items-center space-x-2 truncate">
                   <Crosshair className="w-4 h-4 text-amber-500 shrink-0" />
@@ -311,13 +365,13 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                   </span>
                 </div>
                 <div className="flex items-center space-x-3 shrink-0 ml-3">
-                  <span className="font-mono text-[11px] text-stone-500 dark:text-stone-400">
+                  <span className="font-mono text-[11px] text-stone-500 dark:text-stone-400 hidden sm:inline">
                     {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
                   </span>
                   <button
                     type="button"
                     onClick={() => setIsFullScreen(false)}
-                    className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs transition"
+                    className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs transition shadow"
                   >
                     Done
                   </button>
@@ -395,36 +449,63 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
           </div>
 
           {/* Normal View Map Canvas */}
-          <div className="relative rounded-2xl overflow-hidden border border-stone-300 dark:border-stone-700 h-60 bg-stone-100 dark:bg-stone-800">
-            <div ref={mapContainerRef} className="w-full h-full z-10" />
+          <div 
+            className="relative rounded-2xl overflow-hidden border border-stone-300 dark:border-stone-700 h-64 bg-stone-100 dark:bg-stone-800"
+            onWheel={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+          >
+            <div 
+              ref={mapContainerRef} 
+              className="w-full h-full z-10 touch-none select-none" 
+            />
 
-            {/* Top-Right Expand Button on Map */}
-            <div className="absolute top-2 right-2 z-[400]">
+            {/* Floating Zoom & Fullscreen Controls */}
+            <div className="absolute top-2 right-2 z-[400] flex flex-col space-y-1.5">
               <button
                 type="button"
                 onClick={() => setIsFullScreen(true)}
-                className="bg-white/90 dark:bg-stone-900/90 backdrop-blur-md p-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 shadow hover:bg-white dark:hover:bg-stone-800 transition flex items-center space-x-1 text-[11px] font-semibold"
+                className="bg-white/95 dark:bg-stone-900/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 shadow hover:bg-amber-50 dark:hover:bg-stone-800 transition flex items-center space-x-1 text-[11px] font-semibold"
                 title="Expand map to full screen"
               >
                 <Maximize2 className="w-3.5 h-3.5" />
-                <span>Fullscreen Pin</span>
+                <span>Fullscreen</span>
               </button>
+
+              <div className="flex flex-col bg-white/95 dark:bg-stone-900/95 rounded-xl border border-stone-200 dark:border-stone-700 shadow overflow-hidden">
+                <button
+                  type="button"
+                  onClick={handleZoomIn}
+                  className="w-8 h-7 text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center justify-center border-b border-stone-100 dark:border-stone-800"
+                  title="Zoom in"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleZoomOut}
+                  className="w-8 h-7 text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center justify-center"
+                  title="Zoom out"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
+            {/* Bottom Current Location Coordinates Badge */}
             <div className="absolute bottom-2 left-2 right-2 z-[400] bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm p-2 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm flex items-center justify-between text-[11px] text-stone-700 dark:text-stone-300">
               <div className="flex items-center space-x-1.5 truncate">
                 <Crosshair className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                 <span className="truncate font-medium">
-                  {reverseLoading ? 'Resolving pinned address...' : currentAddress || `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`}
+                  {reverseLoading ? 'Resolving address...' : currentAddress || `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`}
                 </span>
               </div>
               <span className="text-[10px] text-stone-500 dark:text-stone-400 shrink-0 ml-2 font-mono">
-                {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
+                z{currentZoom} • {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
               </span>
             </div>
           </div>
           <p className="text-[10px] text-stone-500 dark:text-stone-400 italic">
-            💡 Drag map or click "Focus Map" to zoom in full-screen. Drag the amber pin anywhere to mark your exact entrance.
+            💡 Swipe or drag the map directly. Zoom in with mouse wheel or <kbd className="px-1 py-0.5 rounded bg-stone-200 dark:bg-stone-800 font-mono font-bold">+</kbd> / <kbd className="px-1 py-0.5 rounded bg-stone-200 dark:bg-stone-800 font-mono font-bold">-</kbd> up to building level.
           </p>
         </>
       )}
