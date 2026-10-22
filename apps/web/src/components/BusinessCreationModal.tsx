@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Tag, Sparkles, CheckCircle2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { LocationPicker } from './LocationPicker';
@@ -23,6 +24,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
   onSuccess,
   initialData,
 }) => {
+  const navigate = useNavigate();
   const [createName, setCreateName] = useState(initialData?.name || '');
   const [createTagline, setCreateTagline] = useState('');
   const [categoryOptions, setCategoryOptions] = useState<string[]>([
@@ -226,12 +228,15 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
+                  const targetEmail = createEmail.trim();
                   setSubmittedStoreNotice(null);
                   onClose();
+                  navigate(`/admin/login?mode=signin${targetEmail ? `&email=${encodeURIComponent(targetEmail)}` : ''}`);
                 }}
-                className="bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold px-6 py-2.5 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow text-xs"
+                className="bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold px-6 py-2.5 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow text-xs flex items-center space-x-2"
               >
-                Done
+                <span>Done, Go to Sign In</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
