@@ -14,7 +14,9 @@ router.get('/business', async (req: Request, res: Response) => {
     const targetSlug = typeof slug === 'string' && slug ? slug : 'lumiere-beauty-studio';
 
     const bizRes = await query(`
-      SELECT b.id, b.name, b.slug, b.description, b.category, b.currency, b.timezone, b.logo_url AS "logoUrl"
+      SELECT b.id, b.name, b.slug, b.description, b.category, b.currency, b.timezone, b.logo_url AS "logoUrl",
+             b.phone, b.email, b.address, b.city, b.opening_hours AS "openingHours",
+             b.website, b.instagram, b.tagline
       FROM businesses b
       WHERE b.slug = $1
       LIMIT 1

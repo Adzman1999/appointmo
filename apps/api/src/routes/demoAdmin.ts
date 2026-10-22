@@ -28,6 +28,8 @@ router.get('/businesses', async (_req: Request, res: Response) => {
   try {
     const listRes = await query(`
       SELECT b.id, b.name, b.slug, b.category, b.description, b.logo_url AS "logoUrl",
+             b.phone, b.email, b.address, b.city, b.opening_hours AS "openingHours",
+             b.website, b.instagram, b.tagline,
              COUNT(DISTINCT br.id)::int AS "branchCount",
              COUNT(DISTINCT s.id)::int AS "serviceCount",
              COUNT(DISTINCT sp.id)::int AS "staffCount"
@@ -239,8 +241,8 @@ router.post('/create-business', async (req: Request, res: Response) => {
   try {
     const { 
       name, category, description, currency, timezone, logoUrl, 
-      branchName, branchAddress, branchCity, branchPhone,
-      latitude, longitude, locationDescription
+      tagline, phone, email, address, city, openingHours, website, instagram,
+      latitude, longitude
     } = req.body;
 
     if (!name || !category) {
@@ -249,23 +251,41 @@ router.post('/create-business', async (req: Request, res: Response) => {
 
     const trimmedName = name.trim();
     const trimmedCategory = category.trim();
+    const finalCity = city?.trim() || 'Quezon City';
+    const finalPhone = phone?.trim() || '+63 2 8999 0001';
+    const finalAddress = address?.trim() || `101 Commercial Ave, ${finalCity}`;
+    const finalOpeningHours = openingHours?.trim() || '9:00 AM - 6:00 PM';
 
     const slug = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Math.random().toString(36).substring(2, 6);
 
     await client.query('BEGIN');
 
-    // 1. Create Business
+    // 1. Create Business / Store Record with all store details
     const bRes = await client.query(`
-      INSERT INTO businesses (name, slug, description, category, currency, timezone, logo_url)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING id, name, slug, category, description, logo_url AS "logoUrl"
+      INSERT INTO businesses (
+        name, slug, description, category, currency, timezone, logo_url,
+        tagline, phone, email, address, city, opening_hours, website, instagram
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      RETURNING id, name, slug, category, description, logo_url AS "logoUrl",
+                tagline, phone, email, address, city, opening_hours AS "openingHours",
+                website, instagram
     `, [
       trimmedName, 
       slug, 
       description?.trim() || `Demo appointment provider offering ${trimmedCategory}`, 
+      trimmedCategory,
       currency || 'PHP', 
       timezone || 'Asia/Manila', 
-      logoUrl?.trim() || null
+      logoUrl?.trim() || null,
+      tagline?.trim() || null,
+      finalPhone,
+      email?.trim() || null,
+      finalAddress,
+      finalCity,
+      finalOpeningHours,
+      website?.trim() || null,
+      instagram?.trim() || null
     ]);
     const newBiz = bRes.rows[0];
 
@@ -282,7 +302,6 @@ router.post('/create-business', async (req: Request, res: Response) => {
       'Pasay': { lat: 14.5378, lng: 120.9993 },
     };
 
-    const finalCity = branchCity?.trim() || 'Quezon City';
     const fallbackCoord = cityCoords[finalCity] || { lat: 14.5995, lng: 121.0000 };
 
     const finalLat = latitude !== undefined && latitude !== null && !isNaN(Number(latitude))
@@ -293,20 +312,20 @@ router.post('/create-business', async (req: Request, res: Response) => {
       ? Number(longitude)
       : fallbackCoord.lng + (Math.random() * 0.01 - 0.005);
 
-    // 2. Create Initial Branch
+    // 2. Automatically create internal default branch linking appointments to this store
     const brRes = await client.query(`
       INSERT INTO branches (business_id, name, address, city, phone, latitude, longitude, location_description)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING id, name, address, city, phone, latitude, longitude, location_description AS "locationDescription"
     `, [
       newBiz.id, 
-      branchName?.trim() || `${trimmedName} Main Branch`, 
-      branchAddress?.trim() || `101 Demonstration Ave, ${finalCity}`, 
+      `${trimmedName} Store`, 
+      finalAddress, 
       finalCity, 
-      branchPhone?.trim() || '+63 2 8999 0001',
+      finalPhone,
       finalLat,
       finalLng,
-      locationDescription?.trim() || `Primary Demonstration Branch in ${finalCity}`
+      `${trimmedName} - ${finalCity}`
     ]);
 
     // 3. Create default service
@@ -337,7 +356,7 @@ router.post('/create-business', async (req: Request, res: Response) => {
     await client.query('COMMIT');
 
     res.status(201).json({
-      message: 'Demo business created successfully!',
+      message: 'Demo store created successfully!',
       business: newBiz,
       branch: brRes.rows[0]
     });
@@ -838,7 +857,13 @@ router.get('/settings', async (req: Request, res: Response) => {
   try {
     const businessId = await getDemoBusinessId(req);
 
-    const bizRes = await query('SELECT id, name, slug, category, description, currency, timezone, logo_url AS "logoUrl" FROM businesses WHERE id = $1', [businessId]);
+    const bizRes = await query(`
+      SELECT id, name, slug, category, description, currency, timezone, logo_url AS "logoUrl",
+             phone, email, address, city, opening_hours AS "openingHours",
+             website, instagram, tagline
+      FROM businesses
+      WHERE id = $1
+    `, [businessId]);
     const branchesRes = await query('SELECT id, name, address, city, phone, location_description AS "locationDescription" FROM branches WHERE business_id = $1 AND is_active = true', [businessId]);
     const servicesRes = await query('SELECT id, name, description, duration_minutes AS "durationMinutes", price, category FROM services WHERE business_id = $1 ORDER BY price ASC', [businessId]);
     const staffRes = await query('SELECT id, name, bio FROM staff_profiles WHERE business_id = $1', [businessId]);

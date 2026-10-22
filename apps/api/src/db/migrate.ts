@@ -244,9 +244,17 @@ export const runMigrations = async () => {
     CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON notifications (recipient_type, recipient_identifier, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_notifications_appt ON notifications (appointment_id);
 
-    -- Multi-Business & Branch Extensions
+    -- Multi-Business & Store Details Extensions
     ALTER TABLE businesses ADD COLUMN IF NOT EXISTS category VARCHAR(100) NOT NULL DEFAULT 'Beauty & Wellness';
     ALTER TABLE businesses ADD COLUMN IF NOT EXISTS logo_url TEXT;
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS address TEXT;
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS city VARCHAR(100) DEFAULT 'Quezon City';
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS opening_hours VARCHAR(100) DEFAULT '9:00 AM - 6:00 PM';
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS website VARCHAR(255);
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS instagram VARCHAR(100);
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS tagline VARCHAR(255);
     ALTER TABLE businesses ADD COLUMN IF NOT EXISTS booking_policies JSONB DEFAULT '{"requireApproval": false, "minLeadHours": 2, "maxAdvanceDays": 60}'::jsonb;
 
     ALTER TABLE branches ADD COLUMN IF NOT EXISTS latitude NUMERIC(10, 7);

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Building2, MapPin, AlertCircle } from 'lucide-react';
+import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Instagram, Tag } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 interface BusinessCreationModalProps {
@@ -11,7 +11,6 @@ interface BusinessCreationModalProps {
     category?: string;
     description?: string;
     city?: string;
-    branchName?: string;
   };
 }
 
@@ -22,6 +21,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
   initialData,
 }) => {
   const [createName, setCreateName] = useState(initialData?.name || '');
+  const [createTagline, setCreateTagline] = useState('');
   const [categoryOptions, setCategoryOptions] = useState<string[]>([
     'Beauty & Wellness',
     'Dental Services',
@@ -36,9 +36,8 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
 
   const [createDescription, setCreateDescription] = useState(initialData?.description || '');
   const [createLogoUrl, setCreateLogoUrl] = useState('');
-  const [createBranchName, setCreateBranchName] = useState(initialData?.branchName || '');
 
-  // Dynamic Locations
+  // Store Location & Contact Details
   const [cityOptions, setCityOptions] = useState<string[]>([
     'Quezon City',
     'Makati',
@@ -50,13 +49,15 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
     'Alabang / Muntinlupa',
     'Pasay',
   ]);
-  const [createBranchCity, setCreateBranchCity] = useState(initialData?.city || 'Quezon City');
+  const [createCity, setCreateCity] = useState(initialData?.city || 'Quezon City');
   const [isCustomCity, setIsCustomCity] = useState(false);
   const [customCityInput, setCustomCityInput] = useState('');
-  const [createBranchAddress, setCreateBranchAddress] = useState('');
-  const [createBranchPhone, setCreateBranchPhone] = useState('+63 2 8999 0001');
-  const [createLatitude, setCreateLatitude] = useState('');
-  const [createLongitude, setCreateLongitude] = useState('');
+  const [createAddress, setCreateAddress] = useState('');
+  const [createPhone, setCreatePhone] = useState('+63 2 8999 0001');
+  const [createEmail, setCreateEmail] = useState('');
+  const [createOpeningHours, setCreateOpeningHours] = useState('9:00 AM - 6:00 PM');
+  const [createWebsite, setCreateWebsite] = useState('');
+  const [createInstagram, setCreateInstagram] = useState('');
 
   const [creatingBusiness, setCreatingBusiness] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -72,14 +73,14 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
 
     const finalCategory = isCustomCategory ? customCategoryInput.trim() : createCategory.trim();
     if (!finalCategory) {
-      setCreateError('Please specify a category for this business');
+      setCreateError('Please specify a category for this store');
       setCreatingBusiness(false);
       return;
     }
 
-    const finalCity = isCustomCity ? customCityInput.trim() : createBranchCity.trim();
+    const finalCity = isCustomCity ? customCityInput.trim() : createCity.trim();
     if (!finalCity) {
-      setCreateError('Please specify a city / location for this branch');
+      setCreateError('Please specify a city / location for this store');
       setCreatingBusiness(false);
       return;
     }
@@ -90,14 +91,16 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
         body: JSON.stringify({
           name: createName.trim(),
           category: finalCategory,
-          description: createDescription.trim(),
+          tagline: createTagline.trim() || undefined,
+          description: createDescription.trim() || undefined,
           logoUrl: createLogoUrl.trim() || undefined,
-          branchName: createBranchName.trim() || undefined,
-          branchCity: finalCity,
-          branchAddress: createBranchAddress.trim() || undefined,
-          branchPhone: createBranchPhone.trim() || undefined,
-          latitude: createLatitude ? parseFloat(createLatitude) : undefined,
-          longitude: createLongitude ? parseFloat(createLongitude) : undefined,
+          city: finalCity,
+          address: createAddress.trim() || undefined,
+          phone: createPhone.trim() || undefined,
+          email: createEmail.trim() || undefined,
+          openingHours: createOpeningHours.trim() || undefined,
+          website: createWebsite.trim() || undefined,
+          instagram: createInstagram.trim() || undefined,
         }),
       });
 
@@ -111,7 +114,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
 
       onSuccess(res.business);
     } catch (err: any) {
-      setCreateError(err.message || 'Failed to create business');
+      setCreateError(err.message || 'Failed to create store');
     } finally {
       setCreatingBusiness(false);
     }
@@ -126,8 +129,8 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               <Building2 className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">Launch Your Own Business</h3>
-              <p className="text-xs text-stone-500 dark:text-stone-400">Configure appointment calendar, services &amp; branch details</p>
+              <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">Launch Your Own Store</h3>
+              <p className="text-xs text-stone-500 dark:text-stone-400">Set up your brand identity, business hours &amp; contact info</p>
             </div>
           </div>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1">
@@ -143,9 +146,10 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          {/* Store Name & Tagline */}
           <div>
             <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-              Business Name <span className="text-rose-500">*</span>
+              Store / Business Name <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -157,8 +161,21 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             />
           </div>
 
+          <div>
+            <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+              Tagline / Catchphrase (Optional)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Your Premier Sanctuary for Holistic Wellness &amp; Style"
+              value={createTagline}
+              onChange={(e) => setCreateTagline(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+            />
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Category Selection with Add New Category */}
+            {/* Category Selection */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block font-semibold text-stone-700 dark:text-stone-300">Category</label>
@@ -198,10 +215,10 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               )}
             </div>
 
-            {/* City / Location Selection with Add Custom Location */}
+            {/* City / Primary Location */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block font-semibold text-stone-700 dark:text-stone-300">Location / City</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300">City / Location</label>
                 <button
                   type="button"
                   onClick={() => {
@@ -225,8 +242,8 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 />
               ) : (
                 <select
-                  value={createBranchCity}
-                  onChange={(e) => setCreateBranchCity(e.target.value)}
+                  value={createCity}
+                  onChange={(e) => setCreateCity(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                 >
                   {cityOptions.map((c, i) => (
@@ -241,7 +258,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
 
           <div>
             <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-              Logo / Avatar URL (Optional — auto-generates branded fallback if empty)
+              Logo / Store Cover URL (Optional — auto-generates branded fallback if empty)
             </label>
             <input
               type="url"
@@ -253,78 +270,91 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
           </div>
 
           <div>
-            <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Business Description</label>
+            <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Description</label>
             <textarea
               rows={2}
-              placeholder="Briefly describe what services or specialties this business provides..."
+              placeholder="Briefly describe what services, atmosphere, or specialties your store provides..."
               value={createDescription}
               onChange={(e) => setCreateDescription(e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
             />
           </div>
 
-          <div className="border-t border-stone-200 dark:border-stone-800 pt-3">
-            <span className="font-semibold text-stone-800 dark:text-stone-200 block mb-2">Initial Branch Location</span>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-stone-500 dark:text-stone-400 mb-1">Branch Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Flagship Branch"
-                  value={createBranchName}
-                  onChange={(e) => setCreateBranchName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                />
-              </div>
-              <div>
-                <label className="block text-stone-500 dark:text-stone-400 mb-1">Branch Phone</label>
-                <input
-                  type="text"
-                  placeholder="+63 2 8999 0001"
-                  value={createBranchPhone}
-                  onChange={(e) => setCreateBranchPhone(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                />
-              </div>
-            </div>
-            <div className="mt-2">
+          {/* Store Contact & Address */}
+          <div className="border-t border-stone-200 dark:border-stone-800 pt-3 space-y-3">
+            <span className="font-semibold text-stone-800 dark:text-stone-200 block">Store Location &amp; Contact</span>
+            
+            <div>
               <label className="block text-stone-500 dark:text-stone-400 mb-1">Street Address</label>
               <input
                 type="text"
-                placeholder="e.g. 88 Commercial Ave, Level 2"
-                value={createBranchAddress}
-                onChange={(e) => setCreateBranchAddress(e.target.value)}
+                placeholder="e.g. Level 2, Grand Promenade Mall, 88 Commercial Ave"
+                value={createAddress}
+                onChange={(e) => setCreateAddress(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3 mt-2">
+
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-stone-500 dark:text-stone-400 mb-1">Latitude (Optional)</label>
+                <label className="block text-stone-500 dark:text-stone-400 mb-1">Contact Phone</label>
                 <input
-                  type="number"
-                  step="any"
-                  placeholder="e.g. 14.5547"
-                  value={createLatitude}
-                  onChange={(e) => setCreateLatitude(e.target.value)}
+                  type="text"
+                  placeholder="+63 2 8999 0001"
+                  value={createPhone}
+                  onChange={(e) => setCreatePhone(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                 />
               </div>
               <div>
-                <label className="block text-stone-500 dark:text-stone-400 mb-1">Longitude (Optional)</label>
+                <label className="block text-stone-500 dark:text-stone-400 mb-1">Store Email (Optional)</label>
                 <input
-                  type="number"
-                  step="any"
-                  placeholder="e.g. 121.0244"
-                  value={createLongitude}
-                  onChange={(e) => setCreateLongitude(e.target.value)}
+                  type="email"
+                  placeholder="contact@yourstore.demo"
+                  value={createEmail}
+                  onChange={(e) => setCreateEmail(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-stone-500 dark:text-stone-400 mb-1">Operating Hours</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 9:00 AM - 7:00 PM"
+                  value={createOpeningHours}
+                  onChange={(e) => setCreateOpeningHours(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
+              <div>
+                <label className="block text-stone-500 dark:text-stone-400 mb-1">Instagram Handle</label>
+                <input
+                  type="text"
+                  placeholder="@yourstore_ph"
+                  value={createInstagram}
+                  onChange={(e) => setCreateInstagram(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-stone-500 dark:text-stone-400 mb-1">Website URL (Optional)</label>
+              <input
+                type="url"
+                placeholder="https://yourstore.ph"
+                value={createWebsite}
+                onChange={(e) => setCreateWebsite(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+              />
             </div>
           </div>
 
           <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 text-[11px] leading-relaxed">
-            <strong>Instant Studio Setup:</strong> Upon creation, Appointmo automatically seeds an initial active service, certified lead practitioner, and Monday-Saturday working hours so you can immediately begin managing and booking appointments for this business.
+            <strong>Instant Store Setup:</strong> Upon creation, Appointmo automatically configures an initial consultation service, lead specialist, and standard working hours so you can immediately begin scheduling and managing appointments for this store.
           </div>
 
           <div className="flex space-x-3 pt-2">
@@ -340,7 +370,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               disabled={creatingBusiness || !createName.trim()}
               className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow disabled:opacity-50"
             >
-              {creatingBusiness ? 'Configuring Business...' : 'Launch Business'}
+              {creatingBusiness ? 'Setting up Store...' : 'Launch Store'}
             </button>
           </div>
         </form>
