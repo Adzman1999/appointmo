@@ -28,13 +28,6 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Enforce Super Admin approval for store admin accounts
-    if (user.role === 'business_admin' && user.status === 'pending') {
-      return res.status(403).json({ 
-        error: 'Your store account is currently pending approval by the Super Admin. You will be able to sign in once approved.' 
-      });
-    }
-
     if (user.status === 'rejected') {
       return res.status(403).json({ 
         error: 'Your account registration request was not approved. Please contact support.' 
@@ -89,6 +82,7 @@ router.post('/login', async (req: Request, res: Response) => {
         email: user.email,
         name: user.name,
         role: user.role,
+        status: user.status,
         businessId: user.business_id,
         businessSlug,
         businessName,

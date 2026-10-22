@@ -57,6 +57,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [editStatus, setEditStatus] = useState<'approved' | 'closed' | 'pending'>('approved');
   const [savingSettings, setSavingSettings] = useState(false);
 
+  // Pending State Calculation
+  const isPending = currentBusiness?.status === 'pending' || editStatus === 'pending' || (storedUser?.role === 'business_admin' && storedUser?.status === 'pending');
+
   // Quick Staff Creation Form
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [newStaffName, setNewStaffName] = useState('');
@@ -271,6 +274,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   // Direct status update
   const handleUpdateStatus = async (id: string, newStatus: string) => {
+    if (isPending) {
+      toast.warning('Action Blocked', {
+        description: 'Your store is currently pending Super Admin approval (1 to 2 business days). Status updates are locked.'
+      });
+      return;
+    }
     try {
       await apiFetch(`/demo/admin/appointments/${id}/status`, {
         method: 'PATCH',
@@ -291,6 +300,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   // Open Reschedule Modal
   const handleOpenReschedule = async (appt: any) => {
+    if (isPending) {
+      toast.warning('Action Blocked', {
+        description: 'Your store is currently pending Super Admin approval (1 to 2 business days). Rescheduling is locked.'
+      });
+      return;
+    }
     setRescheduleAppt(appt);
     setRescheduleReason('');
     setRescheduleError(null);
@@ -333,6 +348,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
   // Submit Reschedule
   const handleConfirmReschedule = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPending) {
+      toast.warning('Action Blocked', {
+        description: 'Your store is currently pending Super Admin approval (1 to 2 business days). Rescheduling is locked.'
+      });
+      return;
+    }
     if (!rescheduleAppt || !selectedRescheduleSlot) return;
 
     setRescheduleLoading(true);
@@ -367,6 +388,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
   // Submit Cancellation with reason
   const handleConfirmCancellation = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPending) {
+      toast.warning('Action Blocked', {
+        description: 'Your store is currently pending Super Admin approval (1 to 2 business days). Cancellation is locked.'
+      });
+      return;
+    }
     if (!cancelModalAppt) return;
 
     setCancelLoading(true);
@@ -423,6 +450,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
   // Save Store Settings
   const handleSaveStoreSettings = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPending) {
+      toast.warning('Action Blocked', {
+        description: 'Your store is currently pending Super Admin approval (1 to 2 business days). Settings cannot be modified until approved.'
+      });
+      return;
+    }
     setSavingSettings(true);
     try {
       const res: any = await apiFetch(`/demo/admin/settings?slug=${encodeURIComponent(activeSlug)}`, {
@@ -460,6 +493,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
   // Add Staff Specialist
   const handleAddStaff = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPending) {
+      toast.warning('Action Blocked', {
+        description: 'Your store is currently pending Super Admin approval (1 to 2 business days). Adding staff is locked.'
+      });
+      return;
+    }
     if (!newStaffName.trim()) return;
     setAddingStaff(true);
     try {
@@ -485,6 +524,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
   // Add Service
   const handleAddService = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPending) {
+      toast.warning('Action Blocked', {
+        description: 'Your store is currently pending Super Admin approval (1 to 2 business days). Adding services is locked.'
+      });
+      return;
+    }
     if (!newServiceName.trim() || !newServicePrice) return;
     setAddingService(true);
     try {
@@ -542,6 +587,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
                   {currentBusiness?.category || 'Demo Business'}
                 </span>
+                {isPending && (
+                  <span className="text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-amber-400 text-stone-950 shadow-sm flex items-center space-x-1">
+                    <Clock className="w-3 h-3" />
+                    <span>Pending Super Admin Review</span>
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-stone-500 dark:text-stone-400">
                 {currentBusiness?.description || 'Synthetic appointment provider in Metro Manila'}
@@ -670,6 +721,35 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
       {/* Main Dashboard Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
+        {/* Prominent Pending Review Banner */}
+        {isPending && (
+          <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in">
+            <div className="flex items-start sm:items-center space-x-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center shrink-0 shadow">
+                <Clock className="w-6 h-6 animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-extrabold text-stone-900 dark:text-stone-100 text-base">
+                    Store Status: Pending Super Admin Approval
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-400 text-stone-950 shadow-sm">
+                    Wait 1 – 2 Business Days
+                  </span>
+                </div>
+                <p className="text-xs text-stone-700 dark:text-stone-300 max-w-3xl leading-relaxed">
+                  Your store is currently under review by the platform Super Admin. Please wait <strong>1 to 2 business days</strong> for approval. During review, your dashboard is in <strong>read-only preview mode</strong>: store settings, staff, services, and appointment management actions are locked, and customer bookings are temporarily disabled until authorized.
+                </p>
+              </div>
+            </div>
+            <div className="shrink-0 flex items-center space-x-2 self-start md:self-auto">
+              <span className="text-xs font-bold px-3 py-1.5 rounded-xl border border-amber-500/40 text-amber-800 dark:text-amber-300 bg-amber-500/10 flex items-center space-x-1.5">
+                <Shield className="w-3.5 h-3.5" />
+                <span>Read-Only Preview</span>
+              </span>
+            </div>
+          </div>
+        )}
         {/* Notice Alerts */}
         {notice && (
           <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs flex items-center justify-between animate-in fade-in">
@@ -733,7 +813,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                         required
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                        disabled={isPending}
+                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-850' : ''}`}
                       />
                     </div>
                     <div>
@@ -743,7 +824,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         value={editTagline}
                         onChange={(e) => setEditTagline(e.target.value)}
                         placeholder="e.g. Premium Aesthetic Treatments"
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                        disabled={isPending}
+                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-850' : ''}`}
                       />
                     </div>
                   </div>
@@ -755,7 +837,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       value={editDescription}
                       onChange={(e) => setEditDescription(e.target.value)}
                       placeholder="Describe what services you offer, your studio vibe, and what clients can expect..."
-                      className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                      disabled={isPending}
+                      className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-850' : ''}`}
                     />
                   </div>
 
@@ -775,7 +858,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         value={editLogoUrl}
                         onChange={(e) => setEditLogoUrl(e.target.value)}
                         placeholder="https://example.com/logo.png"
-                        className="flex-1 px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                        disabled={isPending}
+                        className={`flex-1 px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-850' : ''}`}
                       />
                     </div>
                     <p className="text-[11px] text-stone-500">Provide an image link to replace the default lettermark logo.</p>
@@ -789,7 +873,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         type="text"
                         value={editPhone}
                         onChange={(e) => setEditPhone(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                        disabled={isPending}
+                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-850' : ''}`}
                       />
                     </div>
                     <div>
@@ -798,7 +883,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         type="email"
                         value={editEmail}
                         onChange={(e) => setEditEmail(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                        disabled={isPending}
+                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-850' : ''}`}
                       />
                     </div>
                     <div>
@@ -808,7 +894,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         value={editOpeningHours}
                         onChange={(e) => setEditOpeningHours(e.target.value)}
                         placeholder="e.g. 9:00 AM - 6:00 PM (Mon-Sat)"
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                        disabled={isPending}
+                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-850' : ''}`}
                       />
                     </div>
                     <div>
@@ -817,7 +904,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         type="text"
                         value={editCity}
                         onChange={(e) => setEditCity(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                        disabled={isPending}
+                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-850' : ''}`}
                       />
                     </div>
                     <div className="sm:col-span-2">
@@ -826,7 +914,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         type="text"
                         value={editAddress}
                         onChange={(e) => setEditAddress(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                        disabled={isPending}
+                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-850' : ''}`}
                       />
                     </div>
                   </div>
@@ -839,12 +928,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         type="button"
+                        disabled={isPending}
                         onClick={() => setEditStatus('approved')}
                         className={`p-3 rounded-2xl border text-left text-xs transition ${
                           editStatus === 'approved'
                             ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200'
                             : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300'
-                        }`}
+                        } ${isPending ? 'opacity-60 cursor-not-allowed' : ''}`}
                       >
                         <div className="flex items-center space-x-1.5 font-bold">
                           <Power className="w-3.5 h-3.5 text-emerald-600" />
@@ -855,12 +945,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
                       <button
                         type="button"
+                        disabled={isPending}
                         onClick={() => setEditStatus('closed')}
                         className={`p-3 rounded-2xl border text-left text-xs transition ${
                           editStatus === 'closed'
                             ? 'border-rose-500 bg-rose-50/60 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200'
                             : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300'
-                        }`}
+                        } ${isPending ? 'opacity-60 cursor-not-allowed' : ''}`}
                       >
                         <div className="flex items-center space-x-1.5 font-bold">
                           <XCircle className="w-3.5 h-3.5 text-rose-600" />
@@ -874,11 +965,11 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   <div className="pt-2 flex justify-end">
                     <button
                       type="submit"
-                      disabled={savingSettings}
-                      className="px-5 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-bold hover:bg-stone-800 dark:hover:bg-amber-300 transition flex items-center space-x-2 shadow"
+                      disabled={savingSettings || isPending}
+                      className="px-5 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-bold hover:bg-stone-800 dark:hover:bg-amber-300 transition flex items-center space-x-2 shadow disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Save className="w-3.5 h-3.5" />
-                      <span>{savingSettings ? 'Saving Changes...' : 'Save Store Profile'}</span>
+                      <span>{isPending ? 'Locked (Pending Super Admin Review)' : savingSettings ? 'Saving Changes...' : 'Save Store Profile'}</span>
                     </button>
                   </div>
                 </form>
@@ -895,8 +986,17 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setShowAddServiceModal(true)}
-                      className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition"
+                      disabled={isPending}
+                      onClick={() => {
+                        if (isPending) {
+                          toast.warning('Action Blocked', {
+                            description: 'Adding services is locked while your store is pending Super Admin approval.'
+                          });
+                          return;
+                        }
+                        setShowAddServiceModal(true);
+                      }}
+                      className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Plus className="w-3 h-3" />
                       <span>Add Service</span>
@@ -947,8 +1047,17 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setShowAddStaffModal(true)}
-                      className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition"
+                      disabled={isPending}
+                      onClick={() => {
+                        if (isPending) {
+                          toast.warning('Action Blocked', {
+                            description: 'Adding staff is locked while your store is pending Super Admin approval.'
+                          });
+                          return;
+                        }
+                        setShowAddStaffModal(true);
+                      }}
+                      className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Plus className="w-3 h-3" />
                       <span>Add Staff</span>
@@ -1204,23 +1313,32 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         {appt.status === 'confirmed' && (
                           <>
                             <button
+                              disabled={isPending}
                               onClick={() => handleOpenReschedule(appt)}
-                              className="px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold text-[11px] hover:bg-stone-200 dark:hover:bg-stone-700 transition"
+                              className="px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold text-[11px] hover:bg-stone-200 dark:hover:bg-stone-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               Reschedule
                             </button>
                             <button
+                              disabled={isPending}
                               onClick={() => handleUpdateStatus(appt.id, 'completed')}
-                              className="px-2.5 py-1 rounded-lg bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-[11px] hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow-sm"
+                              className="px-2.5 py-1 rounded-lg bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-[11px] hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               Complete
                             </button>
                             <button
+                              disabled={isPending}
                               onClick={() => {
+                                if (isPending) {
+                                  toast.warning('Action Blocked', {
+                                    description: 'Cancellation is locked while your store is pending Super Admin approval.'
+                                  });
+                                  return;
+                                }
                                 setCancelModalAppt(appt);
                                 setCancelReason('');
                               }}
-                              className="px-2.5 py-1 rounded-lg border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 font-semibold text-[11px] hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
+                              className="px-2.5 py-1 rounded-lg border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 font-semibold text-[11px] hover:bg-rose-50 dark:hover:bg-rose-950/40 transition disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               Cancel
                             </button>
@@ -1230,17 +1348,25 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         {appt.status === 'pending' && (
                           <>
                             <button
+                              disabled={isPending}
                               onClick={() => handleUpdateStatus(appt.id, 'confirmed')}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-700 dark:bg-emerald-600 text-white font-bold text-[11px] hover:bg-emerald-800 dark:hover:bg-emerald-500 transition shadow-sm"
+                              className="px-2.5 py-1 rounded-lg bg-emerald-700 dark:bg-emerald-600 text-white font-bold text-[11px] hover:bg-emerald-800 dark:hover:bg-emerald-500 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               Approve
                             </button>
                             <button
+                              disabled={isPending}
                               onClick={() => {
+                                if (isPending) {
+                                  toast.warning('Action Blocked', {
+                                    description: 'Decline is locked while your store is pending Super Admin approval.'
+                                  });
+                                  return;
+                                }
                                 setCancelModalAppt(appt);
                                 setCancelReason('');
                               }}
-                              className="px-2.5 py-1 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 font-semibold text-[11px] hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+                              className="px-2.5 py-1 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 font-semibold text-[11px] hover:bg-stone-100 dark:hover:bg-stone-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               Decline
                             </button>
@@ -1249,8 +1375,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
                         {appt.status === 'cancelled' && (
                           <button
+                            disabled={isPending}
                             onClick={() => handleOpenReschedule(appt)}
-                            className="px-2.5 py-1 rounded-lg border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-semibold text-[11px] hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+                            className="px-2.5 py-1 rounded-lg border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-semibold text-[11px] hover:bg-stone-100 dark:hover:bg-stone-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Re-book
                           </button>

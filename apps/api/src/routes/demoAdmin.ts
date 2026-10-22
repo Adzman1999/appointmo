@@ -8,7 +8,7 @@ import { EmailService } from '../services/email';
 const router = Router();
 
 // Dedicated Demo Isolation Scope: Can operate against requested business slug or default to Lumière
-async function getDemoBusinessId(req?: Request): Promise<string> {
+async function getDemoBusinessId(req?: Request, allowPending: boolean = true): Promise<string> {
   const querySlug = (req?.query?.slug as string | undefined) || (req?.body?.slug as string | undefined);
   const targetSlug = querySlug && querySlug.trim() ? querySlug.trim() : 'lumiere-beauty-studio';
 
@@ -23,8 +23,8 @@ async function getDemoBusinessId(req?: Request): Promise<string> {
   }
 
   const biz = bizRes.rows[0];
-  if (biz.status === 'pending') {
-    throw new Error('This store is currently pending Super Admin approval. Please wait for authorization.');
+  if (!allowPending && biz.status === 'pending') {
+    throw new Error('This store is currently pending Super Admin approval. Management actions and edits are locked until approved.');
   }
   if (biz.status === 'rejected') {
     throw new Error('This store registration was rejected by the administrator.');
@@ -34,16 +34,17 @@ async function getDemoBusinessId(req?: Request): Promise<string> {
 }
 
 // 0. Get current active business info and all switchable demo businesses
-router.get('/businesses', async (_req: Request, res: Response) => {
+router.get('/businesses', async (req: Request, res: Response) => {
   try {
+    const querySlug = req.query.slug as string | undefined;
     const listRes = await query(`
       SELECT b.id, b.name, b.slug, b.category, b.description, b.logo_url AS "logoUrl",
              b.phone, b.email, b.address, b.city, b.opening_hours AS "openingHours",
-             b.website, b.instagram, COALESCE(b.social_handle, b.instagram) AS "socialHandle", b.tagline
+             b.website, b.instagram, COALESCE(b.social_handle, b.instagram) AS "socialHandle", b.tagline, b.status
       FROM businesses b
-      WHERE b.status = 'approved'
+      WHERE b.status = 'approved' OR ($1::text IS NOT NULL AND b.slug = $1::text)
       ORDER BY b.name ASC
-    `);
+    `, [querySlug || null]);
 
     res.json({ businesses: listRes.rows });
   } catch (err: any) {
@@ -622,6 +623,12 @@ router.patch('/appointments/:id/status', async (req: Request, res: Response) => 
     const appt = existingRes.rows[0];
     const actualApptId = appt.id;
     const businessId = appt.business_id;
+
+    const bCheck = await client.query('SELECT status FROM businesses WHERE id = $1', [businessId]);
+    if (bCheck.rows[0]?.status === 'pending') {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'This store is pending Super Admin approval. Appointment actions are locked until approved.' });
+    }
     const prevStatus = appt.status;
 
     if (prevStatus === status) {
@@ -705,6 +712,11 @@ router.post('/appointments/:id/reschedule', async (req: Request, res: Response) 
     }
 
     const appt = apptRes.rows[0];
+    const bCheck = await client.query('SELECT status FROM businesses WHERE id = $1', [appt.business_id]);
+    if (bCheck.rows[0]?.status === 'pending') {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'This store is pending Super Admin approval. Rescheduling is locked until approved.' });
+    }
     const actualApptId = appt.id;
     const businessId = appt.business_id;
     const targetStaffId = newStaffId || appt.staff_id;
@@ -823,6 +835,11 @@ router.post('/appointments/:id/reassign-staff', async (req: Request, res: Respon
     }
 
     const appt = apptRes.rows[0];
+    const bCheck = await client.query('SELECT status FROM businesses WHERE id = $1', [appt.business_id]);
+    if (bCheck.rows[0]?.status === 'pending') {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'This store is pending Super Admin approval. Staff reassignment is locked until approved.' });
+    }
     const actualApptId = appt.id;
     const businessId = appt.business_id;
 
@@ -929,7 +946,7 @@ router.get('/settings', async (req: Request, res: Response) => {
     const bizRes = await query(`
       SELECT id, name, slug, category, description, currency, timezone, logo_url AS "logoUrl",
              phone, email, address, city, opening_hours AS "openingHours",
-             website, instagram, COALESCE(social_handle, instagram) AS "socialHandle", tagline
+             website, instagram, COALESCE(social_handle, instagram) AS "socialHandle", tagline, status
       FROM businesses
       WHERE id = $1
     `, [businessId]);
@@ -959,7 +976,7 @@ router.get('/settings', async (req: Request, res: Response) => {
 // 12. Update Business Profile & Setup (Logo, description, hours, phone, address, status, policies)
 router.put('/settings', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req);
+    const businessId = await getDemoBusinessId(req, false);
     const {
       name, description, logoUrl, phone, email, address, city, openingHours,
       website, instagram, socialHandle, tagline, status, bookingPolicies
@@ -1053,7 +1070,7 @@ router.put('/settings', async (req: Request, res: Response) => {
 // 13. Create or Add Staff Specialist
 router.post('/staff', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req);
+    const businessId = await getDemoBusinessId(req, false);
     const { name, bio, serviceIds } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Staff name is required' });
@@ -1090,7 +1107,7 @@ router.post('/staff', async (req: Request, res: Response) => {
 // 14. Create or Add Service
 router.post('/services', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req);
+    const businessId = await getDemoBusinessId(req, false);
     const { name, description, durationMinutes, price, category } = req.body;
     if (!name || !price) {
       return res.status(400).json({ error: 'Service name and price are required' });
