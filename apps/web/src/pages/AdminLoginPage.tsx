@@ -135,7 +135,11 @@ export const AdminLoginPage: React.FC = () => {
 
       {/* Main Auth Form Container */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 my-6">
-        <div className="max-w-md w-full bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 shadow-xl">
+        <div className={`w-full bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 shadow-xl transition-all duration-300 ${
+          authMode === 'signup' && accountType === 'store'
+            ? 'max-w-2xl sm:max-w-3xl'
+            : 'max-w-md'
+        }`}>
           {/* Header & Mode Switcher */}
           <div className="mb-6 space-y-4">
             {/* Top Row: Title + Description */}
