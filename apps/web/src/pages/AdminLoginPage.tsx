@@ -14,13 +14,9 @@ export const AdminLoginPage: React.FC = () => {
   const initialMode = searchParams.get('mode') === 'signup' ? 'signup' : 'signin';
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>(initialMode);
 
-  // Active Role tab: 'store', 'customer', or 'superadmin'
-  const initialRole = searchParams.get('role') === 'customer' 
-    ? 'customer' 
-    : searchParams.get('role') === 'superadmin'
-    ? 'superadmin'
-    : 'store';
-  const [role, setRole] = useState<'store' | 'customer' | 'superadmin'>(initialRole as any);
+  // Account Type selection during Sign Up only: 'customer' or 'store'
+  const initialAccountType = searchParams.get('type') === 'store' || searchParams.get('role') === 'store' ? 'store' : 'customer';
+  const [accountType, setAccountType] = useState<'customer' | 'store'>(initialAccountType);
 
   // Common credentials - empty defaults so visitors create or type their own accounts
   const [email, setEmail] = useState('');
@@ -42,13 +38,6 @@ export const AdminLoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
-
-  // Switch Role helper
-  const handleRoleChange = (newRole: 'store' | 'customer') => {
-    setRole(newRole);
-    setError(null);
-    setSuccessNotice(null);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,16 +65,17 @@ export const AdminLoginPage: React.FC = () => {
           navigate(`/admin/dashboard?slug=${encodeURIComponent(targetSlug)}`);
         }
       } else {
-        // Sign Up with Store Creation if role is store
+        // Sign Up with Store Creation if accountType is store
+        const isStore = accountType === 'store';
         const res: any = await apiFetch('/auth/register', {
           method: 'POST',
           body: JSON.stringify({
-            role: role === 'store' ? 'business_admin' : 'customer',
+            role: isStore ? 'business_admin' : 'customer',
             name: name.trim(),
             email: email.trim(),
             password,
             phone: phone.trim(),
-            ...(role === 'store' ? {
+            ...(isStore ? {
               storeName: storeName.trim() || `${name.trim()}'s Store`,
               category,
               city,
@@ -153,7 +143,9 @@ export const AdminLoginPage: React.FC = () => {
                 {authMode === 'signin' ? 'Sign In to Appointmo' : 'Create an Account'}
               </h1>
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                {role === 'store' ? 'Manage your storefront, schedule & appointments' : 'Book, reschedule & track your appointment history'}
+                {authMode === 'signin' 
+                  ? 'Access your appointments, store schedule, or admin console' 
+                  : 'Join Appointmo as a customer or register your business'}
               </p>
             </div>
 
@@ -183,34 +175,36 @@ export const AdminLoginPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Role Segmented Controller */}
-          <div className="grid grid-cols-2 gap-2 p-1.5 bg-stone-100 dark:bg-stone-800/80 rounded-2xl border border-stone-200 dark:border-stone-700 mb-6">
-            <button
-              type="button"
-              onClick={() => handleRoleChange('store')}
-              className={`flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition ${
-                role === 'store'
-                  ? 'bg-amber-400 text-stone-950 shadow'
-                  : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-              }`}
-            >
-              <Store className="w-4 h-4" />
-              <span>Store Admin</span>
-            </button>
+          {/* Account Type Option for Registration (Only shown when signing up) */}
+          {authMode === 'signup' && (
+            <div className="grid grid-cols-2 gap-2 p-1.5 bg-stone-100 dark:bg-stone-800/80 rounded-2xl border border-stone-200 dark:border-stone-700 mb-6">
+              <button
+                type="button"
+                onClick={() => setAccountType('customer')}
+                className={`flex items-center justify-center space-x-2 py-2 rounded-xl text-xs font-bold transition ${
+                  accountType === 'customer'
+                    ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-white shadow-sm'
+                    : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                }`}
+              >
+                <UserCheck className="w-4 h-4 text-amber-500" />
+                <span>Customer</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => handleRoleChange('customer')}
-              className={`flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition ${
-                role === 'customer'
-                  ? 'bg-amber-400 text-stone-950 shadow'
-                  : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-              }`}
-            >
-              <UserCheck className="w-4 h-4" />
-              <span>Customer</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => setAccountType('store')}
+                className={`flex items-center justify-center space-x-2 py-2 rounded-xl text-xs font-bold transition ${
+                  accountType === 'store'
+                    ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-white shadow-sm'
+                    : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                }`}
+              >
+                <Store className="w-4 h-4 text-amber-500" />
+                <span>Business / Store</span>
+              </button>
+            </div>
+          )}
 
           {successNotice && (
             <div className="mb-4 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs flex items-start space-x-2.5">
@@ -219,7 +213,7 @@ export const AdminLoginPage: React.FC = () => {
                 <p className="font-bold">Store Registration Under Review</p>
                 <p className="mt-0.5 leading-relaxed">{successNotice}</p>
                 <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
-                  Switch to the <strong>Super Admin</strong> tab to review and approve this new store registration.
+                  Your store is queued for verification and approval by the Super Admin.
                 </p>
               </div>
             </div>
@@ -324,7 +318,7 @@ export const AdminLoginPage: React.FC = () => {
             </div>
 
             {/* If Store Admin Sign Up: Instant Store Creation Details */}
-            {authMode === 'signup' && role === 'store' && (
+            {authMode === 'signup' && accountType === 'store' && (
               <div className="pt-3 border-t border-stone-200 dark:border-stone-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-stone-800 dark:text-stone-200 flex items-center space-x-1.5">
@@ -409,8 +403,10 @@ export const AdminLoginPage: React.FC = () => {
                 {loading
                   ? 'Processing...'
                   : authMode === 'signin'
-                  ? `Sign In as ${role === 'store' ? 'Store Admin' : 'Customer'}`
-                  : `Create ${role === 'store' ? 'Store & Admin Account' : 'Customer Account'}`}
+                  ? 'Sign In'
+                  : accountType === 'store'
+                  ? 'Register Store & Account'
+                  : 'Create Customer Account'}
               </span>
               <ArrowRight className="w-4 h-4" />
             </button>
