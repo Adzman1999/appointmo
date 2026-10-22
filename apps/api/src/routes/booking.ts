@@ -16,7 +16,7 @@ router.get('/business', async (req: Request, res: Response) => {
     const bizRes = await query(`
       SELECT b.id, b.name, b.slug, b.description, b.category, b.currency, b.timezone, b.logo_url AS "logoUrl",
              b.phone, b.email, b.address, b.city, b.opening_hours AS "openingHours",
-             b.website, b.instagram, b.tagline
+             b.website, b.instagram, COALESCE(b.social_handle, b.instagram) AS "socialHandle", b.tagline
       FROM businesses b
       WHERE b.slug = $1
       LIMIT 1

@@ -29,7 +29,7 @@ router.get('/businesses', async (_req: Request, res: Response) => {
     const listRes = await query(`
       SELECT b.id, b.name, b.slug, b.category, b.description, b.logo_url AS "logoUrl",
              b.phone, b.email, b.address, b.city, b.opening_hours AS "openingHours",
-             b.website, b.instagram, b.tagline,
+             b.website, b.instagram, COALESCE(b.social_handle, b.instagram) AS "socialHandle", b.tagline,
              COUNT(DISTINCT br.id)::int AS "branchCount",
              COUNT(DISTINCT s.id)::int AS "serviceCount",
              COUNT(DISTINCT sp.id)::int AS "staffCount"
@@ -241,7 +241,7 @@ router.post('/create-business', async (req: Request, res: Response) => {
   try {
     const { 
       name, category, description, currency, timezone, logoUrl, 
-      tagline, phone, email, address, city, openingHours, website, instagram,
+      tagline, phone, email, address, city, openingHours, website, instagram, socialHandle,
       latitude, longitude
     } = req.body;
 
@@ -255,6 +255,7 @@ router.post('/create-business', async (req: Request, res: Response) => {
     const finalPhone = phone?.trim() || '+63 2 8999 0001';
     const finalAddress = address?.trim() || `101 Commercial Ave, ${finalCity}`;
     const finalOpeningHours = openingHours?.trim() || '9:00 AM - 6:00 PM';
+    const finalSocMed = (socialHandle || instagram)?.trim() || null;
 
     const slug = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Math.random().toString(36).substring(2, 6);
 
@@ -264,12 +265,12 @@ router.post('/create-business', async (req: Request, res: Response) => {
     const bRes = await client.query(`
       INSERT INTO businesses (
         name, slug, description, category, currency, timezone, logo_url,
-        tagline, phone, email, address, city, opening_hours, website, instagram
+        tagline, phone, email, address, city, opening_hours, website, instagram, social_handle
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING id, name, slug, category, description, logo_url AS "logoUrl",
                 tagline, phone, email, address, city, opening_hours AS "openingHours",
-                website, instagram
+                website, instagram, social_handle AS "socialHandle"
     `, [
       trimmedName, 
       slug, 
@@ -285,7 +286,8 @@ router.post('/create-business', async (req: Request, res: Response) => {
       finalCity,
       finalOpeningHours,
       website?.trim() || null,
-      instagram?.trim() || null
+      finalSocMed,
+      finalSocMed
     ]);
     const newBiz = bRes.rows[0];
 
@@ -860,7 +862,7 @@ router.get('/settings', async (req: Request, res: Response) => {
     const bizRes = await query(`
       SELECT id, name, slug, category, description, currency, timezone, logo_url AS "logoUrl",
              phone, email, address, city, opening_hours AS "openingHours",
-             website, instagram, tagline
+             website, instagram, COALESCE(social_handle, instagram) AS "socialHandle", tagline
       FROM businesses
       WHERE id = $1
     `, [businessId]);

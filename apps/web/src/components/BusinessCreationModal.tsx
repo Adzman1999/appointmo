@@ -55,14 +55,29 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
   const [createAddress, setCreateAddress] = useState('');
   const [createPhone, setCreatePhone] = useState('+63 2 8999 0001');
   const [createEmail, setCreateEmail] = useState('');
-  const [createOpeningHours, setCreateOpeningHours] = useState('9:00 AM - 6:00 PM');
+  const [createStartTime, setCreateStartTime] = useState('09:00');
+  const [createEndTime, setCreateEndTime] = useState('18:00');
   const [createWebsite, setCreateWebsite] = useState('');
-  const [createInstagram, setCreateInstagram] = useState('');
+  const [createSocialHandle, setCreateSocialHandle] = useState('');
 
   const [creatingBusiness, setCreatingBusiness] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  // Format 24-hr time string (e.g. "09:00", "18:00") into friendly display e.g. "9:00 AM - 6:00 PM"
+  const formatTimeRange = (start: string, end: string) => {
+    const formatSingle = (timeStr: string) => {
+      if (!timeStr) return '';
+      const [hours, mins] = timeStr.split(':').map(Number);
+      if (isNaN(hours)) return timeStr;
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const adjHours = hours % 12 || 12;
+      const adjMins = mins ? String(mins).padStart(2, '0') : '00';
+      return `${adjHours}:${adjMins} ${period}`;
+    };
+    return `${formatSingle(start || '09:00')} - ${formatSingle(end || '18:00')}`;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +100,8 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
       return;
     }
 
+    const formattedOpeningHours = formatTimeRange(createStartTime, createEndTime);
+
     try {
       const res: any = await apiFetch('/demo/admin/create-business', {
         method: 'POST',
@@ -98,9 +115,10 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
           address: createAddress.trim() || undefined,
           phone: createPhone.trim() || undefined,
           email: createEmail.trim() || undefined,
-          openingHours: createOpeningHours.trim() || undefined,
+          openingHours: formattedOpeningHours,
           website: createWebsite.trim() || undefined,
-          instagram: createInstagram.trim() || undefined,
+          socialHandle: createSocialHandle.trim() || undefined,
+          instagram: createSocialHandle.trim() || undefined,
         }),
       });
 
@@ -318,38 +336,56 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-stone-500 dark:text-stone-400 mb-1">Operating Hours</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 9:00 AM - 7:00 PM"
-                  value={createOpeningHours}
-                  onChange={(e) => setCreateOpeningHours(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                />
-              </div>
-              <div>
-                <label className="block text-stone-500 dark:text-stone-400 mb-1">Instagram Handle</label>
-                <input
-                  type="text"
-                  placeholder="@yourstore_ph"
-                  value={createInstagram}
-                  onChange={(e) => setCreateInstagram(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                />
+            {/* Operating Hours as Start Time & End Time */}
+            <div>
+              <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                Operating Hours (Daily Opening &amp; Closing)
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <span className="text-[10px] text-stone-500 dark:text-stone-400 block mb-0.5">Opening Time</span>
+                  <input
+                    type="time"
+                    required
+                    value={createStartTime}
+                    onChange={(e) => setCreateStartTime(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] text-stone-500 dark:text-stone-400 block mb-0.5">Closing Time</span>
+                  <input
+                    type="time"
+                    required
+                    value={createEndTime}
+                    onChange={(e) => setCreateEndTime(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  />
+                </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-stone-500 dark:text-stone-400 mb-1">Website URL (Optional)</label>
-              <input
-                type="url"
-                placeholder="https://yourstore.ph"
-                value={createWebsite}
-                onChange={(e) => setCreateWebsite(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-stone-500 dark:text-stone-400 mb-1">Social Media Handle (Any Platform)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. @yourstore, fb.com/yourstore, or tiktok.com/@store"
+                  value={createSocialHandle}
+                  onChange={(e) => setCreateSocialHandle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
+              <div>
+                <label className="block text-stone-500 dark:text-stone-400 mb-1">Website URL (Optional)</label>
+                <input
+                  type="url"
+                  placeholder="https://yourstore.ph"
+                  value={createWebsite}
+                  onChange={(e) => setCreateWebsite(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
             </div>
           </div>
 

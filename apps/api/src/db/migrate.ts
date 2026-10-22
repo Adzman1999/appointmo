@@ -254,6 +254,7 @@ export const runMigrations = async () => {
     ALTER TABLE businesses ADD COLUMN IF NOT EXISTS opening_hours VARCHAR(100) DEFAULT '9:00 AM - 6:00 PM';
     ALTER TABLE businesses ADD COLUMN IF NOT EXISTS website VARCHAR(255);
     ALTER TABLE businesses ADD COLUMN IF NOT EXISTS instagram VARCHAR(100);
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS social_handle VARCHAR(100);
     ALTER TABLE businesses ADD COLUMN IF NOT EXISTS tagline VARCHAR(255);
     ALTER TABLE businesses ADD COLUMN IF NOT EXISTS booking_policies JSONB DEFAULT '{"requireApproval": false, "minLeadHours": 2, "maxAdvanceDays": 60}'::jsonb;
 
