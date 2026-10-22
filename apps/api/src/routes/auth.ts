@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { query, pool } from '../db';
 import { config } from '../config';
+import { EmailService } from '../services/email';
 
 const router = Router();
 
@@ -197,8 +198,19 @@ router.post('/register', async (req: Request, res: Response) => {
 
     // If store admin, do not issue an active session token yet since approval is required
     if (targetRole === 'business_admin') {
+      // Dispatch confirmation email to store owner informing them review takes 1-2 business days
+      try {
+        await EmailService.sendStoreCreationPendingEmail({
+          recipientEmail: newUser.email,
+          recipientName: newUser.name,
+          storeName: createdBusinessName || 'Your Store',
+        });
+      } catch (emailErr) {
+        console.error('Failed to dispatch store creation pending email:', emailErr);
+      }
+
       return res.status(201).json({
-        message: 'Store registration submitted successfully! Your account is pending review and approval by the Super Admin before you can sign in.',
+        message: 'Your store is successfully created! Please wait 1 to 2 business days for Super Admin approval before full access is granted.',
         pendingApproval: true,
         user: {
           id: newUser.id,

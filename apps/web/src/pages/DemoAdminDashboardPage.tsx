@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Calendar, Users, DollarSign, CheckCircle2, 
   Search, Filter, Clock, ArrowRight, Sparkles, Building2, 
   Check, X, AlertTriangle, Shield, Bell, ChevronRight, UserCheck, 
-  RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store, MapPin, Lightbulb, TrendingUp, LogOut
+  RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store, MapPin, Lightbulb, TrendingUp, LogOut,
+  Settings, Image, Scissors, Briefcase, Power, Save
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { BusinessLogo } from '../components/BusinessLogo';
@@ -14,9 +15,62 @@ import { toast } from 'sonner';
 
 export const DemoAdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Active Admin View Tab: 'appointments' or 'setup'
+  const [activeTab, setActiveTab] = useState<'appointments' | 'setup'>('appointments');
+
   const [businesses, setBusinesses] = useState<any[]>([]);
-  const [activeSlug, setActiveSlug] = useState<string>('lumiere-beauty-studio');
+  // Resolve active store slug from URL or user context, default to lumiere-beauty-studio
+  const urlSlug = searchParams.get('slug');
+  const storedUser = (() => {
+    try {
+      const u = localStorage.getItem('appointmo_user');
+      return u ? JSON.parse(u) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const [activeSlug, setActiveSlug] = useState<string>(
+    urlSlug || storedUser?.businessSlug || 'lumiere-beauty-studio'
+  );
   const [currentBusiness, setCurrentBusiness] = useState<any | null>(null);
+
+  // Settings & Store Setup State
+  const [storeServices, setStoreServices] = useState<any[]>([]);
+  const [storeStaff, setStoreStaff] = useState<any[]>([]);
+  const [storeWorkingHours, setStoreWorkingHours] = useState<any[]>([]);
+  
+  // Edit Form Fields
+  const [editName, setEditName] = useState('');
+  const [editTagline, setEditTagline] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editLogoUrl, setEditLogoUrl] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editCity, setEditCity] = useState('');
+  const [editOpeningHours, setEditOpeningHours] = useState('');
+  const [editWebsite, setEditWebsite] = useState('');
+  const [editSocialHandle, setEditSocialHandle] = useState('');
+  const [editStatus, setEditStatus] = useState<'approved' | 'closed' | 'pending'>('approved');
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  // Quick Staff Creation Form
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+  const [newStaffName, setNewStaffName] = useState('');
+  const [newStaffBio, setNewStaffBio] = useState('');
+  const [addingStaff, setAddingStaff] = useState(false);
+
+  // Quick Service Creation Form
+  const [showAddServiceModal, setShowAddServiceModal] = useState(false);
+  const [newServiceName, setNewServiceName] = useState('');
+  const [newServicePrice, setNewServicePrice] = useState('');
+  const [newServiceDuration, setNewServiceDuration] = useState('45');
+  const [newServiceCategory, setNewServiceCategory] = useState('General');
+  const [newServiceDesc, setNewServiceDesc] = useState('');
+  const [addingService, setAddingService] = useState(false);
 
   const [metrics, setMetrics] = useState<any | null>(null);
   const [appointments, setAppointments] = useState<any[]>([]);
@@ -141,6 +195,24 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
       const sRes: any = await apiFetch(`/demo/admin/settings?slug=${encodeURIComponent(activeSlug)}`);
       setCurrentBusiness(sRes.business || null);
+      setStoreServices(sRes.services || []);
+      setStoreStaff(sRes.staff || []);
+      setStoreWorkingHours(sRes.workingHours || []);
+
+      if (sRes.business) {
+        setEditName(sRes.business.name || '');
+        setEditTagline(sRes.business.tagline || '');
+        setEditDescription(sRes.business.description || '');
+        setEditLogoUrl(sRes.business.logoUrl || '');
+        setEditPhone(sRes.business.phone || '');
+        setEditEmail(sRes.business.email || '');
+        setEditAddress(sRes.business.address || '');
+        setEditCity(sRes.business.city || '');
+        setEditOpeningHours(sRes.business.openingHours || '');
+        setEditWebsite(sRes.business.website || '');
+        setEditSocialHandle(sRes.business.socialHandle || '');
+        setEditStatus(sRes.business.status || 'approved');
+      }
     } catch (err: any) {
       console.error(err);
       setErrorNotice(err.message || 'Failed to load demo dashboard');
@@ -348,6 +420,97 @@ export const DemoAdminDashboardPage: React.FC = () => {
     }
   };
 
+  // Save Store Settings
+  const handleSaveStoreSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    try {
+      const res: any = await apiFetch(`/demo/admin/settings?slug=${encodeURIComponent(activeSlug)}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: editName.trim(),
+          tagline: editTagline.trim(),
+          description: editDescription.trim(),
+          logoUrl: editLogoUrl.trim() || null,
+          phone: editPhone.trim(),
+          email: editEmail.trim(),
+          address: editAddress.trim(),
+          city: editCity.trim(),
+          openingHours: editOpeningHours.trim(),
+          website: editWebsite.trim() || null,
+          socialHandle: editSocialHandle.trim() || null,
+          status: editStatus,
+        }),
+      });
+
+      toast.success('Store Settings Saved', {
+        description: 'Store logo, details, operational status, and contact info updated.',
+      });
+      if (res.business) {
+        setCurrentBusiness(res.business);
+      }
+      fetchDashboardData();
+    } catch (err: any) {
+      toast.error('Failed to save store settings', { description: err.message });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  // Add Staff Specialist
+  const handleAddStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStaffName.trim()) return;
+    setAddingStaff(true);
+    try {
+      await apiFetch(`/demo/admin/staff?slug=${encodeURIComponent(activeSlug)}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: newStaffName.trim(),
+          bio: newStaffBio.trim() || 'Store specialist and consultant',
+        }),
+      });
+      toast.success('Staff specialist added successfully');
+      setNewStaffName('');
+      setNewStaffBio('');
+      setShowAddStaffModal(false);
+      fetchDashboardData();
+    } catch (err: any) {
+      toast.error('Failed to add staff', { description: err.message });
+    } finally {
+      setAddingStaff(false);
+    }
+  };
+
+  // Add Service
+  const handleAddService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newServiceName.trim() || !newServicePrice) return;
+    setAddingService(true);
+    try {
+      await apiFetch(`/demo/admin/services?slug=${encodeURIComponent(activeSlug)}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: newServiceName.trim(),
+          price: Number(newServicePrice),
+          durationMinutes: Number(newServiceDuration) || 45,
+          category: newServiceCategory.trim() || 'General',
+          description: newServiceDesc.trim() || 'Store appointment service',
+        }),
+      });
+      toast.success('Service menu item added successfully');
+      setNewServiceName('');
+      setNewServicePrice('');
+      setNewServiceDesc('');
+      setShowAddServiceModal(false);
+      fetchDashboardData();
+    } catch (err: any) {
+      toast.error('Failed to add service', { description: err.message });
+    } finally {
+      setAddingService(false);
+    }
+  };
+
 
 
   return (
@@ -387,24 +550,36 @@ export const DemoAdminDashboardPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            {/* View Switcher Tabs (Appointments vs Store Setup) */}
+            <div className="flex items-center bg-stone-100 dark:bg-stone-800 p-1 rounded-2xl border border-stone-200 dark:border-stone-700">
+              <button
+                type="button"
+                onClick={() => setActiveTab('appointments')}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                  activeTab === 'appointments'
+                    ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-sm'
+                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5 text-amber-500" />
+                <span>Appointments</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('setup')}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                  activeTab === 'setup'
+                    ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-sm'
+                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
+                }`}
+              >
+                <Settings className="w-3.5 h-3.5 text-amber-500" />
+                <span>Store Setup &amp; Menu</span>
+              </button>
+            </div>
+
             {/* Theme Toggle */}
             <ThemeToggle />
-
-            {/* Business Switcher Dropdown */}
-            <div className="flex items-center space-x-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-2 py-1">
-              <Building2 className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400 ml-1" />
-              <select
-                value={activeSlug}
-                onChange={(e) => setActiveSlug(e.target.value)}
-                className="bg-transparent text-xs font-semibold text-stone-800 dark:text-stone-200 pr-2 py-0.5 focus:outline-none cursor-pointer"
-              >
-                {businesses.map((b) => (
-                  <option key={b.id} value={b.slug} className="dark:bg-stone-800 text-stone-900 dark:text-stone-100">
-                    {b.name} ({b.category})
-                  </option>
-                ))}
-              </select>
-            </div>
 
             {/* Notification Bell with Badge */}
             <div className="relative">
@@ -479,18 +654,15 @@ export const DemoAdminDashboardPage: React.FC = () => {
             <button
               onClick={() => {
                 localStorage.removeItem('appointmo_auth');
+                localStorage.removeItem('appointmo_token');
+                localStorage.removeItem('appointmo_user');
                 navigate('/admin/login');
               }}
               title="Sign Out"
-              className="p-2 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-500 hover:text-rose-600 dark:text-stone-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+              className="p-2 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-500 hover:text-rose-600 dark:text-stone-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition flex items-center space-x-1"
             >
               <LogOut className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => navigate('/')}
-              className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-stone-800 transition text-xs font-semibold"
-            >
-              Home
+              <span className="text-[11px] font-semibold hidden sm:inline">Sign Out</span>
             </button>
           </div>
         </div>
@@ -511,8 +683,349 @@ export const DemoAdminDashboardPage: React.FC = () => {
           </div>
         )}
 
-        {/* Dashboard Title & Quick Insight */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* View Content: Appointments vs Store Setup */}
+        {activeTab === 'setup' ? (
+          /* =========================================================================
+             STORE SETUP & MANAGEMENT MENU UI
+             ========================================================================= */
+          <div className="space-y-6 animate-in fade-in">
+            {/* Header / Intro */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+                  <Settings className="w-6 h-6 text-amber-500" />
+                  <span>Store Setup &amp; Settings</span>
+                </h1>
+                <p className="text-xs text-stone-600 dark:text-stone-300 mt-0.5 font-medium">
+                  Customize your store logo, branding description, staff specialists, appointment slots, and operational status.
+                </p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                  editStatus === 'approved'
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                    : editStatus === 'closed'
+                    ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                }`}>
+                  Store Status: {editStatus === 'approved' ? 'Active / Open' : editStatus === 'closed' ? 'Temporarily Closed' : 'Under Review'}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column: Brand Identity, Logo & Status */}
+              <div className="lg:col-span-2 space-y-6">
+                <form onSubmit={handleSaveStoreSettings} className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-5">
+                  <div className="border-b border-stone-100 dark:border-stone-800 pb-3 flex items-center justify-between">
+                    <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+                      <Store className="w-4 h-4 text-amber-500" />
+                      <span>Store Profile &amp; Branding</span>
+                    </h2>
+                    <span className="text-[11px] text-stone-500 font-mono">Slug: {activeSlug}</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store / Business Name</label>
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        required
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Tagline / Catchphrase</label>
+                      <input
+                        type="text"
+                        value={editTagline}
+                        onChange={(e) => setEditTagline(e.target.value)}
+                        placeholder="e.g. Premium Aesthetic Treatments"
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-xs">
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Description &amp; About</label>
+                    <textarea
+                      rows={3}
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      placeholder="Describe what services you offer, your studio vibe, and what clients can expect..."
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                    />
+                  </div>
+
+                  {/* Logo URL with Live Preview */}
+                  <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-850 border border-stone-200 dark:border-stone-800 text-xs space-y-3">
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300">Store Logo URL</label>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 rounded-xl bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center overflow-hidden shrink-0">
+                        {editLogoUrl ? (
+                          <img src={editLogoUrl} alt="Store Logo" className="w-full h-full object-cover" />
+                        ) : (
+                          <Image className="w-5 h-5 text-stone-400" />
+                        )}
+                      </div>
+                      <input
+                        type="url"
+                        value={editLogoUrl}
+                        onChange={(e) => setEditLogoUrl(e.target.value)}
+                        placeholder="https://example.com/logo.png"
+                        className="flex-1 px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                      />
+                    </div>
+                    <p className="text-[11px] text-stone-500">Provide an image link to replace the default lettermark logo.</p>
+                  </div>
+
+                  {/* Contact & Hours */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Phone</label>
+                      <input
+                        type="text"
+                        value={editPhone}
+                        onChange={(e) => setEditPhone(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Email</label>
+                      <input
+                        type="email"
+                        value={editEmail}
+                        onChange={(e) => setEditEmail(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Operating Hours / Slots</label>
+                      <input
+                        type="text"
+                        value={editOpeningHours}
+                        onChange={(e) => setEditOpeningHours(e.target.value)}
+                        placeholder="e.g. 9:00 AM - 6:00 PM (Mon-Sat)"
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">City / Region</label>
+                      <input
+                        type="text"
+                        value={editCity}
+                        onChange={(e) => setEditCity(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Full Studio Address</label>
+                      <input
+                        type="text"
+                        value={editAddress}
+                        onChange={(e) => setEditAddress(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Store Operational Status Radio / Toggle */}
+                  <div className="pt-2 border-t border-stone-100 dark:border-stone-800">
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-2 text-xs">
+                      Manage Store Operational Status
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setEditStatus('approved')}
+                        className={`p-3 rounded-2xl border text-left text-xs transition ${
+                          editStatus === 'approved'
+                            ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200'
+                            : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-1.5 font-bold">
+                          <Power className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Open for Bookings</span>
+                        </div>
+                        <p className="text-[11px] mt-1 text-stone-500">Clients can view calendar and book appointments.</p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setEditStatus('closed')}
+                        className={`p-3 rounded-2xl border text-left text-xs transition ${
+                          editStatus === 'closed'
+                            ? 'border-rose-500 bg-rose-50/60 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200'
+                            : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-1.5 font-bold">
+                          <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Temporarily Closed</span>
+                        </div>
+                        <p className="text-[11px] mt-1 text-stone-500">Halt new appointments while preserving existing bookings.</p>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={savingSettings}
+                      className="px-5 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-bold hover:bg-stone-800 dark:hover:bg-amber-300 transition flex items-center space-x-2 shadow"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>{savingSettings ? 'Saving Changes...' : 'Save Store Profile'}</span>
+                    </button>
+                  </div>
+                </form>
+
+                {/* Service Menu & Pricing UI */}
+                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
+                    <div>
+                      <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+                        <Scissors className="w-4 h-4 text-amber-500" />
+                        <span>Services &amp; Pricing Menu</span>
+                      </h2>
+                      <p className="text-[11px] text-stone-500">Active services bookable by customers.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddServiceModal(true)}
+                      className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add Service</span>
+                    </button>
+                  </div>
+
+                  <div className="divide-y divide-stone-100 dark:divide-stone-800 text-xs">
+                    {storeServices.length === 0 ? (
+                      <div className="py-6 text-center text-stone-400">No services created yet.</div>
+                    ) : (
+                      storeServices.map((svc) => (
+                        <div key={svc.id} className="py-3 flex items-center justify-between">
+                          <div>
+                            <div className="font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+                              <span>{svc.name}</span>
+                              <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
+                                {svc.category}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-stone-500 mt-0.5">{svc.description}</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                              ₱{Number(svc.price).toLocaleString()}
+                            </div>
+                            <div className="text-[10px] text-stone-500 font-medium">
+                              {svc.durationMinutes} mins
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Staff Specialists & Appointment Slots / Working Hours */}
+              <div className="space-y-6">
+                {/* Staff Specialists Management */}
+                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
+                    <div>
+                      <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+                        <Users className="w-4 h-4 text-amber-500" />
+                        <span>Staff Specialists</span>
+                      </h2>
+                      <p className="text-[11px] text-stone-500">Manage practitioners assigned to bookings.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddStaffModal(true)}
+                      className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add Staff</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    {storeStaff.length === 0 ? (
+                      <div className="py-6 text-center text-stone-400">No staff specialists listed.</div>
+                    ) : (
+                      storeStaff.map((st) => (
+                        <div key={st.id} className="p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 flex items-center justify-between">
+                          <div className="flex items-center space-x-2.5">
+                            <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 flex items-center justify-center font-bold text-xs">
+                              {st.name?.substring(0, 1) || 'S'}
+                            </div>
+                            <div>
+                              <div className="font-bold text-stone-900 dark:text-stone-100">{st.name}</div>
+                              <div className="text-[10px] text-stone-500">{st.bio || 'Store Specialist'}</div>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-full">
+                            Active
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Appointment Slots & Working Schedule */}
+                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4 text-xs">
+                  <div className="pb-3 border-b border-stone-100 dark:border-stone-800">
+                    <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+                      <Clock className="w-4 h-4 text-amber-500" />
+                      <span>Appointment Slots &amp; Hours</span>
+                    </h2>
+                    <p className="text-[11px] text-stone-500">Weekly schedule slots configured for booking.</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    {[
+                      { day: 'Monday', time: '9:00 AM - 6:00 PM', status: 'Available' },
+                      { day: 'Tuesday', time: '9:00 AM - 6:00 PM', status: 'Available' },
+                      { day: 'Wednesday', time: '9:00 AM - 6:00 PM', status: 'Available' },
+                      { day: 'Thursday', time: '9:00 AM - 6:00 PM', status: 'Available' },
+                      { day: 'Friday', time: '9:00 AM - 6:00 PM', status: 'Available' },
+                      { day: 'Saturday', time: '9:00 AM - 6:00 PM', status: 'Available' },
+                      { day: 'Sunday', time: 'Rest Day / Closed', status: 'Closed' },
+                    ].map((slot, idx) => (
+                      <div key={idx} className="flex justify-between items-center py-1.5 border-b border-stone-100 dark:border-stone-800">
+                        <span className="font-semibold text-stone-700 dark:text-stone-300">{slot.day}</span>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-stone-500 font-mono text-[11px]">{slot.time}</span>
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            slot.status === 'Available' ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
+                          }`}>
+                            {slot.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-stone-500 pt-2 italic">
+                    Appointment slots are automatically spaced in 45-minute increments based on active service duration.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* =========================================================================
+             ORIGINAL APPOINTMENTS VIEW
+             ========================================================================= */
+          <>
+            {/* Dashboard Title & Quick Insight */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Business Operations &amp; Appointments</h1>
             <p className="text-xs text-stone-600 dark:text-stone-300 mt-0.5 font-medium">
@@ -750,6 +1263,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
             </table>
           </div>
         </div>
+          </>
+        )}
       </main>
 
       {/* MODAL 1: VIEW DETAILS & AUDIT HISTORY */}
@@ -1072,6 +1587,167 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL 6: ADD STAFF MODAL */}
+      {showAddStaffModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
+              <div className="flex items-center space-x-2">
+                <Users className="w-5 h-5 text-amber-500" />
+                <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">Add Staff Specialist</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddStaffModal(false)}
+                className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddStaff} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Staff Member Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Maria Santos"
+                  value={newStaffName}
+                  onChange={(e) => setNewStaffName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Role &amp; Bio</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Senior Aesthetician &amp; Skin Specialist"
+                  value={newStaffBio}
+                  onChange={(e) => setNewStaffBio(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
+
+              <div className="flex space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddStaffModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addingStaff}
+                  className="flex-1 py-2.5 rounded-xl font-bold bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow"
+                >
+                  {addingStaff ? 'Adding...' : 'Add Specialist'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 7: ADD SERVICE MODAL */}
+      {showAddServiceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
+              <div className="flex items-center space-x-2">
+                <Scissors className="w-5 h-5 text-amber-500" />
+                <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">Add Service to Menu</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddServiceModal(false)}
+                className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddService} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Service Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Deluxe Hydra-Facial"
+                  value={newServiceName}
+                  onChange={(e) => setNewServiceName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Price (₱ PHP)</label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="1500"
+                    value={newServicePrice}
+                    onChange={(e) => setNewServicePrice(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Duration (Mins)</label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="45"
+                    value={newServiceDuration}
+                    onChange={(e) => setNewServiceDuration(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Category</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Facial &amp; Skin Care"
+                  value={newServiceCategory}
+                  onChange={(e) => setNewServiceCategory(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Short Description</label>
+                <textarea
+                  rows={2}
+                  placeholder="What is included in this session..."
+                  value={newServiceDesc}
+                  onChange={(e) => setNewServiceDesc(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
+
+              <div className="flex space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddServiceModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addingService}
+                  className="flex-1 py-2.5 rounded-xl font-bold bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow"
+                >
+                  {addingService ? 'Saving...' : 'Add Service'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

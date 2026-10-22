@@ -392,24 +392,47 @@ router.get('/store-approvals', requireOwnerAuth, async (req: Request, res: Respo
 router.post('/store-approvals/:userId/approve', requireOwnerAuth, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
-    const userRes = await query('SELECT id, business_id, email, name FROM users WHERE id = $1', [userId]);
+    const userRes = await query(`
+      SELECT u.id, u.business_id, u.email, u.name, b.name AS store_name, b.slug AS store_slug
+      FROM users u
+      LEFT JOIN businesses b ON u.business_id = b.id
+      WHERE u.id = $1
+    `, [userId]);
+
     if (userRes.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
 
     const user = userRes.rows[0];
 
-    // Mark user status approved
-    await query("UPDATE users SET status = 'approved', updated_at = NOW() WHERE id = $1", [userId]);
+    // Mark user status approved and ensure role is business_admin
+    await query("UPDATE users SET status = 'approved', role = 'business_admin', updated_at = NOW() WHERE id = $1", [userId]);
 
     // Mark business status approved
     if (user.business_id) {
       await query("UPDATE businesses SET status = 'approved', updated_at = NOW() WHERE id = $1", [user.business_id]);
     }
 
+    // Determine login and store URL
+    const baseUrl = config.appUrl || 'http://localhost:5173';
+    const loginUrl = `${baseUrl}/admin/login?mode=signin&email=${encodeURIComponent(user.email)}`;
+
+    // Dispatch approval email with store admin role confirmation and credentials
+    try {
+      await EmailService.sendStoreApprovalEmail({
+        recipientEmail: user.email,
+        recipientName: user.name || 'Store Admin',
+        storeName: user.store_name || 'Your Store',
+        storeSlug: user.store_slug || 'lumiere-beauty-studio',
+        loginUrl,
+      });
+    } catch (emailErr) {
+      console.error('Failed to dispatch store approval email:', emailErr);
+    }
+
     res.json({ 
-      message: `Store Admin ${user.email} has been approved! They can now sign in to their store admin portal.`,
-      user: { id: user.id, email: user.email, status: 'approved' }
+      message: `Store Admin ${user.email} for "${user.store_name}" has been approved! Credentials and login link have been dispatched to ${user.email}.`,
+      user: { id: user.id, email: user.email, status: 'approved', role: 'business_admin' }
     });
   } catch (err: any) {
     console.error('Error approving store:', err);

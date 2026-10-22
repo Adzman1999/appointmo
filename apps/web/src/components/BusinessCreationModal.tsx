@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Tag, Sparkles } from 'lucide-react';
+import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Tag, Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { LocationPicker } from './LocationPicker';
 
@@ -67,6 +67,10 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
 
   const [creatingBusiness, setCreatingBusiness] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [submittedStoreNotice, setSubmittedStoreNotice] = useState<{
+    business: any;
+    message: string;
+  } | null>(null);
 
   // Sync state whenever initialData or modal open status changes
   useEffect(() => {
@@ -156,7 +160,10 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
         setCityOptions((prev) => [...prev, finalCity]);
       }
 
-      onSuccess(res.business);
+      setSubmittedStoreNotice({
+        business: res.business,
+        message: res.message || 'Your store is successfully created! Please wait 1 to 2 business days for Super Admin approval before full access is granted.',
+      });
     } catch (err: any) {
       setCreateError(err.message || 'Failed to create store');
     } finally {
@@ -167,7 +174,57 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-stone-900/60 dark:bg-stone-950/80 backdrop-blur-sm animate-in fade-in">
       <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-2xl sm:max-w-3xl w-full shadow-2xl max-h-[92vh] overflow-y-auto text-stone-900 dark:text-stone-100">
-        <div className="flex items-center justify-between mb-4">
+        {submittedStoreNotice ? (
+          <div className="text-center py-6 sm:py-8 space-y-6 animate-in zoom-in-95">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-sm">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-2xl font-bold text-stone-900 dark:text-stone-100">
+                Store Successfully Created!
+              </h3>
+              <p className="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 py-1.5 px-3.5 rounded-full inline-block">
+                Status: Pending Super Admin Approval
+              </p>
+            </div>
+
+            <div className="bg-stone-50 dark:bg-stone-800/60 p-5 rounded-2xl border border-stone-200 dark:border-stone-700 max-w-lg mx-auto text-left text-xs space-y-3">
+              <div className="flex justify-between items-center border-b border-stone-200 dark:border-stone-700 pb-2">
+                <span className="text-stone-600 dark:text-stone-300 font-medium">Store Name:</span>
+                <span className="font-bold text-stone-900 dark:text-stone-100">{submittedStoreNotice.business?.name}</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-stone-200 dark:border-stone-700 pb-2">
+                <span className="text-stone-600 dark:text-stone-300 font-medium">Category:</span>
+                <span className="font-semibold text-stone-800 dark:text-stone-200">{submittedStoreNotice.business?.category}</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-stone-200 dark:border-stone-700 pb-2">
+                <span className="text-stone-600 dark:text-stone-300 font-medium">Contact Email:</span>
+                <span className="font-mono text-stone-800 dark:text-stone-200">{createEmail.trim() || 'Provided in store form'}</span>
+              </div>
+              <div className="p-3 bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 rounded-xl text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed font-medium">
+                <strong>Notice:</strong> Your store is successfully created! Please wait <strong>1 to 2 business days</strong> for the Super Admin to review and fully approve your store. A confirmation email and login instructions have been sent to your email address.
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const biz = submittedStoreNotice.business;
+                  setSubmittedStoreNotice(null);
+                  onSuccess(biz);
+                }}
+                className="bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold px-6 py-2.5 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow text-xs flex items-center space-x-1.5"
+              >
+                <span>Proceed to Store</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
             <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 flex items-center justify-center">
               <Building2 className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -490,6 +547,8 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             </button>
           </div>
         </form>
+        </>
+        )}
       </div>
     </div>
   );

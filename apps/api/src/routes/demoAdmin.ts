@@ -3,6 +3,7 @@ import { query, pool } from '../db';
 import { seedData } from '../db/seed';
 import { NotificationService } from '../services/notification';
 import { AvailabilityService } from '../services/availability';
+import { EmailService } from '../services/email';
 
 const router = Router();
 
@@ -357,8 +358,21 @@ router.post('/create-business', async (req: Request, res: Response) => {
 
     await client.query('COMMIT');
 
+    // If an email was provided during creation, dispatch the 1-2 business days confirmation email
+    if (email && email.trim()) {
+      try {
+        await EmailService.sendStoreCreationPendingEmail({
+          recipientEmail: email.trim(),
+          recipientName: trimmedName,
+          storeName: trimmedName,
+        });
+      } catch (emailErr) {
+        console.error('Failed to dispatch store creation pending email:', emailErr);
+      }
+    }
+
     res.status(201).json({
-      message: 'Demo store created successfully!',
+      message: 'Your store is successfully created! Please wait 1 to 2 business days for Super Admin approval before full access is granted.',
       business: newBiz,
       branch: brRes.rows[0]
     });
@@ -886,6 +900,166 @@ router.get('/settings', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to fetch settings overview' });
+  }
+});
+
+// 12. Update Business Profile & Setup (Logo, description, hours, phone, address, status, policies)
+router.put('/settings', async (req: Request, res: Response) => {
+  try {
+    const businessId = await getDemoBusinessId(req);
+    const {
+      name, description, logoUrl, phone, email, address, city, openingHours,
+      website, instagram, socialHandle, tagline, status, bookingPolicies
+    } = req.body;
+
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (name !== undefined) {
+      fields.push(`name = $${idx++}`);
+      values.push(name.trim());
+    }
+    if (description !== undefined) {
+      fields.push(`description = $${idx++}`);
+      values.push(description.trim());
+    }
+    if (logoUrl !== undefined) {
+      fields.push(`logo_url = $${idx++}`);
+      values.push(logoUrl ? logoUrl.trim() : null);
+    }
+    if (phone !== undefined) {
+      fields.push(`phone = $${idx++}`);
+      values.push(phone.trim());
+    }
+    if (email !== undefined) {
+      fields.push(`email = $${idx++}`);
+      values.push(email.trim());
+    }
+    if (address !== undefined) {
+      fields.push(`address = $${idx++}`);
+      values.push(address.trim());
+    }
+    if (city !== undefined) {
+      fields.push(`city = $${idx++}`);
+      values.push(city.trim());
+    }
+    if (openingHours !== undefined) {
+      fields.push(`opening_hours = $${idx++}`);
+      values.push(openingHours.trim());
+    }
+    if (website !== undefined) {
+      fields.push(`website = $${idx++}`);
+      values.push(website ? website.trim() : null);
+    }
+    if (instagram !== undefined || socialHandle !== undefined) {
+      const handle = (socialHandle || instagram)?.trim() || null;
+      fields.push(`instagram = $${idx++}`);
+      values.push(handle);
+      fields.push(`social_handle = $${idx++}`);
+      values.push(handle);
+    }
+    if (tagline !== undefined) {
+      fields.push(`tagline = $${idx++}`);
+      values.push(tagline ? tagline.trim() : null);
+    }
+    if (status !== undefined) {
+      fields.push(`status = $${idx++}`);
+      values.push(status);
+    }
+    if (bookingPolicies !== undefined) {
+      fields.push(`booking_policies = $${idx++}`);
+      values.push(JSON.stringify(bookingPolicies));
+    }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'No fields provided for update' });
+    }
+
+    fields.push(`updated_at = NOW()`);
+    values.push(businessId);
+
+    const updateSql = `
+      UPDATE businesses
+      SET ${fields.join(', ')}
+      WHERE id = $${idx}
+      RETURNING id, name, slug, category, description, currency, timezone, logo_url AS "logoUrl",
+                phone, email, address, city, opening_hours AS "openingHours",
+                website, instagram, COALESCE(social_handle, instagram) AS "socialHandle", tagline, status,
+                booking_policies AS "bookingPolicies"
+    `;
+
+    const result = await query(updateSql, values);
+    res.json({ message: 'Store profile successfully updated', business: result.rows[0] });
+  } catch (err: any) {
+    console.error('Update business profile error:', err);
+    res.status(500).json({ error: 'Failed to update store profile: ' + err.message });
+  }
+});
+
+// 13. Create or Add Staff Specialist
+router.post('/staff', async (req: Request, res: Response) => {
+  try {
+    const businessId = await getDemoBusinessId(req);
+    const { name, bio, serviceIds } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Staff name is required' });
+    }
+
+    const spRes = await query(
+      `INSERT INTO staff_profiles (business_id, name, bio) VALUES ($1, $2, $3) RETURNING id, name, bio`,
+      [businessId, name.trim(), bio?.trim() || 'Store specialist']
+    );
+    const newStaff = spRes.rows[0];
+
+    // Assign working hours Monday - Saturday default
+    for (let day = 1; day <= 6; day++) {
+      await query(`
+        INSERT INTO staff_working_hours (staff_id, day_of_week, start_time, end_time, break_start, break_end, is_working)
+        VALUES ($1, $2, '09:00:00', '18:00:00', '12:00:00', '13:00:00', true)
+        ON CONFLICT DO NOTHING
+      `, [newStaff.id, day]);
+    }
+
+    if (Array.isArray(serviceIds)) {
+      for (const sId of serviceIds) {
+        await query(`INSERT INTO staff_services (staff_id, service_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [newStaff.id, sId]);
+      }
+    }
+
+    res.status(201).json({ message: 'Staff specialist created', staff: newStaff });
+  } catch (err: any) {
+    console.error('Create staff error:', err);
+    res.status(500).json({ error: 'Failed to create staff: ' + err.message });
+  }
+});
+
+// 14. Create or Add Service
+router.post('/services', async (req: Request, res: Response) => {
+  try {
+    const businessId = await getDemoBusinessId(req);
+    const { name, description, durationMinutes, price, category } = req.body;
+    if (!name || !price) {
+      return res.status(400).json({ error: 'Service name and price are required' });
+    }
+
+    const sRes = await query(`
+      INSERT INTO services (business_id, name, description, duration_minutes, price, category)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, name, description, duration_minutes AS "durationMinutes", price, category
+    `, [
+      businessId,
+      name.trim(),
+      description?.trim() || 'Professional service offering',
+      Number(durationMinutes) || 45,
+      Number(price),
+      category?.trim() || 'General'
+    ]);
+
+    res.status(201).json({ message: 'Service added successfully', service: sRes.rows[0] });
+  } catch (err: any) {
+    console.error('Create service error:', err);
+    res.status(500).json({ error: 'Failed to create service: ' + err.message });
   }
 });
 
