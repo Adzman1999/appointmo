@@ -247,7 +247,7 @@ router.post('/create-business', async (req: Request, res: Response) => {
       name, category, description, currency, timezone, logoUrl, 
       tagline, phone, email, address, city, openingHours, website, instagram, socialHandle,
       latitude, longitude,
-      ownerName, ownerEmail
+      ownerName, ownerEmail, ownerPassword
     } = req.body;
 
     if (!name || !category) {
@@ -298,24 +298,28 @@ router.post('/create-business', async (req: Request, res: Response) => {
     ]);
     const newBiz = bRes.rows[0];
 
-    // 1b. Save Owner in users table as 'business_admin' with pending status
+    // 1b. Save Owner in users table as 'business_admin' with pending status and user-provided password
     let createdUser: any = null;
     if (finalOwnerEmail) {
+      const bcrypt = await import('bcryptjs');
+      const passwordToHash = ownerPassword && ownerPassword.trim() 
+        ? ownerPassword.trim() 
+        : 'Appointmo_' + Math.random().toString(36).substring(2, 8);
+      const passwordHash = await bcrypt.default.hash(passwordToHash, 10);
+
       const existUser = await client.query('SELECT id, role, business_id FROM users WHERE email = $1', [finalOwnerEmail]);
       if (existUser.rows.length > 0) {
         await client.query(
-          "UPDATE users SET business_id = $1, role = 'business_admin', status = 'pending', name = $2 WHERE email = $3",
-          [newBiz.id, finalOwnerName, finalOwnerEmail]
+          "UPDATE users SET business_id = $1, role = 'business_admin', status = 'pending', name = $2, password_hash = $3 WHERE email = $4",
+          [newBiz.id, finalOwnerName, passwordHash, finalOwnerEmail]
         );
         createdUser = { id: existUser.rows[0].id, email: finalOwnerEmail, name: finalOwnerName };
       } else {
-        const bcrypt = await import('bcryptjs');
-        const tempHash = await bcrypt.default.hash('PendingApproval_' + Math.random().toString(36).substring(2, 8), 10);
         const uRes = await client.query(`
           INSERT INTO users (business_id, email, password_hash, role, name, status)
           VALUES ($1, $2, $3, 'business_admin', $4, 'pending')
           RETURNING id, email, name, role, status
-        `, [newBiz.id, finalOwnerEmail, tempHash, finalOwnerName]);
+        `, [newBiz.id, finalOwnerEmail, passwordHash, finalOwnerName]);
         createdUser = uRes.rows[0];
       }
     }

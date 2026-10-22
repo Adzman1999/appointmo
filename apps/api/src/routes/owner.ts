@@ -468,40 +468,33 @@ router.post('/store-approvals/:userId/approve', requireOwnerAuth, async (req: Re
 
     const user = userRes.rows[0];
 
-    // Generate or use provided password
-    const generatedPassword = customPassword && customPassword.trim() 
-      ? customPassword.trim() 
-      : 'StorePass_' + Math.random().toString(36).substring(2, 8).toUpperCase() + '!';
-
-    const bcrypt = await import('bcryptjs');
-    const newPasswordHash = await bcrypt.default.hash(generatedPassword, 10);
-
     // Determine login and store URL
     const baseUrl = config.appUrl || 'http://localhost:5173';
     const loginUrl = `${baseUrl}/admin/login?mode=signin&email=${encodeURIComponent(user.email)}`;
 
-    // Mark user status approved, set new password hash, and record recent credentials for Super Admin audit/inspection
-    const recentCredentialsData = {
-      email: user.email,
-      temporaryPassword: generatedPassword,
-      grantedAt: new Date().toISOString(),
-      grantedBy: req.user?.email || 'superadmin',
-      role: 'business_admin',
-      loginUrl
-    };
-
-    await query(`
-      UPDATE users 
-      SET status = 'approved', role = 'business_admin', password_hash = $1, recent_credentials = $2, updated_at = NOW() 
-      WHERE id = $3
-    `, [newPasswordHash, JSON.stringify(recentCredentialsData), userId]);
+    // Mark user status approved, role business_admin. If custom password provided, update it; otherwise preserve the owner's chosen password
+    if (customPassword && customPassword.trim()) {
+      const bcrypt = await import('bcryptjs');
+      const newPasswordHash = await bcrypt.default.hash(customPassword.trim(), 10);
+      await query(`
+        UPDATE users 
+        SET status = 'approved', role = 'business_admin', password_hash = $1, updated_at = NOW() 
+        WHERE id = $2
+      `, [newPasswordHash, userId]);
+    } else {
+      await query(`
+        UPDATE users 
+        SET status = 'approved', role = 'business_admin', updated_at = NOW() 
+        WHERE id = $1
+      `, [userId]);
+    }
 
     // Mark business status approved
     if (user.business_id) {
       await query("UPDATE businesses SET status = 'approved', updated_at = NOW() WHERE id = $1", [user.business_id]);
     }
 
-    // Dispatch approval email with store admin role confirmation and credentials
+    // Attempt optional email notification in background
     let emailResult: any = null;
     try {
       emailResult = await EmailService.sendStoreApprovalEmail({
@@ -510,23 +503,16 @@ router.post('/store-approvals/:userId/approve', requireOwnerAuth, async (req: Re
         storeName: user.store_name || 'Your Store',
         storeSlug: user.store_slug || 'lumiere-beauty-studio',
         loginUrl,
-        password: generatedPassword,
-        tempPassword: generatedPassword,
       });
     } catch (emailErr: any) {
-      console.error('Failed to dispatch store approval email:', emailErr);
+      console.error('Optional store approval email dispatch:', emailErr?.message);
       emailResult = { success: false, error: emailErr.message, isMock: false };
     }
 
     res.json({ 
-      message: emailResult?.isMock
-        ? `Store Admin ${user.email} approved! NOTE: Real email sending requires RESEND_API_KEY. Temporary password (${generatedPassword}) has been saved in the Super Admin dashboard and logged to console.`
-        : `Store Admin ${user.email} for "${user.store_name}" has been approved! Password credentials (${generatedPassword}) and login link have been dispatched via email to ${user.email}.`,
+      message: `Store "${user.store_name}" and Admin account (${user.email}) are now officially approved! The owner can immediately sign in with their password.`,
       user: { id: user.id, email: user.email, status: 'approved', role: 'business_admin' },
-      generatedPassword,
-      isMock: emailResult?.isMock || false,
-      emailSent: emailResult?.success || false,
-      emailError: emailResult?.error || null,
+      loginUrl,
     });
   } catch (err: any) {
     console.error('Error approving store:', err);

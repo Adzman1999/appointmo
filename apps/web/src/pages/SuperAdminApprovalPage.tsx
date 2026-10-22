@@ -667,8 +667,8 @@ export const SuperAdminApprovalPage: React.FC = () => {
                                 disabled={actionLoadingId === item.user_id}
                                 className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow disabled:opacity-50"
                               >
-                                <KeyRound className="w-3.5 h-3.5" />
-                                <span>{actionLoadingId === item.user_id ? 'Approving...' : 'Grant Access & Send Email'}</span>
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>{actionLoadingId === item.user_id ? 'Approving...' : 'Approve Store'}</span>
                               </button>
                             </>
                           ) : item.user_status === 'approved' ? (
@@ -684,7 +684,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
                               onClick={() => handleOpenApproveModal(item)}
                               className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 text-xs font-semibold transition"
                             >
-                              Re-Approve &amp; Send Email
+                              Re-Approve Store
                             </button>
                           )}
                         </div>
@@ -1005,18 +1005,18 @@ export const SuperAdminApprovalPage: React.FC = () => {
         )}
       </main>
 
-      {/* Grant Access & Dispatch Credentials Modal */}
+      {/* Approve Store Modal */}
       {approveModalItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-lg w-full shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
               <div className="flex items-center space-x-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 flex items-center justify-center">
-                  <KeyRound className="w-5 h-5" />
+                  <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">Grant Store Admin Access</h3>
-                  <p className="text-xs text-stone-500">Deliver login credentials directly to the store administrator</p>
+                  <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">Approve Store &amp; Admin</h3>
+                  <p className="text-xs text-stone-500">Authorize this store to start receiving bookings</p>
                 </div>
               </div>
               <button
@@ -1029,68 +1029,47 @@ export const SuperAdminApprovalPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleConfirmApproval} className="space-y-4 text-xs">
-              <div className="bg-stone-50 dark:bg-stone-800/60 p-4 rounded-2xl border border-stone-200/80 dark:border-stone-700/80 space-y-2 font-mono">
+              <div className="bg-stone-50 dark:bg-stone-800/60 p-4 rounded-2xl border border-stone-200/80 dark:border-stone-700/80 space-y-2">
                 <div className="flex justify-between items-center text-stone-700 dark:text-stone-300">
-                  <span className="font-sans font-medium text-stone-500">Store:</span>
+                  <span className="font-sans font-medium text-stone-500">Store Name:</span>
                   <span className="font-bold text-stone-900 dark:text-stone-100">{approveModalItem.store_name}</span>
                 </div>
                 <div className="flex justify-between items-center text-stone-700 dark:text-stone-300">
-                  <span className="font-sans font-medium text-stone-500">Recipient Email:</span>
-                  <span className="text-stone-900 dark:text-stone-100 font-semibold">{approveModalItem.admin_email}</span>
+                  <span className="font-sans font-medium text-stone-500">Store Owner:</span>
+                  <span className="text-stone-900 dark:text-stone-100 font-semibold">{approveModalItem.admin_name}</span>
                 </div>
                 <div className="flex justify-between items-center text-stone-700 dark:text-stone-300">
-                  <span className="font-sans font-medium text-stone-500">Store URL:</span>
-                  <span className="text-amber-600 dark:text-amber-400">/admin/dashboard?slug={approveModalItem.store_slug}</span>
+                  <span className="font-sans font-medium text-stone-500">Store Sign-In Email:</span>
+                  <span className="font-mono font-semibold text-stone-900 dark:text-stone-100">{approveModalItem.admin_email}</span>
                 </div>
               </div>
 
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 rounded-xl text-[11px] text-emerald-900 dark:text-emerald-200 leading-relaxed font-medium">
+                <strong>Authorization:</strong> The store owner configured their own sign-in password during store registration. Approving will immediately unlock their account, elevate their role to <strong>Store Admin</strong>, and allow them to sign in at <code>/#/admin/login</code>.
+              </div>
+
               <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
-                  Store Admin Access Password
+                <label className="flex items-center space-x-2 text-stone-600 dark:text-stone-400 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!autoGenPassword}
+                    onChange={(e) => setAutoGenPassword(!e.target.checked)}
+                    className="rounded text-amber-500 focus:ring-amber-400"
+                  />
+                  <span>Optionally override and set a new password for the store owner</span>
                 </label>
-                <div className="space-y-2">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="passwordChoice"
-                      checked={autoGenPassword}
-                      onChange={() => setAutoGenPassword(true)}
-                      className="text-amber-500 focus:ring-amber-400"
-                    />
-                    <span className="text-stone-800 dark:text-stone-200 font-medium">
-                      Auto-generate a secure random temporary password (e.g. <code>StorePass_X7K9!</code>)
-                    </span>
-                  </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="passwordChoice"
-                      checked={!autoGenPassword}
-                      onChange={() => setAutoGenPassword(false)}
-                      className="text-amber-500 focus:ring-amber-400"
-                    />
-                    <span className="text-stone-800 dark:text-stone-200 font-medium">
-                      Provide a specific custom initial password
-                    </span>
-                  </label>
-                </div>
 
                 {!autoGenPassword && (
                   <div className="mt-2.5">
                     <input
                       type="text"
-                      required
-                      placeholder="e.g. SalonAdmin2026!"
+                      placeholder="e.g. NewCustomPass2026!"
                       value={customPassword}
                       onChange={(e) => setCustomPassword(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs font-mono focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                     />
                   </div>
                 )}
-              </div>
-
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-xl text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed font-medium">
-                <strong>Automatic Delivery:</strong> Upon approval, this store account will be upgraded to <strong>Store Admin</strong> and an email containing their credentials and sign-in link will be dispatched to <strong>{approveModalItem.admin_email}</strong>.
               </div>
 
               <div className="flex space-x-3 pt-2">
@@ -1106,8 +1085,8 @@ export const SuperAdminApprovalPage: React.FC = () => {
                   disabled={actionLoadingId === approveModalItem.user_id}
                   className="flex-1 py-2.5 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow flex items-center justify-center space-x-1.5 disabled:opacity-50"
                 >
-                  <KeyRound className="w-3.5 h-3.5" />
-                  <span>{actionLoadingId === approveModalItem.user_id ? 'Granting Access...' : 'Approve & Send Email'}</span>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>{actionLoadingId === approveModalItem.user_id ? 'Authorizing...' : 'Confirm & Authorize Store'}</span>
                 </button>
               </div>
             </form>

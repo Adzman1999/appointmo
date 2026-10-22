@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Tag, Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
+import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Tag, Sparkles, CheckCircle2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { LocationPicker } from './LocationPicker';
 
@@ -43,6 +43,8 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
   // Store Owner / Administrator Details
   const [ownerName, setOwnerName] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
+  const [ownerPassword, setOwnerPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Store Location & Contact Details
   const [cityOptions, setCityOptions] = useState<string[]>([
@@ -132,6 +134,12 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
       return;
     }
 
+    if (!ownerPassword.trim() || ownerPassword.length < 6) {
+      setCreateError('Please provide an admin password (at least 6 characters)');
+      setCreatingBusiness(false);
+      return;
+    }
+
     const formattedOpeningHours = formatTimeRange(createStartTime, createEndTime);
 
     try {
@@ -145,6 +153,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
           logoUrl: createLogoUrl.trim() || undefined,
           ownerName: ownerName.trim() || createName.trim(),
           ownerEmail: (ownerEmail || createEmail).trim() || undefined,
+          ownerPassword: ownerPassword.trim(),
           city: finalCity,
           address: createAddress.trim() || undefined,
           latitude: createLatitude,
@@ -209,7 +218,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 <span className="font-mono text-stone-800 dark:text-stone-200">{createEmail.trim() || 'Provided in store form'}</span>
               </div>
               <div className="p-3 bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 rounded-xl text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed font-medium">
-                <strong>Notice:</strong> Your store is successfully created! Please wait <strong>1 to 2 business days</strong> for the Super Admin to review and fully approve your store. A confirmation email and login instructions have been sent to your email address.
+                <strong>Notice:</strong> Your store is successfully created! Please allow <strong>1 to 2 business days</strong> for the Super Admin to review and approve your store. Once approved, you can sign in directly with your email and password.
               </div>
             </div>
 
@@ -255,9 +264,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
           <div className="bg-amber-50/60 dark:bg-amber-950/30 p-3.5 rounded-2xl border border-amber-200/80 dark:border-amber-800/60 space-y-3">
             <span className="font-bold text-amber-950 dark:text-amber-200 flex items-center space-x-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span>Store Owner &amp; Admin Account</span>
+              <span>Store Owner &amp; Admin Sign-In Credentials</span>
             </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
                   Owner Full Name <span className="text-rose-500">*</span>
@@ -273,7 +282,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               </div>
               <div>
                 <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Owner Email (Credentials Dispatched Here) <span className="text-rose-500">*</span>
+                  Owner Email / Sign-In <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="email"
@@ -287,9 +296,32 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                   className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                 />
               </div>
+              <div>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Admin Password <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    placeholder="Min. 6 characters"
+                    value={ownerPassword}
+                    onChange={(e) => setOwnerPassword(e.target.value)}
+                    className="w-full pl-3 pr-8 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
             </div>
             <p className="text-[10px] text-amber-800/80 dark:text-amber-300/80">
-              When Super Admin approves this store, the generated Store Admin credentials (email and password) will be sent to this email.
+              You will use this email and password to log into your store once approved by the Super Admin.
             </p>
           </div>
 
