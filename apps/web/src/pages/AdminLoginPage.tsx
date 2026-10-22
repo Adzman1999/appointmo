@@ -135,25 +135,27 @@ export const AdminLoginPage: React.FC = () => {
 
       {/* Main Auth Form Container */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 my-6">
-        <div className="max-w-lg w-full bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 shadow-xl">
-          {/* Header Role Selector Tabs */}
-          <div className="flex items-center justify-between gap-3 mb-6">
-            <div>
-              <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">
+        <div className="max-w-md w-full bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 shadow-xl">
+          {/* Header & Mode Switcher */}
+          <div className="mb-6 space-y-4">
+            {/* Top Row: Title + Description */}
+            <div className="text-left">
+              <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
                 {authMode === 'signin' ? 'Sign In to Appointmo' : 'Create an Account'}
               </h1>
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 leading-relaxed">
                 {authMode === 'signin' 
                   ? 'Access your appointments, store schedule, or admin console' 
                   : 'Join Appointmo as a customer or register your business'}
               </p>
             </div>
 
-            <div className="flex bg-stone-100 dark:bg-stone-800 p-1 rounded-2xl border border-stone-200 dark:border-stone-700">
+            {/* Mode Switcher Pills (Full width so text never wraps or clips) */}
+            <div className="grid grid-cols-2 p-1 bg-stone-100 dark:bg-stone-800 rounded-2xl border border-stone-200 dark:border-stone-700">
               <button
                 type="button"
                 onClick={() => setAuthMode('signin')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                className={`py-2 text-center rounded-xl text-xs font-bold transition ${
                   authMode === 'signin'
                     ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-white shadow-sm'
                     : 'text-stone-500 hover:text-stone-900 dark:text-stone-400'
@@ -164,7 +166,7 @@ export const AdminLoginPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setAuthMode('signup')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                className={`py-2 text-center rounded-xl text-xs font-bold transition ${
                   authMode === 'signup'
                     ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-white shadow-sm'
                     : 'text-stone-500 hover:text-stone-900 dark:text-stone-400'
