@@ -127,13 +127,6 @@ export const SuperAdminApprovalPage: React.FC = () => {
             </button>
 
             <button
-              onClick={() => navigate('/demo/admin')}
-              className="hidden sm:inline-flex px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 text-xs font-semibold transition"
-            >
-              Demo Store
-            </button>
-
-            <button
               onClick={handleLogout}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-xs font-semibold transition border border-rose-200 dark:border-rose-900"
             >
