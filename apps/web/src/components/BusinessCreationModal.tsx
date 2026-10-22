@@ -262,7 +262,14 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             {/* City / Primary Location */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block font-semibold text-stone-700 dark:text-stone-300">City / Location</label>
+                <div className="flex items-center space-x-1">
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300">City / Location</label>
+                  {initialData?.city && (
+                    <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.2 rounded-md">
+                      AI Suggested
+                    </span>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => {

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Sparkles, ArrowRight, Loader2, Lightbulb, Compass, Check, Store } from 'lucide-react';
+import { Sparkles, ArrowRight, Loader2, Lightbulb, Compass, Check, Store, MapPin } from 'lucide-react';
 
 interface IdeaSuggestion {
   name: string;
   tagline: string;
   category: string;
   description: string;
+  recommendedLocation: string;
+  locationReason: string;
   services: Array<{ name: string; price: number; duration: string }>;
 }
 
@@ -14,6 +16,8 @@ const CURATED_IDEAS: IdeaSuggestion[] = [
     name: 'Aura Glow Aesthetic Lounge',
     tagline: 'Medical-Grade Hydration & Holistic Facial Wellness',
     category: 'Beauty & Wellness',
+    recommendedLocation: 'Taguig / BGC',
+    locationReason: 'High foot-traffic pedestrian zones, affluent residential condos, and wellness-focused young professionals.',
     description: 'Boutique facial sanctuary specializing in gentle extractions, lymphatic contouring, and organic peel revitalizations.',
     services: [
       { name: 'Signature Hydra-Luxe Facial', price: 1450, duration: '60 mins' },
@@ -25,6 +29,8 @@ const CURATED_IDEAS: IdeaSuggestion[] = [
     name: 'Zenith Dental Wellness',
     tagline: 'Modern, Anxiety-Free Dental Aesthetics & Hygiene',
     category: 'Dental Services',
+    recommendedLocation: 'Makati',
+    locationReason: 'Dense corporate headquarters corridor with strong demand for lunch-break cleanings and executive consultations.',
     description: 'Warm, spa-like dental clinic providing pain-free sonic cleanings, cosmetic alignment consultations, and laser whitening.',
     services: [
       { name: 'Painless Air-Flow Cleaning', price: 1800, duration: '45 mins' },
@@ -36,6 +42,8 @@ const CURATED_IDEAS: IdeaSuggestion[] = [
     name: 'Paws & Purrs Pet Wellness Studio',
     tagline: 'Fear-Free Grooming & Integrative Veterinary Care',
     category: 'Veterinary Services',
+    recommendedLocation: 'San Juan / Greenhills',
+    locationReason: 'Established pet-friendly residential neighborhoods and gated subdivisions with high pet ownership.',
     description: 'Compassionate companion care studio with acoustic calming therapy, organic coat spa treatments, and routine health checks.',
     services: [
       { name: 'Aroma-Therapy Coat Spa Bath', price: 850, duration: '45 mins' },
@@ -47,6 +55,8 @@ const CURATED_IDEAS: IdeaSuggestion[] = [
     name: 'Apex Motion Physical Therapy',
     tagline: 'Precision Posture Correction & Sports Recovery',
     category: 'Health & Fitness',
+    recommendedLocation: 'Pasig / Ortigas',
+    locationReason: 'Hub for fitness facilities, hybrid tech workers, and athletic clubs seeking injury rehab and recovery.',
     description: 'Specialized clinic for runners, athletes, and desk-bound professionals recovering from chronic pain or joint strain.',
     services: [
       { name: 'Biomechanical Posture Assessment', price: 1200, duration: '45 mins' },
@@ -58,6 +68,8 @@ const CURATED_IDEAS: IdeaSuggestion[] = [
     name: 'Precision Detail Works',
     tagline: 'Concourse-Grade Ceramic Coating & Interior Sanitization',
     category: 'Automotive & Detailing',
+    recommendedLocation: 'Quezon City',
+    locationReason: 'Expansive automotive corridor with accessible multi-vehicle bays, high vehicle density, and car enthusiast community.',
     description: 'High-end appointment-only detailing garage utilizing paint correction meters, infrared curing, and ozone sanitization.',
     services: [
       { name: 'Ozone Interior Anti-Bacterial Spa', price: 1400, duration: '60 mins' },
@@ -69,6 +81,8 @@ const CURATED_IDEAS: IdeaSuggestion[] = [
     name: 'Vanguard Legal & Advisory Lab',
     tagline: 'Strategic Startup Structuring & Contract Audits',
     category: 'Professional Consultations',
+    recommendedLocation: 'Alabang / Muntinlupa',
+    locationReason: 'Growing South commercial district with thriving regional business parks and startup founders.',
     description: 'Accessible corporate counsel and IP advisory for indie founders, creative agencies, and scaling eCommerce ventures.',
     services: [
       { name: 'Founder Agreement Review & Structuring', price: 2500, duration: '45 mins' },
@@ -119,6 +133,8 @@ export const BusinessIdeaGenerator: React.FC<BusinessIdeaGeneratorProps> = ({ on
               name: `${capitalInput} Studio & Lounge`,
               tagline: `Premium on-demand ${userInput} services designed for busy lifestyles`,
               category: 'Beauty & Wellness',
+              recommendedLocation: 'Taguig / BGC',
+              locationReason: 'High pedestrian concentration, lifestyle hubs, and prime appointment market demand.',
               description: `A modern appointment-based concept offering curated ${userInput} treatments with online scheduling and private sessions.`,
               services: [
                 { name: `Signature ${capitalInput} Experience`, price: 1500, duration: '60 mins' },
@@ -208,6 +224,17 @@ export const BusinessIdeaGenerator: React.FC<BusinessIdeaGeneratorProps> = ({ on
                 {idea.description}
               </p>
 
+              {/* Recommended Location Intelligence */}
+              <div className="mt-3 p-2.5 rounded-xl bg-stone-50 dark:bg-stone-850/80 border border-stone-200/80 dark:border-stone-800 space-y-1">
+                <div className="flex items-center space-x-1.5 text-[11px] font-bold text-stone-900 dark:text-stone-100">
+                  <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <span>Best Location: <strong className="text-amber-700 dark:text-amber-300 font-extrabold">{idea.recommendedLocation}</strong></span>
+                </div>
+                <p className="text-[10px] text-stone-500 dark:text-stone-400 leading-tight">
+                  {idea.locationReason}
+                </p>
+              </div>
+
               {/* Sample Services Preview */}
               <div className="mt-3 pt-3 border-t border-stone-100 dark:border-stone-800 space-y-1">
                 <span className="text-[10px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider block">
@@ -231,6 +258,7 @@ export const BusinessIdeaGenerator: React.FC<BusinessIdeaGeneratorProps> = ({ on
                   tagline: idea.tagline,
                   category: idea.category,
                   description: idea.description,
+                  city: idea.recommendedLocation,
                   services: idea.services,
                 });
               }}
