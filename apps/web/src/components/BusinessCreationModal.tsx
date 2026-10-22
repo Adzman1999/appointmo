@@ -353,9 +353,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             </div>
           </div>
 
-          <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 text-[11px] leading-relaxed">
+          {/* <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 text-[11px] leading-relaxed">
             <strong>Instant Store Setup:</strong> Upon creation, Appointmo automatically configures an initial consultation service, lead specialist, and standard working hours so you can immediately begin scheduling and managing appointments for this store.
-          </div>
+          </div> */}
 
           <div className="flex space-x-3 pt-2">
             <button
