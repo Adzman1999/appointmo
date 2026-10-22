@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { Search, MapPin, Loader2, Navigation, Crosshair } from 'lucide-react';
+import { Search, MapPin, Loader2, Navigation, Crosshair, Maximize2, Minimize2, Check } from 'lucide-react';
 
 interface LocationPickerProps {
   initialLat?: number;
@@ -12,14 +12,14 @@ interface LocationPickerProps {
 const customPinIcon = L.divIcon({
   className: 'custom-map-pin',
   html: `
-    <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
-      <div style="position: absolute; width: 32px; height: 32px; background-color: #f59e0b; border: 3px solid #1c1917; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 4px 10px rgba(0,0,0,0.35);"></div>
-      <div style="position: absolute; width: 12px; height: 12px; background-color: #1c1917; border-radius: 50%; z-index: 10;"></div>
+    <div style="position: relative; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: grab;">
+      <div style="position: absolute; width: 34px; height: 34px; background-color: #f59e0b; border: 3px solid #1c1917; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 4px 14px rgba(0,0,0,0.45);"></div>
+      <div style="position: absolute; width: 14px; height: 14px; background-color: #1c1917; border-radius: 50%; z-index: 10;"></div>
     </div>
   `,
-  iconSize: [36, 36],
-  iconAnchor: [18, 36],
-  popupAnchor: [0, -36],
+  iconSize: [38, 38],
+  iconAnchor: [19, 38],
+  popupAnchor: [0, -38],
 });
 
 export const LocationPicker: React.FC<LocationPickerProps> = ({
@@ -40,6 +40,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [reverseLoading, setReverseLoading] = useState(false);
   const [currentAddress, setCurrentAddress] = useState<string>('');
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   // Reverse geocode lat/lng to human address and city
   const reverseGeocode = async (lat: number, lng: number) => {
@@ -57,7 +58,6 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       if (res.ok) {
         const data = await res.json();
         const addr = data.address || {};
-        const road = addr.road || addr.pedestrian || addr.suburb || addr.neighbourhood || '';
         const city = addr.city || addr.town || addr.municipality || addr.state_district || 'Metro Manila';
         const fullAddr = data.display_name?.split(',').slice(0, 3).join(', ') || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
         
@@ -78,12 +78,24 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
 
   // Initialize Map
   useEffect(() => {
-    if (!mapContainerRef.current || mapInstanceRef.current) return;
+    if (!mapContainerRef.current) return;
+
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
+      markerRef.current = null;
+    }
 
     const map = L.map(mapContainerRef.current, {
       center: [coords.lat, coords.lng],
-      zoom: 14,
+      zoom: 15,
       zoomControl: true,
+      dragging: true,
+      touchZoom: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      boxZoom: true,
+      tapHold: true,
     });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -94,9 +106,10 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     const marker = L.marker([coords.lat, coords.lng], {
       icon: customPinIcon,
       draggable: true,
+      autoPan: true,
     }).addTo(map);
 
-    // Click on map to place pin
+    // Click anywhere on map to reposition pin
     map.on('click', (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
       marker.setLatLng([lat, lng]);
@@ -114,15 +127,29 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     mapInstanceRef.current = map;
     markerRef.current = marker;
 
-    // Trigger initial reverse geocode
-    reverseGeocode(coords.lat, coords.lng);
+    // Invalidate size immediately and after brief animation delay
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
 
     return () => {
       map.remove();
       mapInstanceRef.current = null;
       markerRef.current = null;
     };
-  }, []);
+  }, [isFullScreen]);
+
+  // Handle map resizing when toggling fullscreen
+  useEffect(() => {
+    if (mapInstanceRef.current) {
+      setTimeout(() => {
+        mapInstanceRef.current?.invalidateSize();
+        if (markerRef.current) {
+          mapInstanceRef.current?.setView(markerRef.current.getLatLng(), mapInstanceRef.current.getZoom());
+        }
+      }, 100);
+    }
+  }, [isFullScreen]);
 
   // Search places via Nominatim API
   const handleSearch = async (e?: React.FormEvent) => {
@@ -190,81 +217,217 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
 
   return (
     <div className="space-y-2">
-      {/* Search Input Bar */}
-      <div className="relative">
-        <div className="flex gap-1.5">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              placeholder="Search address, mall, landmark (e.g. BGC High Street, SM Mall of Asia)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleSearch();
-                }
-              }}
-              className="w-full pl-8 pr-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-            />
-            <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-3" />
-          </div>
-
-          <button
-            type="button"
-            onClick={() => handleSearch()}
-            disabled={searching || !searchQuery.trim()}
-            className="px-3 py-2 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-semibold hover:bg-stone-800 dark:hover:bg-amber-300 transition shrink-0 disabled:opacity-50 flex items-center space-x-1"
-          >
-            {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>Search</span>}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleLocateMe}
-            title="Locate my position"
-            className="p-2 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition shrink-0"
-          >
-            <Navigation className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Search Results Dropdown */}
-        {searchResults.length > 0 && (
-          <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xl z-[1000] overflow-hidden max-h-48 overflow-y-auto divide-y divide-stone-100 dark:divide-stone-800">
-            {searchResults.map((item, idx) => (
-              <div
-                key={idx}
-                onClick={() => handleSelectPlace(item)}
-                className="p-2.5 hover:bg-stone-50 dark:hover:bg-stone-800/70 cursor-pointer transition flex items-start space-x-2 text-xs"
-              >
-                <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                <span className="text-stone-800 dark:text-stone-200 truncate">{item.display_name}</span>
+      {/* Normal View or Fullscreen Overlay */}
+      {isFullScreen ? (
+        <div className="fixed inset-0 z-[100] bg-stone-900/80 backdrop-blur-md flex flex-col p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-2xl flex-1 flex flex-col overflow-hidden">
+            {/* Fullscreen Header Controls */}
+            <div className="p-4 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between gap-3 bg-stone-50 dark:bg-stone-800/60">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold">
+                  <MapPin className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-stone-900 dark:text-stone-100">Exact Store Map Pinning</h4>
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400">Search place, drag map to navigate, and click or drag the pin to your exact entrance.</p>
+                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
 
-      {/* Map Canvas */}
-      <div className="relative rounded-2xl overflow-hidden border border-stone-300 dark:border-stone-700 h-52 bg-stone-100 dark:bg-stone-800">
-        <div ref={mapContainerRef} className="w-full h-full z-10" />
+              <button
+                type="button"
+                onClick={() => setIsFullScreen(false)}
+                className="px-4 py-2 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-semibold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center space-x-1.5 shrink-0"
+              >
+                <Check className="w-4 h-4" />
+                <span>Apply Location &amp; Return</span>
+              </button>
+            </div>
 
-        <div className="absolute bottom-2 left-2 right-2 z-[400] bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm p-2 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm flex items-center justify-between text-[11px] text-stone-700 dark:text-stone-300">
-          <div className="flex items-center space-x-1.5 truncate">
-            <Crosshair className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span className="truncate font-medium">
-              {reverseLoading ? 'Resolving pinned address...' : currentAddress || `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`}
-            </span>
+            {/* Search Controls in Fullscreen */}
+            <div className="p-3 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 relative z-20">
+              <div className="flex gap-2 max-w-xl">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder="Search address, mall, building or landmark..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSearch();
+                      }
+                    }}
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  />
+                  <Search className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleSearch()}
+                  disabled={searching || !searchQuery.trim()}
+                  className="px-4 py-2 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-semibold hover:bg-stone-800 dark:hover:bg-amber-300 transition shrink-0 flex items-center space-x-1"
+                >
+                  {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Search</span>}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleLocateMe}
+                  title="Locate my position"
+                  className="p-2.5 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition shrink-0"
+                >
+                  <Navigation className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Fullscreen Search Dropdown */}
+              {searchResults.length > 0 && (
+                <div className="absolute left-3 right-3 sm:right-auto sm:w-[32rem] top-full mt-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-2xl z-[1000] overflow-hidden max-h-56 overflow-y-auto divide-y divide-stone-100 dark:divide-stone-800">
+                  {searchResults.map((item, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => handleSelectPlace(item)}
+                      className="p-3 hover:bg-stone-50 dark:hover:bg-stone-800/80 cursor-pointer transition flex items-start space-x-2 text-xs"
+                    >
+                      <MapPin className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                      <span className="text-stone-800 dark:text-stone-200">{item.display_name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Fullscreen Map Canvas */}
+            <div className="flex-1 relative bg-stone-100 dark:bg-stone-800">
+              <div ref={mapContainerRef} className="w-full h-full z-10" />
+
+              <div className="absolute bottom-4 left-4 right-4 z-[400] bg-white/95 dark:bg-stone-900/95 backdrop-blur-md p-3.5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xl flex items-center justify-between text-xs text-stone-800 dark:text-stone-200">
+                <div className="flex items-center space-x-2 truncate">
+                  <Crosshair className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span className="truncate font-semibold">
+                    {reverseLoading ? 'Resolving pinned address...' : currentAddress || `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-3 shrink-0 ml-3">
+                  <span className="font-mono text-[11px] text-stone-500 dark:text-stone-400">
+                    {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsFullScreen(false)}
+                    className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs transition"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-          <span className="text-[10px] text-stone-500 dark:text-stone-400 shrink-0 ml-2 font-mono">
-            {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
-          </span>
         </div>
-      </div>
-      <p className="text-[10px] text-stone-500 dark:text-stone-400 italic">
-        💡 Tip: Search any landmark or drag the pin directly on the map to mark your exact entrance or storefront.
-      </p>
+      ) : (
+        <>
+          {/* Normal View Search Input Bar */}
+          <div className="relative">
+            <div className="flex gap-1.5">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Search address, mall, landmark (e.g. BGC High Street, SM Mall of Asia)..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSearch();
+                    }
+                  }}
+                  className="w-full pl-8 pr-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+                <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-3" />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleSearch()}
+                disabled={searching || !searchQuery.trim()}
+                className="px-3 py-2 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-semibold hover:bg-stone-800 dark:hover:bg-amber-300 transition shrink-0 disabled:opacity-50 flex items-center space-x-1"
+              >
+                {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>Search</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleLocateMe}
+                title="Locate my position"
+                className="p-2 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition shrink-0"
+              >
+                <Navigation className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsFullScreen(true)}
+                title="Open interactive fullscreen map to pan and zoom"
+                className="px-2.5 py-2 rounded-xl bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900 transition shrink-0 flex items-center space-x-1 text-xs font-bold"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+                <span className="hidden sm:inline">Focus Map</span>
+              </button>
+            </div>
+
+            {/* Search Results Dropdown */}
+            {searchResults.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xl z-[1000] overflow-hidden max-h-48 overflow-y-auto divide-y divide-stone-100 dark:divide-stone-800">
+                {searchResults.map((item, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => handleSelectPlace(item)}
+                    className="p-2.5 hover:bg-stone-50 dark:hover:bg-stone-800/70 cursor-pointer transition flex items-start space-x-2 text-xs"
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                    <span className="text-stone-800 dark:text-stone-200 truncate">{item.display_name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Normal View Map Canvas */}
+          <div className="relative rounded-2xl overflow-hidden border border-stone-300 dark:border-stone-700 h-60 bg-stone-100 dark:bg-stone-800">
+            <div ref={mapContainerRef} className="w-full h-full z-10" />
+
+            {/* Top-Right Expand Button on Map */}
+            <div className="absolute top-2 right-2 z-[400]">
+              <button
+                type="button"
+                onClick={() => setIsFullScreen(true)}
+                className="bg-white/90 dark:bg-stone-900/90 backdrop-blur-md p-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 shadow hover:bg-white dark:hover:bg-stone-800 transition flex items-center space-x-1 text-[11px] font-semibold"
+                title="Expand map to full screen"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span>Fullscreen Pin</span>
+              </button>
+            </div>
+
+            <div className="absolute bottom-2 left-2 right-2 z-[400] bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm p-2 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm flex items-center justify-between text-[11px] text-stone-700 dark:text-stone-300">
+              <div className="flex items-center space-x-1.5 truncate">
+                <Crosshair className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span className="truncate font-medium">
+                  {reverseLoading ? 'Resolving pinned address...' : currentAddress || `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`}
+                </span>
+              </div>
+              <span className="text-[10px] text-stone-500 dark:text-stone-400 shrink-0 ml-2 font-mono">
+                {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
+              </span>
+            </div>
+          </div>
+          <p className="text-[10px] text-stone-500 dark:text-stone-400 italic">
+            💡 Drag map or click "Focus Map" to zoom in full-screen. Drag the amber pin anywhere to mark your exact entrance.
+          </p>
+        </>
+      )}
     </div>
   );
 };
