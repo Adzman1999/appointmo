@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Instagram, Tag } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { LocationPicker } from './LocationPicker';
 
 interface BusinessCreationModalProps {
   isOpen: boolean;
@@ -53,6 +54,8 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
   const [isCustomCity, setIsCustomCity] = useState(false);
   const [customCityInput, setCustomCityInput] = useState('');
   const [createAddress, setCreateAddress] = useState('');
+  const [createLatitude, setCreateLatitude] = useState<number | undefined>(undefined);
+  const [createLongitude, setCreateLongitude] = useState<number | undefined>(undefined);
   const [createPhone, setCreatePhone] = useState('+63 2 8999 0001');
   const [createEmail, setCreateEmail] = useState('');
   const [createStartTime, setCreateStartTime] = useState('09:00');
@@ -113,6 +116,8 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
           logoUrl: createLogoUrl.trim() || undefined,
           city: finalCity,
           address: createAddress.trim() || undefined,
+          latitude: createLatitude,
+          longitude: createLongitude,
           phone: createPhone.trim() || undefined,
           email: createEmail.trim() || undefined,
           openingHours: formattedOpeningHours,
@@ -300,10 +305,36 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
 
           {/* Store Contact & Address */}
           <div className="border-t border-stone-200 dark:border-stone-800 pt-3 space-y-3">
-            <span className="font-semibold text-stone-800 dark:text-stone-200 block">Store Location &amp; Contact</span>
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-stone-800 dark:text-stone-200 block">Store Location &amp; Map Pin</span>
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Interactive Map Search &amp; Pinning</span>
+            </div>
+
+            {/* Real Map Search & Interactive Pin Placement */}
+            <div>
+              <LocationPicker
+                initialLat={14.5547}
+                initialLng={121.0244}
+                onLocationSelect={(loc) => {
+                  setCreateLatitude(loc.lat);
+                  setCreateLongitude(loc.lng);
+                  if (loc.address) {
+                    setCreateAddress(loc.address);
+                  }
+                  if (loc.city && !cityOptions.includes(loc.city)) {
+                    setCityOptions(prev => [...prev, loc.city!]);
+                    setCreateCity(loc.city);
+                  } else if (loc.city) {
+                    setCreateCity(loc.city);
+                  }
+                }}
+              />
+            </div>
             
             <div>
-              <label className="block text-stone-500 dark:text-stone-400 mb-1">Street Address</label>
+              <label className="block text-stone-500 dark:text-stone-400 mb-1">
+                Street Address / Unit / Mall Level (Auto-filled from pin or enter manually)
+              </label>
               <input
                 type="text"
                 placeholder="e.g. Level 2, Grand Promenade Mall, 88 Commercial Ave"
