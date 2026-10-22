@@ -302,6 +302,11 @@ export const runMigrations = async () => {
     -- Allow notifications without business_id or with system/superadmin recipient_type
     ALTER TABLE notifications ALTER COLUMN business_id DROP NOT NULL;
     ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB;
+
+    -- Store recent credentials snapshot for Super Admin inspection
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS recent_credentials JSONB;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS status_reason TEXT;
   `);
 
   console.log('✅ Migrations completed successfully.');

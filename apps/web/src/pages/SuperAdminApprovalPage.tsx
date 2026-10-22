@@ -3,12 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ShieldCheck, Check, X, Clock, Store, MapPin, 
   Phone, Mail, Calendar, RefreshCw, LogOut, ArrowRight, AlertCircle, Building2, Eye, EyeOff,
-  Bell, KeyRound
+  Bell, KeyRound, Users, UserX, UserCheck, Search, ShieldAlert, Sparkles, ExternalLink,
+  ChevronDown, ChevronUp, Layers, Scissors, UserCog
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { toast } from 'sonner';
+
+interface RecentCredentials {
+  email: string;
+  temporaryPassword?: string;
+  grantedAt?: string;
+  grantedBy?: string;
+  role?: string;
+  loginUrl?: string;
+}
 
 interface StoreApprovalItem {
   user_id: string;
@@ -16,6 +26,7 @@ interface StoreApprovalItem {
   admin_email: string;
   registered_at: string;
   user_status: 'pending' | 'approved' | 'rejected';
+  recent_credentials?: RecentCredentials | null;
   business_id: string;
   store_name: string;
   store_slug: string;
@@ -24,35 +35,95 @@ interface StoreApprovalItem {
   address: string;
   store_phone: string;
   description: string;
+  logo_url?: string;
+  opening_hours?: string;
+  tagline?: string;
+  website?: string;
+  social_handle?: string;
   store_status: 'pending' | 'approved' | 'rejected';
+  service_count?: number;
+  staff_count?: number;
+}
+
+interface CustomerItem {
+  user_id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: 'approved' | 'suspended' | 'disabled' | 'revoked';
+  status_reason?: string | null;
+  registered_at: string;
+  updated_at: string;
+  primary_store_name?: string;
+  primary_store_slug?: string;
+  total_bookings: number;
+  completed_bookings: number;
+  cancelled_bookings: number;
+  last_booking_date?: string | null;
 }
 
 export const SuperAdminApprovalPage: React.FC = () => {
   const navigate = useNavigate();
+
+  // Navigation tab
+  const [activeTab, setActiveTab] = useState<'stores' | 'customers'>('stores');
+
+  // Stores state
   const [stores, setStores] = useState<StoreApprovalItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
-  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [loadingStores, setLoadingStores] = useState(true);
+  const [storeFilter, setStoreFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [expandedStoreId, setExpandedStoreId] = useState<string | null>(null);
+
+  // Customers state
+  const [customers, setCustomers] = useState<CustomerItem[]>([]);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerFilter, setCustomerFilter] = useState<'all' | 'approved' | 'suspended' | 'disabled' | 'revoked'>('all');
 
   // Super Admin Notifications State
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
 
-  // Custom Password Modal on Approval
+  // Action states
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+  // Store Approval Modal
   const [approveModalItem, setApproveModalItem] = useState<StoreApprovalItem | null>(null);
   const [customPassword, setCustomPassword] = useState('');
   const [autoGenPassword, setAutoGenPassword] = useState(true);
 
+  // Customer Management Action Modal
+  const [customerModalData, setCustomerModalData] = useState<{
+    customer: CustomerItem;
+    targetStatus: 'approved' | 'suspended' | 'disabled' | 'revoked';
+    reason: string;
+  } | null>(null);
+
+  // Reveal password toggle
+  const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
+
   const fetchStores = async () => {
-    setLoading(true);
+    setLoadingStores(true);
     try {
       const res: any = await apiFetch('/owner/store-approvals');
       setStores(res.stores || []);
     } catch (err: any) {
       toast.error('Failed to load store requests', { description: err.message });
     } finally {
-      setLoading(false);
+      setLoadingStores(false);
+    }
+  };
+
+  const fetchCustomers = async () => {
+    setLoadingCustomers(true);
+    try {
+      const res: any = await apiFetch('/owner/customers');
+      setCustomers(res.customers || []);
+    } catch (err: any) {
+      toast.error('Failed to load customers', { description: err.message });
+    } finally {
+      setLoadingCustomers(false);
     }
   };
 
@@ -68,12 +139,13 @@ export const SuperAdminApprovalPage: React.FC = () => {
 
   useEffect(() => {
     fetchStores();
+    fetchCustomers();
     fetchNotifications();
 
-    // Auto-refresh notifications every 8 seconds
+    // Auto-refresh notifications every 10 seconds
     const interval = setInterval(() => {
       fetchNotifications();
-    }, 8000);
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -99,6 +171,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
     }
   };
 
+  // Store Approval Handlers
   const handleOpenApproveModal = (item: StoreApprovalItem) => {
     setApproveModalItem(item);
     setCustomPassword('');
@@ -131,7 +204,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
     }
   };
 
-  const handleReject = async (userId: string, storeName: string) => {
+  const handleRejectStore = async (userId: string, storeName: string) => {
     if (!window.confirm(`Are you sure you want to reject registration for ${storeName}?`)) return;
     setActionLoadingId(userId);
     try {
@@ -150,24 +223,80 @@ export const SuperAdminApprovalPage: React.FC = () => {
     }
   };
 
+  // Customer Management Handlers
+  const handleOpenCustomerModal = (customer: CustomerItem, targetStatus: 'approved' | 'suspended' | 'disabled' | 'revoked') => {
+    setCustomerModalData({
+      customer,
+      targetStatus,
+      reason: ''
+    });
+  };
+
+  const handleConfirmCustomerStatusChange = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!customerModalData) return;
+
+    const { customer, targetStatus, reason } = customerModalData;
+    setActionLoadingId(customer.user_id);
+    try {
+      const res: any = await apiFetch(`/owner/customers/${customer.user_id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: targetStatus,
+          reason: reason.trim() || undefined
+        })
+      });
+
+      const label = targetStatus === 'approved' 
+        ? 'Reactivated' 
+        : targetStatus === 'suspended' 
+        ? 'Suspended' 
+        : targetStatus === 'disabled' 
+        ? 'Disabled' 
+        : 'Access Revoked';
+
+      toast.success(`Customer Account ${label}`, {
+        description: res.message || `Customer ${customer.email} is now ${targetStatus}.`
+      });
+
+      setCustomerModalData(null);
+      fetchCustomers();
+    } catch (err: any) {
+      toast.error('Failed to update customer status', { description: err.message });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('appointmo_token');
     localStorage.removeItem('appointmo_user');
     navigate('/admin/login');
   };
 
+  // Filters
   const filteredStores = stores.filter(s => {
-    if (filter === 'all') return true;
-    return s.user_status === filter;
+    if (storeFilter === 'all') return true;
+    return s.user_status === storeFilter;
   });
 
-  const pendingCount = stores.filter(s => s.user_status === 'pending').length;
+  const filteredCustomers = customers.filter(c => {
+    const matchesFilter = customerFilter === 'all' || c.status === customerFilter;
+    const matchesSearch = !customerSearch.trim() || 
+      c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+      c.email.toLowerCase().includes(customerSearch.toLowerCase()) ||
+      c.phone.toLowerCase().includes(customerSearch.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
+  const pendingStoresCount = stores.filter(s => s.user_status === 'pending').length;
+  const suspendedCustomersCount = customers.filter(c => c.status === 'suspended' || c.status === 'revoked' || c.status === 'disabled').length;
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors pb-20">
       {/* Super Admin Top Header */}
       <header className="sticky top-0 z-40 bg-white/85 dark:bg-stone-900/85 backdrop-blur-md border-b border-stone-200 dark:border-stone-800">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <AppointmoLogo size="sm" showText={false} />
             <div>
@@ -177,7 +306,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
                   Super Admin Role
                 </span>
               </div>
-              <p className="text-[11px] text-stone-500 dark:text-stone-400">Store Approval &amp; Business Verification</p>
+              <p className="text-[11px] text-stone-500 dark:text-stone-400">Store Configurations, Credentials &amp; Customer Governance</p>
             </div>
           </div>
 
@@ -255,11 +384,15 @@ export const SuperAdminApprovalPage: React.FC = () => {
             </div>
 
             <button
-              onClick={fetchStores}
+              onClick={() => {
+                fetchStores();
+                fetchCustomers();
+                fetchNotifications();
+              }}
               className="p-2 rounded-xl border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 transition text-stone-600 dark:text-stone-300"
-              title="Refresh store requests"
+              title="Refresh Data"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${loadingStores || loadingCustomers ? 'animate-spin' : ''}`} />
             </button>
 
             <button
@@ -274,180 +407,529 @@ export const SuperAdminApprovalPage: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 pt-8 space-y-6">
-        {/* Banner Overview */}
+      <main className="max-w-7xl mx-auto px-4 pt-8 space-y-6">
+        {/* Banner Overview with Tab Switcher */}
         <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2">
               <ShieldCheck className="w-5 h-5 text-amber-500" />
               <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">
-                Store Creation Approval Queue
+                Super Admin Master Center
               </h1>
             </div>
             <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
-              Newly created store accounts require explicit Super Admin approval before the store administrator can log in.
+              Verify and configure store businesses, monitor issued admin credentials, and oversee customer account privileges.
             </p>
           </div>
 
-          {/* Quick Metrics Badge */}
-          <div className="flex items-center space-x-2">
+          {/* Quick Metrics */}
+          <div className="flex items-center space-x-2.5">
             <div className="px-4 py-2 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-center">
-              <div className="text-lg font-bold text-amber-900 dark:text-amber-200">{pendingCount}</div>
-              <div className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Pending Review</div>
+              <div className="text-lg font-bold text-amber-900 dark:text-amber-200">{pendingStoresCount}</div>
+              <div className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Pending Stores</div>
             </div>
             <div className="px-4 py-2 rounded-2xl bg-stone-100 dark:bg-stone-800 text-center">
               <div className="text-lg font-bold text-stone-900 dark:text-stone-100">{stores.length}</div>
               <div className="text-[10px] font-semibold text-stone-600 dark:text-stone-400 uppercase tracking-wider">Total Stores</div>
             </div>
+            <div className="px-4 py-2 rounded-2xl bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800 text-center">
+              <div className="text-lg font-bold text-sky-900 dark:text-sky-200">{customers.length}</div>
+              <div className="text-[10px] font-semibold text-sky-700 dark:text-sky-400 uppercase tracking-wider">Customers</div>
+            </div>
           </div>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex items-center space-x-2">
-          {(['all', 'pending', 'approved', 'rejected'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold capitalize transition ${
-                filter === tab
-                  ? 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 shadow-sm'
-                  : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800'
-              }`}
-            >
-              {tab === 'all' ? 'All Registrations' : tab}
-              {tab === 'pending' && pendingCount > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold">
-                  {pendingCount}
-                </span>
-              )}
-            </button>
-          ))}
+        {/* Primary View Tab Switcher */}
+        <div className="flex items-center space-x-3 border-b border-stone-200 dark:border-stone-800 pb-3">
+          <button
+            onClick={() => setActiveTab('stores')}
+            className={`flex items-center space-x-2 px-5 py-2.5 rounded-2xl font-bold text-xs transition ${
+              activeTab === 'stores'
+                ? 'bg-amber-500 text-white shadow-md'
+                : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800'
+            }`}
+          >
+            <Store className="w-4 h-4" />
+            <span>Store Admins &amp; Configurations</span>
+            {pendingStoresCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-white/20 text-white font-extrabold text-[10px]">
+                {pendingStoresCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('customers')}
+            className={`flex items-center space-x-2 px-5 py-2.5 rounded-2xl font-bold text-xs transition ${
+              activeTab === 'customers'
+                ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-md'
+                : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Customer Accounts &amp; Governance</span>
+            {suspendedCustomersCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-extrabold text-[10px]">
+                {suspendedCustomersCount} flagged
+              </span>
+            )}
+          </button>
         </div>
 
-        {/* Stores List */}
-        {loading ? (
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center text-xs text-stone-500 space-y-2">
-            <RefreshCw className="w-6 h-6 animate-spin mx-auto text-amber-500" />
-            <p>Loading store approval requests...</p>
-          </div>
-        ) : filteredStores.length === 0 ? (
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center space-y-2">
-            <Building2 className="w-10 h-10 text-stone-400 mx-auto" />
-            <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">No Store Requests Found</h3>
-            <p className="text-xs text-stone-500">There are currently no store registration submissions matching this filter.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {filteredStores.map((item) => (
-              <div
-                key={item.user_id}
-                className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm hover:border-stone-300 dark:hover:border-stone-700 transition space-y-4"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-start space-x-3.5">
-                    <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold flex items-center justify-center shrink-0">
-                      <Store className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">
-                          {item.store_name || 'Untitled Store'}
-                        </h2>
-                        <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400">
-                          /{item.store_slug || 'pending-slug'}
-                        </span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          item.user_status === 'approved'
-                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
-                            : item.user_status === 'pending'
-                            ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300'
-                            : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
-                        }`}>
-                          {item.user_status}
-                        </span>
+        {/* TAB 1: STORES & CREDENTIALS */}
+        {activeTab === 'stores' && (
+          <div className="space-y-4">
+            {/* Filter Tabs for Stores */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                {(['all', 'pending', 'approved', 'rejected'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setStoreFilter(tab)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold capitalize transition ${
+                      storeFilter === tab
+                        ? 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 shadow-sm'
+                        : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800'
+                    }`}
+                  >
+                    {tab === 'all' ? 'All Registrations' : tab}
+                    {tab === 'pending' && pendingStoresCount > 0 && (
+                      <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold">
+                        {pendingStoresCount}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <span className="text-xs text-stone-500">
+                Showing {filteredStores.length} {filteredStores.length === 1 ? 'store' : 'stores'}
+              </span>
+            </div>
+
+            {/* Stores List */}
+            {loadingStores ? (
+              <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center text-xs text-stone-500 space-y-2">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto text-amber-500" />
+                <p>Loading store configurations and credentials...</p>
+              </div>
+            ) : filteredStores.length === 0 ? (
+              <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center space-y-2">
+                <Building2 className="w-10 h-10 text-stone-400 mx-auto" />
+                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">No Store Requests Found</h3>
+                <p className="text-xs text-stone-500">There are currently no store registration submissions matching this filter.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {filteredStores.map((item) => {
+                  const isExpanded = expandedStoreId === item.user_id;
+                  const hasCreds = Boolean(item.recent_credentials?.temporaryPassword);
+                  const isPwRevealed = Boolean(revealedPasswords[item.user_id]);
+
+                  return (
+                    <div
+                      key={item.user_id}
+                      className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm hover:border-stone-300 dark:hover:border-stone-700 transition space-y-4"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-start space-x-3.5">
+                          {item.logo_url ? (
+                            <img
+                              src={item.logo_url}
+                              alt={item.store_name}
+                              className="w-12 h-12 rounded-2xl object-cover border border-stone-200 dark:border-stone-700 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold flex items-center justify-center shrink-0">
+                              <Store className="w-6 h-6" />
+                            </div>
+                          )}
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                                {item.store_name || 'Untitled Store'}
+                              </h2>
+                              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400">
+                                /{item.store_slug || 'pending-slug'}
+                              </span>
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                item.user_status === 'approved'
+                                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+                                  : item.user_status === 'pending'
+                                  ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300'
+                                  : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
+                              }`}>
+                                {item.user_status}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-3 text-xs text-stone-600 dark:text-stone-400 mt-1 font-medium">
+                              <span>Category: <strong className="text-stone-900 dark:text-stone-100">{item.category || 'General'}</strong></span>
+                              <span>•</span>
+                              <span>Hours: <strong className="text-stone-900 dark:text-stone-100">{item.opening_hours || '9:00 AM - 6:00 PM'}</strong></span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Actions for Store */}
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => setExpandedStoreId(isExpanded ? null : item.user_id)}
+                            className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-xs font-semibold text-stone-700 dark:text-stone-300 transition flex items-center space-x-1"
+                          >
+                            <span>Config &amp; Credentials</span>
+                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          </button>
+
+                          {item.user_status === 'pending' ? (
+                            <>
+                              <button
+                                onClick={() => handleRejectStore(item.user_id, item.store_name)}
+                                disabled={actionLoadingId === item.user_id}
+                                className="px-3.5 py-2 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold transition flex items-center space-x-1.5 disabled:opacity-50"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                                <span>Reject</span>
+                              </button>
+                              <button
+                                onClick={() => handleOpenApproveModal(item)}
+                                disabled={actionLoadingId === item.user_id}
+                                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow disabled:opacity-50"
+                              >
+                                <KeyRound className="w-3.5 h-3.5" />
+                                <span>{actionLoadingId === item.user_id ? 'Approving...' : 'Grant Access & Send Email'}</span>
+                              </button>
+                            </>
+                          ) : item.user_status === 'approved' ? (
+                            <button
+                              onClick={() => handleRejectStore(item.user_id, item.store_name)}
+                              className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-xs font-medium transition"
+                              title="Revoke store approval"
+                            >
+                              Revoke Approval
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleOpenApproveModal(item)}
+                              className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 text-xs font-semibold transition"
+                            >
+                              Re-Approve &amp; Send Credentials
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-xs text-stone-600 dark:text-stone-400 mt-0.5 font-medium">
-                        Category: <strong className="text-stone-900 dark:text-stone-100">{item.category || 'General'}</strong>
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Actions for Pending State */}
-                  <div className="flex items-center space-x-2">
-                    {item.user_status === 'pending' ? (
-                      <>
-                        <button
-                          onClick={() => handleReject(item.user_id, item.store_name)}
-                          disabled={actionLoadingId === item.user_id}
-                          className="px-3.5 py-2 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold transition flex items-center space-x-1.5 disabled:opacity-50"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                          <span>Reject</span>
-                        </button>
-                        <button
-                          onClick={() => handleOpenApproveModal(item)}
-                          disabled={actionLoadingId === item.user_id}
-                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow disabled:opacity-50"
-                        >
-                          <KeyRound className="w-3.5 h-3.5" />
-                          <span>{actionLoadingId === item.user_id ? 'Approving...' : 'Grant Access & Send Email'}</span>
-                        </button>
-                      </>
-                    ) : item.user_status === 'approved' ? (
-                      <button
-                        onClick={() => handleReject(item.user_id, item.store_name)}
-                        className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-xs font-medium transition"
-                        title="Revoke store approval"
-                      >
-                        Revoke Approval
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleOpenApproveModal(item)}
-                        className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 text-xs font-semibold transition"
-                      >
-                        Re-Approve &amp; Send Credentials
-                      </button>
-                    )}
-                  </div>
-                </div>
+                      {/* Primary Overview Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700/80 text-xs text-stone-700 dark:text-stone-300">
+                        <div className="space-y-1">
+                          <span className="text-[11px] text-stone-500 dark:text-stone-400 font-semibold uppercase">Admin Contact</span>
+                          <div className="font-semibold text-stone-900 dark:text-stone-100">{item.admin_name}</div>
+                          <div className="text-stone-600 dark:text-stone-400 flex items-center space-x-1">
+                            <Mail className="w-3 h-3 text-amber-500" />
+                            <span>{item.admin_email}</span>
+                          </div>
+                        </div>
 
-                {/* Details Breakdown */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700/80 text-xs text-stone-700 dark:text-stone-300">
-                  <div className="space-y-1">
-                    <span className="text-[11px] text-stone-500 dark:text-stone-400 font-semibold uppercase">Admin Contact</span>
-                    <div className="font-semibold text-stone-900 dark:text-stone-100">{item.admin_name}</div>
-                    <div className="text-stone-600 dark:text-stone-400 flex items-center space-x-1">
-                      <Mail className="w-3 h-3 text-amber-500" />
-                      <span>{item.admin_email}</span>
-                    </div>
-                  </div>
+                        <div className="space-y-1">
+                          <span className="text-[11px] text-stone-500 dark:text-stone-400 font-semibold uppercase">Location &amp; Phone</span>
+                          <div className="flex items-center space-x-1 font-semibold text-stone-900 dark:text-stone-100 truncate">
+                            <MapPin className="w-3 h-3 text-amber-500 shrink-0" />
+                            <span className="truncate">{item.address || item.city || 'Metro Manila'}</span>
+                          </div>
+                          <div className="text-stone-600 dark:text-stone-400 flex items-center space-x-1">
+                            <Phone className="w-3 h-3 text-amber-500" />
+                            <span>{item.store_phone || 'None provided'}</span>
+                          </div>
+                        </div>
 
-                  <div className="space-y-1">
-                    <span className="text-[11px] text-stone-500 dark:text-stone-400 font-semibold uppercase">Location &amp; Phone</span>
-                    <div className="flex items-center space-x-1 font-semibold text-stone-900 dark:text-stone-100 truncate">
-                      <MapPin className="w-3 h-3 text-amber-500 shrink-0" />
-                      <span className="truncate">{item.address || item.city || 'Metro Manila'}</span>
-                    </div>
-                    <div className="text-stone-600 dark:text-stone-400 flex items-center space-x-1">
-                      <Phone className="w-3 h-3 text-amber-500" />
-                      <span>{item.store_phone || 'None provided'}</span>
-                    </div>
-                  </div>
+                        <div className="space-y-1">
+                          <span className="text-[11px] text-stone-500 dark:text-stone-400 font-semibold uppercase">Registration &amp; Catalog</span>
+                          <div className="flex items-center space-x-1 text-stone-900 dark:text-stone-100">
+                            <Calendar className="w-3 h-3 text-amber-500" />
+                            <span>{new Date(item.registered_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                          </div>
+                          <div className="text-stone-600 dark:text-stone-400 flex items-center space-x-3 mt-1">
+                            <span>Services: <strong>{item.service_count ?? 0}</strong></span>
+                            <span>•</span>
+                            <span>Staff: <strong>{item.staff_count ?? 0}</strong></span>
+                          </div>
+                        </div>
+                      </div>
 
-                  <div className="space-y-1">
-                    <span className="text-[11px] text-stone-500 dark:text-stone-400 font-semibold uppercase">Registration Time</span>
-                    <div className="flex items-center space-x-1 text-stone-900 dark:text-stone-100">
-                      <Calendar className="w-3 h-3 text-amber-500" />
-                      <span>{new Date(item.registered_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                      {/* Expandable Configuration & Recent Credentials Section */}
+                      {isExpanded && (
+                        <div className="p-5 rounded-2xl bg-amber-50/40 dark:bg-stone-800/90 border border-amber-200/80 dark:border-stone-700 space-y-4 animate-in fade-in">
+                          <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-stone-700">
+                            <div className="flex items-center space-x-2">
+                              <KeyRound className="w-4 h-4 text-amber-500" />
+                              <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">
+                                Store Admin Configuration &amp; Credentials Snapshot
+                              </h4>
+                            </div>
+                            <a
+                              href={`/#/${item.store_slug}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline flex items-center space-x-1"
+                            >
+                              <span>Visit Storefront</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                            {/* Credentials Card */}
+                            <div className="p-3.5 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 space-y-2">
+                              <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+                                Issued Admin Credentials
+                              </span>
+                              <div className="space-y-1.5 font-mono">
+                                <div className="flex justify-between items-center text-stone-700 dark:text-stone-300">
+                                  <span className="text-stone-500 font-sans">Login Email:</span>
+                                  <span className="font-semibold text-stone-900 dark:text-stone-100">{item.admin_email}</span>
+                                </div>
+
+                                <div className="flex justify-between items-center text-stone-700 dark:text-stone-300">
+                                  <span className="text-stone-500 font-sans">Temporary Password:</span>
+                                  <div className="flex items-center space-x-1.5">
+                                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                      {hasCreds
+                                        ? isPwRevealed
+                                          ? item.recent_credentials?.temporaryPassword
+                                          : '••••••••••••'
+                                        : 'Not generated yet (Pending)'}
+                                    </span>
+                                    {hasCreds && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setRevealedPasswords(prev => ({ ...prev, [item.user_id]: !prev[item.user_id] }))}
+                                        className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
+                                      >
+                                        {isPwRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex justify-between items-center text-stone-700 dark:text-stone-300">
+                                  <span className="text-stone-500 font-sans">Role Assigned:</span>
+                                  <span className="font-semibold text-amber-600 dark:text-amber-400">Store Admin (business_admin)</span>
+                                </div>
+
+                                {item.recent_credentials?.grantedAt && (
+                                  <div className="flex justify-between items-center text-stone-700 dark:text-stone-300">
+                                    <span className="text-stone-500 font-sans">Granted On:</span>
+                                    <span className="text-stone-600 dark:text-stone-400 text-[11px]">
+                                      {new Date(item.recent_credentials.grantedAt).toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Store Configuration Details */}
+                            <div className="p-3.5 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 space-y-2">
+                              <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+                                Store Metadata &amp; Branding
+                              </span>
+                              <div className="space-y-1.5 text-stone-700 dark:text-stone-300">
+                                <div>
+                                  <span className="text-stone-500">Tagline:</span>{' '}
+                                  <strong className="text-stone-900 dark:text-stone-100">{item.tagline || 'None provided'}</strong>
+                                </div>
+                                <div>
+                                  <span className="text-stone-500">Website / Social:</span>{' '}
+                                  <span className="font-mono text-stone-900 dark:text-stone-100">{item.website || item.social_handle || 'N/A'}</span>
+                                </div>
+                                <div>
+                                  <span className="text-stone-500">Description:</span>{' '}
+                                  <span className="italic text-stone-600 dark:text-stone-400">{item.description || 'No store description'}</span>
+                                </div>
+                                <div className="pt-1 flex items-center space-x-2">
+                                  <a
+                                    href={`/#/admin/dashboard?slug=${item.store_slug}`}
+                                    className="text-[11px] font-bold text-stone-900 dark:text-amber-400 underline hover:no-underline"
+                                  >
+                                    Direct Admin Dashboard Route &rarr;
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    {item.description && (
-                      <p className="text-[11px] text-stone-500 line-clamp-1 italic">"{item.description}"</p>
-                    )}
-                  </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: CUSTOMER GOVERNANCE */}
+        {activeTab === 'customers' && (
+          <div className="space-y-4">
+            {/* Filter and Search Bar */}
+            <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-4 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+              {/* Search */}
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                <input
+                  type="text"
+                  placeholder="Search customers by name, email, or phone number..."
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 md:pb-0">
+                {(['all', 'approved', 'suspended', 'disabled', 'revoked'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setCustomerFilter(tab)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold capitalize whitespace-nowrap transition ${
+                      customerFilter === tab
+                        ? 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 shadow-sm'
+                        : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'
+                    }`}
+                  >
+                    {tab === 'approved' ? 'Active' : tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Customers Table / Cards */}
+            {loadingCustomers ? (
+              <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center text-xs text-stone-500 space-y-2">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto text-amber-500" />
+                <p>Loading customer accounts...</p>
+              </div>
+            ) : filteredCustomers.length === 0 ? (
+              <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center space-y-2">
+                <Users className="w-10 h-10 text-stone-400 mx-auto" />
+                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">No Customer Accounts Found</h3>
+                <p className="text-xs text-stone-500">No customer profiles match your current search and filter criteria.</p>
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800 text-stone-500 uppercase tracking-wider text-[10px]">
+                      <tr>
+                        <th className="px-5 py-3.5 font-bold">Customer Info</th>
+                        <th className="px-4 py-3.5 font-bold">Contact</th>
+                        <th className="px-4 py-3.5 font-bold">Status</th>
+                        <th className="px-4 py-3.5 font-bold">Booking History</th>
+                        <th className="px-4 py-3.5 font-bold">Registered</th>
+                        <th className="px-5 py-3.5 font-bold text-right">Super Admin Governance</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                      {filteredCustomers.map((cust) => {
+                        const isSuspended = cust.status === 'suspended';
+                        const isDisabled = cust.status === 'disabled';
+                        const isRevoked = cust.status === 'revoked';
+                        const isActive = cust.status === 'approved';
+
+                        return (
+                          <tr key={cust.user_id} className="hover:bg-stone-50/60 dark:hover:bg-stone-800/40 transition">
+                            <td className="px-5 py-4">
+                              <div className="font-bold text-stone-900 dark:text-stone-100 text-xs">{cust.name}</div>
+                              <div className="text-stone-500 dark:text-stone-400 text-[11px] font-mono">{cust.email}</div>
+                              {cust.status_reason && (
+                                <div className="text-[10px] text-rose-600 dark:text-rose-400 mt-1 italic">
+                                  Reason: {cust.status_reason}
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="px-4 py-4">
+                              <div className="text-stone-700 dark:text-stone-300 font-medium">{cust.phone || 'None'}</div>
+                              {cust.primary_store_name && (
+                                <div className="text-[10px] text-stone-500">Store: {cust.primary_store_name}</div>
+                              )}
+                            </td>
+
+                            <td className="px-4 py-4">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                isActive
+                                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+                                  : isSuspended
+                                  ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300'
+                                  : isDisabled
+                                  ? 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
+                                  : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
+                              }`}>
+                                {isActive ? 'Active' : cust.status}
+                              </span>
+                            </td>
+
+                            <td className="px-4 py-4">
+                              <div className="font-semibold text-stone-800 dark:text-stone-200">
+                                {cust.total_bookings} total ({cust.completed_bookings} completed)
+                              </div>
+                              <div className="text-[10px] text-stone-500">
+                                Last: {cust.last_booking_date ? new Date(cust.last_booking_date).toLocaleDateString() : 'Never'}
+                              </div>
+                            </td>
+
+                            <td className="px-4 py-4 text-stone-600 dark:text-stone-400 text-[11px]">
+                              {new Date(cust.registered_at).toLocaleDateString()}
+                            </td>
+
+                            <td className="px-5 py-4 text-right">
+                              <div className="flex items-center justify-end space-x-1.5">
+                                {!isActive && (
+                                  <button
+                                    onClick={() => handleOpenCustomerModal(cust, 'approved')}
+                                    className="px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 text-[11px] font-semibold border border-emerald-200 dark:border-emerald-800 transition"
+                                    title="Reactivate customer account"
+                                  >
+                                    Reactivate
+                                  </button>
+                                )}
+
+                                {!isSuspended && (
+                                  <button
+                                    onClick={() => handleOpenCustomerModal(cust, 'suspended')}
+                                    className="px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 text-[11px] font-semibold border border-amber-200 dark:border-amber-800 transition"
+                                    title="Temporarily suspend customer"
+                                  >
+                                    Suspend
+                                  </button>
+                                )}
+
+                                {!isDisabled && (
+                                  <button
+                                    onClick={() => handleOpenCustomerModal(cust, 'disabled')}
+                                    className="px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 text-[11px] font-semibold transition"
+                                    title="Disable customer login"
+                                  >
+                                    Disable
+                                  </button>
+                                )}
+
+                                {!isRevoked && (
+                                  <button
+                                    onClick={() => handleOpenCustomerModal(cust, 'revoked')}
+                                    className="px-2.5 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 text-[11px] font-semibold border border-rose-200 dark:border-rose-900 transition"
+                                    title="Permanently revoke access & invalidate sessions"
+                                  >
+                                    Revoke
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            ))}
+            )}
           </div>
         )}
       </main>
@@ -555,6 +1037,108 @@ export const SuperAdminApprovalPage: React.FC = () => {
                 >
                   <KeyRound className="w-3.5 h-3.5" />
                   <span>{actionLoadingId === approveModalItem.user_id ? 'Granting Access...' : 'Approve & Send Email'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Status Governance Modal */}
+      {customerModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
+              <div className="flex items-center space-x-2.5">
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
+                  customerModalData.targetStatus === 'approved'
+                    ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
+                    : customerModalData.targetStatus === 'suspended'
+                    ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300'
+                    : 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300'
+                }`}>
+                  <UserCog className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                    {customerModalData.targetStatus === 'approved' ? 'Reactivate Customer Account' :
+                     customerModalData.targetStatus === 'suspended' ? 'Suspend Customer Account' :
+                     customerModalData.targetStatus === 'disabled' ? 'Disable Customer Login' :
+                     'Revoke Customer Access'}
+                  </h3>
+                  <p className="text-xs text-stone-500">Super Admin account governance action</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCustomerModalData(null)}
+                className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmCustomerStatusChange} className="space-y-4 text-xs">
+              <div className="bg-stone-50 dark:bg-stone-800/60 p-3.5 rounded-2xl border border-stone-200/80 dark:border-stone-700/80 space-y-1.5 font-medium">
+                <div>
+                  <span className="text-stone-500">Customer:</span>{' '}
+                  <strong className="text-stone-900 dark:text-stone-100">{customerModalData.customer.name}</strong>
+                </div>
+                <div>
+                  <span className="text-stone-500">Email:</span>{' '}
+                  <span className="font-mono text-stone-900 dark:text-stone-100">{customerModalData.customer.email}</span>
+                </div>
+                <div>
+                  <span className="text-stone-500">Action:</span>{' '}
+                  <strong className={`uppercase ${
+                    customerModalData.targetStatus === 'approved' ? 'text-emerald-600' :
+                    customerModalData.targetStatus === 'suspended' ? 'text-amber-600' :
+                    'text-rose-600'
+                  }`}>
+                    Set status to '{customerModalData.targetStatus}'
+                  </strong>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
+                  Administrative Note or Reason (Optional)
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="e.g. Repeated no-shows or requested account closure..."
+                  value={customerModalData.reason}
+                  onChange={(e) => setCustomerModalData({ ...customerModalData, reason: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
+
+              {customerModalData.targetStatus !== 'approved' && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-xl text-[11px] text-rose-900 dark:text-rose-200 leading-relaxed font-medium">
+                  <strong>Notice:</strong> This customer will immediately be prohibited from signing into their Appointmo account.
+                </div>
+              )}
+
+              <div className="flex space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCustomerModalData(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoadingId === customerModalData.customer.user_id}
+                  className={`flex-1 py-2.5 rounded-xl font-bold text-white transition shadow flex items-center justify-center space-x-1.5 disabled:opacity-50 ${
+                    customerModalData.targetStatus === 'approved'
+                      ? 'bg-emerald-600 hover:bg-emerald-500'
+                      : customerModalData.targetStatus === 'suspended'
+                      ? 'bg-amber-600 hover:bg-amber-500'
+                      : 'bg-rose-600 hover:bg-rose-500'
+                  }`}
+                >
+                  <span>{actionLoadingId === customerModalData.customer.user_id ? 'Applying...' : 'Confirm Action'}</span>
                 </button>
               </div>
             </form>

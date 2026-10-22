@@ -364,6 +364,7 @@ router.get('/store-approvals', requireOwnerAuth, async (req: Request, res: Respo
         u.email AS admin_email,
         u.created_at AS registered_at,
         u.status AS user_status,
+        u.recent_credentials AS recent_credentials,
         b.id AS business_id,
         b.name AS store_name,
         b.slug AS store_slug,
@@ -372,7 +373,14 @@ router.get('/store-approvals', requireOwnerAuth, async (req: Request, res: Respo
         b.address AS address,
         b.phone AS store_phone,
         b.description AS description,
-        b.status AS store_status
+        b.logo_url AS logo_url,
+        b.opening_hours AS opening_hours,
+        b.tagline AS tagline,
+        b.website AS website,
+        b.social_handle AS social_handle,
+        b.status AS store_status,
+        (SELECT COUNT(*)::int FROM services s WHERE s.business_id = b.id AND s.is_active = true) AS service_count,
+        (SELECT COUNT(*)::int FROM staff_profiles sp WHERE sp.business_id = b.id AND sp.is_active = true) AS staff_count
       FROM users u
       LEFT JOIN businesses b ON u.business_id = b.id
       WHERE u.role = 'business_admin'
@@ -463,21 +471,30 @@ router.post('/store-approvals/:userId/approve', requireOwnerAuth, async (req: Re
     const bcrypt = await import('bcryptjs');
     const newPasswordHash = await bcrypt.default.hash(generatedPassword, 10);
 
-    // Mark user status approved, set new password hash, and ensure role is business_admin
+    // Determine login and store URL
+    const baseUrl = config.appUrl || 'http://localhost:5173';
+    const loginUrl = `${baseUrl}/admin/login?mode=signin&email=${encodeURIComponent(user.email)}`;
+
+    // Mark user status approved, set new password hash, and record recent credentials for Super Admin audit/inspection
+    const recentCredentialsData = {
+      email: user.email,
+      temporaryPassword: generatedPassword,
+      grantedAt: new Date().toISOString(),
+      grantedBy: req.user?.email || 'superadmin',
+      role: 'business_admin',
+      loginUrl
+    };
+
     await query(`
       UPDATE users 
-      SET status = 'approved', role = 'business_admin', password_hash = $1, updated_at = NOW() 
-      WHERE id = $2
-    `, [newPasswordHash, userId]);
+      SET status = 'approved', role = 'business_admin', password_hash = $1, recent_credentials = $2, updated_at = NOW() 
+      WHERE id = $3
+    `, [newPasswordHash, JSON.stringify(recentCredentialsData), userId]);
 
     // Mark business status approved
     if (user.business_id) {
       await query("UPDATE businesses SET status = 'approved', updated_at = NOW() WHERE id = $1", [user.business_id]);
     }
-
-    // Determine login and store URL
-    const baseUrl = config.appUrl || 'http://localhost:5173';
-    const loginUrl = `${baseUrl}/admin/login?mode=signin&email=${encodeURIComponent(user.email)}`;
 
     // Dispatch approval email with store admin role confirmation and credentials
     try {
@@ -528,6 +545,99 @@ router.post('/store-approvals/:userId/reject', requireOwnerAuth, async (req: Req
   } catch (err: any) {
     console.error('Error rejecting store:', err);
     res.status(500).json({ error: 'Failed to reject store: ' + err.message });
+  }
+});
+
+// 10. Super Admin: List All Customer Accounts with activity & booking metrics
+router.get('/customers', requireOwnerAuth, async (req: Request, res: Response) => {
+  try {
+    const result = await query(`
+      SELECT 
+        u.id AS user_id,
+        u.name AS name,
+        u.email AS email,
+        COALESCE(u.phone, c.phone, 'N/A') AS phone,
+        COALESCE(u.status, 'approved') AS status,
+        u.status_reason AS status_reason,
+        u.created_at AS registered_at,
+        u.updated_at AS updated_at,
+        b.name AS primary_store_name,
+        b.slug AS primary_store_slug,
+        COUNT(a.id)::int AS total_bookings,
+        COUNT(CASE WHEN a.status = 'completed' THEN 1 END)::int AS completed_bookings,
+        COUNT(CASE WHEN a.status = 'cancelled' THEN 1 END)::int AS cancelled_bookings,
+        MAX(a.start_time) AS last_booking_date
+      FROM users u
+      LEFT JOIN businesses b ON u.business_id = b.id
+      LEFT JOIN customers c ON LOWER(c.email) = LOWER(u.email)
+      LEFT JOIN appointments a ON a.customer_id = c.id
+      WHERE u.role = 'customer'
+      GROUP BY u.id, u.name, u.email, u.phone, c.phone, u.status, u.status_reason, u.created_at, u.updated_at, b.name, b.slug
+      ORDER BY u.created_at DESC
+    `);
+
+    res.json({ customers: result.rows });
+  } catch (err: any) {
+    console.error('Error fetching customer accounts:', err);
+    res.status(500).json({ error: 'Failed to fetch customer accounts: ' + err.message });
+  }
+});
+
+// 11. Super Admin: Update Customer Account Status (active/approved, suspended, disabled, revoked)
+router.patch('/customers/:userId/status', requireOwnerAuth, async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const { status, reason } = req.body;
+
+    const allowedStatuses = ['approved', 'suspended', 'disabled', 'revoked'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ 
+        error: `Invalid status '${status}'. Must be one of: ${allowedStatuses.join(', ')}` 
+      });
+    }
+
+    const userRes = await query('SELECT id, name, email, role, status FROM users WHERE id = $1 AND role = $2', [userId, 'customer']);
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Customer user not found' });
+    }
+
+    const customer = userRes.rows[0];
+
+    // If revoking or suspending, invalidate any setup/reset tokens
+    if (status === 'revoked' || status === 'suspended' || status === 'disabled') {
+      await query('DELETE FROM user_setup_tokens WHERE user_id = $1', [userId]);
+    }
+
+    await query(`
+      UPDATE users 
+      SET status = $1, status_reason = $2, updated_at = NOW() 
+      WHERE id = $3
+    `, [status, reason || null, userId]);
+
+    // Record audit log
+    await query(`
+      INSERT INTO audit_logs (actor_type, actor_id, action, target_type, target_id, details)
+      VALUES ('superadmin', $1, $2, 'users', $3, $4)
+    `, [
+      req.user?.userId || 'superadmin',
+      `customer_status_${status}`,
+      userId,
+      JSON.stringify({ previousStatus: customer.status, newStatus: status, reason, email: customer.email })
+    ]);
+
+    res.json({
+      message: `Customer account ${customer.email} has been updated to '${status}'.`,
+      customer: {
+        id: customer.id,
+        email: customer.email,
+        name: customer.name,
+        status,
+        status_reason: reason || null
+      }
+    });
+  } catch (err: any) {
+    console.error('Error updating customer status:', err);
+    res.status(500).json({ error: 'Failed to update customer status: ' + err.message });
   }
 });
 

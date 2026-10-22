@@ -37,7 +37,25 @@ router.post('/login', async (req: Request, res: Response) => {
 
     if (user.status === 'rejected') {
       return res.status(403).json({ 
-        error: 'Your store account registration request was not approved. Please contact support.' 
+        error: 'Your account registration request was not approved. Please contact support.' 
+      });
+    }
+
+    if (user.status === 'suspended') {
+      return res.status(403).json({
+        error: 'Your account has been suspended by the administrator. Please contact support for assistance.'
+      });
+    }
+
+    if (user.status === 'disabled' || user.status === 'deactivated') {
+      return res.status(403).json({
+        error: 'Your account is disabled. Please contact the platform administrator to reactivate your access.'
+      });
+    }
+
+    if (user.status === 'revoked') {
+      return res.status(403).json({
+        error: 'Your account access has been revoked by the administrator.'
       });
     }
 
@@ -118,10 +136,10 @@ router.post('/register', async (req: Request, res: Response) => {
     // Insert user record: customer starts immediately as 'approved'
     const initialStatus = 'approved';
     const userRes = await client.query(`
-      INSERT INTO users (business_id, email, password_hash, role, name, status)
-      VALUES ($1, $2, $3, 'customer', $4, $5)
-      RETURNING id, business_id, email, role, name, status
-    `, [defaultBizId || null, emailNorm, passwordHash, name.trim(), initialStatus]);
+      INSERT INTO users (business_id, email, password_hash, role, name, phone, status)
+      VALUES ($1, $2, $3, 'customer', $4, $5, $6)
+      RETURNING id, business_id, email, role, name, phone, status
+    `, [defaultBizId || null, emailNorm, passwordHash, name.trim(), phone || null, initialStatus]);
 
     await client.query('COMMIT');
 
