@@ -298,6 +298,10 @@ export const runMigrations = async () => {
     -- Ensure approval status columns exist
     ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'approved';
     ALTER TABLE businesses ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'approved';
+
+    -- Allow notifications without business_id or with system/superadmin recipient_type
+    ALTER TABLE notifications ALTER COLUMN business_id DROP NOT NULL;
+    ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB;
   `);
 
   console.log('✅ Migrations completed successfully.');

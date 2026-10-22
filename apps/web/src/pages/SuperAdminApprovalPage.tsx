@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ShieldCheck, Check, X, Clock, Store, MapPin, 
-  Phone, Mail, Calendar, RefreshCw, LogOut, ArrowRight, AlertCircle, Building2, Eye, EyeOff
+  Phone, Mail, Calendar, RefreshCw, LogOut, ArrowRight, AlertCircle, Building2, Eye, EyeOff,
+  Bell, KeyRound
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
@@ -33,6 +34,16 @@ export const SuperAdminApprovalPage: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
+  // Super Admin Notifications State
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+
+  // Custom Password Modal on Approval
+  const [approveModalItem, setApproveModalItem] = useState<StoreApprovalItem | null>(null);
+  const [customPassword, setCustomPassword] = useState('');
+  const [autoGenPassword, setAutoGenPassword] = useState(true);
+
   const fetchStores = async () => {
     setLoading(true);
     try {
@@ -45,20 +56,74 @@ export const SuperAdminApprovalPage: React.FC = () => {
     }
   };
 
+  const fetchNotifications = async () => {
+    try {
+      const res: any = await apiFetch('/owner/notifications');
+      setNotifications(res.notifications || []);
+      setUnreadCount(res.unreadCount || 0);
+    } catch (err) {
+      console.error('Failed to fetch super admin notifications', err);
+    }
+  };
+
   useEffect(() => {
     fetchStores();
+    fetchNotifications();
+
+    // Auto-refresh notifications every 8 seconds
+    const interval = setInterval(() => {
+      fetchNotifications();
+    }, 8000);
+    return () => clearInterval(interval);
   }, []);
 
-  const handleApprove = async (userId: string, storeName: string) => {
-    setActionLoadingId(userId);
+  const handleMarkNotifRead = async (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    setUnreadCount(prev => Math.max(0, prev - 1));
     try {
-      const res: any = await apiFetch(`/owner/store-approvals/${userId}/approve`, {
+      await apiFetch(`/owner/notifications/${id}/read`, { method: 'PATCH' });
+      fetchNotifications();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleMarkAllNotifsRead = async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    setUnreadCount(0);
+    try {
+      await apiFetch(`/owner/notifications/mark-all-read`, { method: 'POST' });
+      fetchNotifications();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleOpenApproveModal = (item: StoreApprovalItem) => {
+    setApproveModalItem(item);
+    setCustomPassword('');
+    setAutoGenPassword(true);
+  };
+
+  const handleConfirmApproval = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!approveModalItem) return;
+
+    const item = approveModalItem;
+    setActionLoadingId(item.user_id);
+    try {
+      const res: any = await apiFetch(`/owner/store-approvals/${item.user_id}/approve`, {
         method: 'POST',
+        body: JSON.stringify({
+          customPassword: autoGenPassword ? undefined : customPassword.trim(),
+        }),
       });
-      toast.success('Store Admin Approved', {
-        description: res.message || `${storeName} can now sign in to store operations.`
+      toast.success('Store Admin Approved & Credentials Dispatched', {
+        description: res.message || `${item.store_name} credentials delivered via email.`,
       });
+      setApproveModalItem(null);
       fetchStores();
+      fetchNotifications();
     } catch (err: any) {
       toast.error('Approval failed', { description: err.message });
     } finally {
@@ -77,6 +142,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
         description: res.message || `${storeName} registration has been declined.`
       });
       fetchStores();
+      fetchNotifications();
     } catch (err: any) {
       toast.error('Rejection failed', { description: err.message });
     } finally {
@@ -117,6 +183,76 @@ export const SuperAdminApprovalPage: React.FC = () => {
 
           <div className="flex items-center space-x-2.5">
             <ThemeToggle />
+
+            {/* Notification Bell for Super Admin */}
+            <div className="relative">
+              <button
+                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                className="relative p-2 rounded-xl border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 transition text-stone-600 dark:text-stone-300"
+                title="Super Admin Notifications"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-amber-500 text-white font-bold text-[10px] w-5 h-5 rounded-full flex items-center justify-center shadow">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Dropdown */}
+              {isNotifOpen && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xl z-50 overflow-hidden animate-in fade-in">
+                  <div className="p-3.5 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between bg-stone-50 dark:bg-stone-800/60">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-bold text-xs text-stone-900 dark:text-stone-100">Super Admin Alerts</span>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-semibold">
+                        {unreadCount} unread
+                      </span>
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllNotifsRead}
+                        className="text-[11px] text-amber-600 dark:text-amber-400 hover:underline font-medium"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto divide-y divide-stone-100 dark:divide-stone-800 text-xs">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-stone-500 dark:text-stone-400 font-medium">
+                        No notifications yet.
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          onClick={() => handleMarkNotifRead(n.id)}
+                          className={`p-3.5 hover:bg-stone-50 dark:hover:bg-stone-800/60 cursor-pointer transition ${
+                            !n.isRead ? 'bg-amber-50/40 dark:bg-amber-950/30 font-semibold' : ''
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-stone-900 dark:text-stone-100 text-xs font-bold">{n.title}</span>
+                            {!n.isRead && (
+                              <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 mt-1"></span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-stone-600 dark:text-stone-300 font-normal mt-0.5 line-clamp-2 leading-relaxed">
+                            {n.message}
+                          </p>
+                          <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-1">
+                            {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} •{' '}
+                            {new Date(n.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <button
               onClick={fetchStores}
@@ -249,12 +385,12 @@ export const SuperAdminApprovalPage: React.FC = () => {
                           <span>Reject</span>
                         </button>
                         <button
-                          onClick={() => handleApprove(item.user_id, item.store_name)}
+                          onClick={() => handleOpenApproveModal(item)}
                           disabled={actionLoadingId === item.user_id}
                           className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow disabled:opacity-50"
                         >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>{actionLoadingId === item.user_id ? 'Approving...' : 'Approve Store'}</span>
+                          <KeyRound className="w-3.5 h-3.5" />
+                          <span>{actionLoadingId === item.user_id ? 'Approving...' : 'Grant Access & Send Email'}</span>
                         </button>
                       </>
                     ) : item.user_status === 'approved' ? (
@@ -267,10 +403,10 @@ export const SuperAdminApprovalPage: React.FC = () => {
                       </button>
                     ) : (
                       <button
-                        onClick={() => handleApprove(item.user_id, item.store_name)}
+                        onClick={() => handleOpenApproveModal(item)}
                         className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 text-xs font-semibold transition"
                       >
-                        Re-Approve
+                        Re-Approve &amp; Send Credentials
                       </button>
                     )}
                   </div>
@@ -315,6 +451,116 @@ export const SuperAdminApprovalPage: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Grant Access & Dispatch Credentials Modal */}
+      {approveModalItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-lg w-full shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 flex items-center justify-center">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">Grant Store Admin Access</h3>
+                  <p className="text-xs text-stone-500">Deliver login credentials directly to the store administrator</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setApproveModalItem(null)}
+                className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmApproval} className="space-y-4 text-xs">
+              <div className="bg-stone-50 dark:bg-stone-800/60 p-4 rounded-2xl border border-stone-200/80 dark:border-stone-700/80 space-y-2 font-mono">
+                <div className="flex justify-between items-center text-stone-700 dark:text-stone-300">
+                  <span className="font-sans font-medium text-stone-500">Store:</span>
+                  <span className="font-bold text-stone-900 dark:text-stone-100">{approveModalItem.store_name}</span>
+                </div>
+                <div className="flex justify-between items-center text-stone-700 dark:text-stone-300">
+                  <span className="font-sans font-medium text-stone-500">Recipient Email:</span>
+                  <span className="text-stone-900 dark:text-stone-100 font-semibold">{approveModalItem.admin_email}</span>
+                </div>
+                <div className="flex justify-between items-center text-stone-700 dark:text-stone-300">
+                  <span className="font-sans font-medium text-stone-500">Store URL:</span>
+                  <span className="text-amber-600 dark:text-amber-400">/admin/dashboard?slug={approveModalItem.store_slug}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
+                  Store Admin Access Password
+                </label>
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="passwordChoice"
+                      checked={autoGenPassword}
+                      onChange={() => setAutoGenPassword(true)}
+                      className="text-amber-500 focus:ring-amber-400"
+                    />
+                    <span className="text-stone-800 dark:text-stone-200 font-medium">
+                      Auto-generate a secure random temporary password (e.g. <code>StorePass_X7K9!</code>)
+                    </span>
+                  </label>
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="passwordChoice"
+                      checked={!autoGenPassword}
+                      onChange={() => setAutoGenPassword(false)}
+                      className="text-amber-500 focus:ring-amber-400"
+                    />
+                    <span className="text-stone-800 dark:text-stone-200 font-medium">
+                      Provide a specific custom initial password
+                    </span>
+                  </label>
+                </div>
+
+                {!autoGenPassword && (
+                  <div className="mt-2.5">
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. SalonAdmin2026!"
+                      value={customPassword}
+                      onChange={(e) => setCustomPassword(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs font-mono focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-xl text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed font-medium">
+                <strong>Automatic Dispatch:</strong> Upon clicking confirm, this store account will be upgraded to <strong>Store Admin</strong> and an email containing their sign-in username (email) and password will be immediately sent to <strong>{approveModalItem.admin_email}</strong>.
+              </div>
+
+              <div className="flex space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setApproveModalItem(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoadingId === approveModalItem.user_id}
+                  className="flex-1 py-2.5 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow flex items-center justify-center space-x-1.5 disabled:opacity-50"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>{actionLoadingId === approveModalItem.user_id ? 'Granting Access...' : 'Approve & Send Email'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

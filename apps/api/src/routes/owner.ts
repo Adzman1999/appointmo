@@ -388,10 +388,60 @@ router.get('/store-approvals', requireOwnerAuth, async (req: Request, res: Respo
   }
 });
 
+// 7b. Super Admin Notifications (Store Creation & System Alerts)
+router.get('/notifications', requireOwnerAuth, async (req: Request, res: Response) => {
+  try {
+    const listRes = await query(`
+      SELECT n.id, n.type, n.title, n.message, n.is_read AS "isRead", n.metadata, n.created_at AS "createdAt"
+      FROM notifications n
+      WHERE n.recipient_type = 'superadmin' OR n.recipient_identifier = 'superadmin'
+      ORDER BY n.created_at DESC
+      LIMIT 50
+    `);
+
+    const unreadRes = await query(`
+      SELECT COUNT(*)::int AS count
+      FROM notifications
+      WHERE (recipient_type = 'superadmin' OR recipient_identifier = 'superadmin') AND is_read = false
+    `);
+
+    res.json({
+      notifications: listRes.rows,
+      unreadCount: unreadRes.rows[0]?.count || 0,
+    });
+  } catch (err: any) {
+    console.error('Super admin notifications error:', err);
+    res.status(500).json({ error: 'Failed to fetch super admin notifications' });
+  }
+});
+
+// 7c. Mark Super Admin Notification as Read
+router.patch('/notifications/:id/read', requireOwnerAuth, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await query("UPDATE notifications SET is_read = true, read_at = NOW() WHERE id = $1", [id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to mark notification as read' });
+  }
+});
+
+// 7d. Mark All Super Admin Notifications as Read
+router.post('/notifications/mark-all-read', requireOwnerAuth, async (req: Request, res: Response) => {
+  try {
+    await query("UPDATE notifications SET is_read = true, read_at = NOW() WHERE recipient_type = 'superadmin' OR recipient_identifier = 'superadmin'");
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to mark notifications as read' });
+  }
+});
+
 // 8. Super Admin: Approve Store Admin Creation
 router.post('/store-approvals/:userId/approve', requireOwnerAuth, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
+    const { customPassword } = req.body || {};
+
     const userRes = await query(`
       SELECT u.id, u.business_id, u.email, u.name, b.name AS store_name, b.slug AS store_slug
       FROM users u
@@ -405,8 +455,20 @@ router.post('/store-approvals/:userId/approve', requireOwnerAuth, async (req: Re
 
     const user = userRes.rows[0];
 
-    // Mark user status approved and ensure role is business_admin
-    await query("UPDATE users SET status = 'approved', role = 'business_admin', updated_at = NOW() WHERE id = $1", [userId]);
+    // Generate or use provided password
+    const generatedPassword = customPassword && customPassword.trim() 
+      ? customPassword.trim() 
+      : 'StorePass_' + Math.random().toString(36).substring(2, 8).toUpperCase() + '!';
+
+    const bcrypt = await import('bcryptjs');
+    const newPasswordHash = await bcrypt.default.hash(generatedPassword, 10);
+
+    // Mark user status approved, set new password hash, and ensure role is business_admin
+    await query(`
+      UPDATE users 
+      SET status = 'approved', role = 'business_admin', password_hash = $1, updated_at = NOW() 
+      WHERE id = $2
+    `, [newPasswordHash, userId]);
 
     // Mark business status approved
     if (user.business_id) {
@@ -425,14 +487,17 @@ router.post('/store-approvals/:userId/approve', requireOwnerAuth, async (req: Re
         storeName: user.store_name || 'Your Store',
         storeSlug: user.store_slug || 'lumiere-beauty-studio',
         loginUrl,
+        password: generatedPassword,
+        tempPassword: generatedPassword,
       });
     } catch (emailErr) {
       console.error('Failed to dispatch store approval email:', emailErr);
     }
 
     res.json({ 
-      message: `Store Admin ${user.email} for "${user.store_name}" has been approved! Credentials and login link have been dispatched to ${user.email}.`,
-      user: { id: user.id, email: user.email, status: 'approved', role: 'business_admin' }
+      message: `Store Admin ${user.email} for "${user.store_name}" has been approved! Password credentials (${generatedPassword}) and login link have been dispatched via email to ${user.email}.`,
+      user: { id: user.id, email: user.email, status: 'approved', role: 'business_admin' },
+      generatedPassword,
     });
   } catch (err: any) {
     console.error('Error approving store:', err);

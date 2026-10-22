@@ -82,22 +82,17 @@ router.post('/login', async (req: Request, res: Response) => {
   }
 });
 
-// Sign up for Customer or Store Admin
+// Customer Sign up
 router.post('/register', async (req: Request, res: Response) => {
   const client = await pool.connect();
   try {
-    const { 
-      role, name, email, password, phone,
-      // Store creation fields (when role === 'store_admin' or 'business_admin')
-      storeName, category, description, address, city, openingHours, socialHandle
-    } = req.body;
+    const { name, email, password, phone } = req.body;
 
     if (!email || !password || !name) {
       return res.status(400).json({ error: 'Name, email, and password are required' });
     }
 
     const emailNorm = email.toLowerCase().trim();
-    const targetRole = role === 'store_admin' || role === 'business_admin' ? 'business_admin' : 'customer';
 
     // Check if user already exists
     const existUser = await client.query('SELECT id FROM users WHERE email = $1', [emailNorm]);
@@ -109,145 +104,38 @@ router.post('/register', async (req: Request, res: Response) => {
 
     await client.query('BEGIN');
 
-    let createdBusinessId: string | null = null;
-    let createdBusinessSlug: string | undefined;
-    let createdBusinessName: string | undefined;
-
-    // If registering as a store admin, create their store immediately
-    if (targetRole === 'business_admin') {
-      const finalStoreName = (storeName || `${name.trim()}'s Studio`).trim();
-      const finalCategory = (category || 'Beauty & Wellness').trim();
-      const finalCity = (city || 'Quezon City').trim();
-      const finalAddress = (address || `101 Commercial Ave, ${finalCity}`).trim();
-      const finalOpeningHours = (openingHours || '9:00 AM - 6:00 PM').trim();
-      const finalPhone = (phone || '+63 2 8999 0001').trim();
-      const finalSocMed = socialHandle ? socialHandle.trim() : null;
-
-      const slug = finalStoreName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Math.random().toString(36).substring(2, 6);
-
-      const bRes = await client.query(`
-        INSERT INTO businesses (
-          name, slug, description, category, currency, timezone,
-          phone, email, address, city, opening_hours, instagram, social_handle, status
-        )
-        VALUES ($1, $2, $3, $4, 'PHP', 'Asia/Manila', $5, $6, $7, $8, $9, $10, $11, 'pending')
-        RETURNING id, name, slug
-      `, [
-        finalStoreName, slug, description || `Premier service business offering ${finalCategory}`,
-        finalCategory, finalPhone, emailNorm, finalAddress, finalCity, finalOpeningHours, finalSocMed, finalSocMed
-      ]);
-
-      const biz = bRes.rows[0];
-      createdBusinessId = biz.id;
-      createdBusinessSlug = biz.slug;
-      createdBusinessName = biz.name;
-
-      // Create primary branch
-      const brRes = await client.query(`
-        INSERT INTO branches (business_id, name, address, city, phone, latitude, longitude, location_description)
-        VALUES ($1, $2, $3, $4, $5, 14.5547, 121.0244, $6)
-        RETURNING id
-      `, [biz.id, `${finalStoreName} Main`, finalAddress, finalCity, finalPhone, `${finalStoreName} - ${finalCity}`]);
-
-      // Create starter services
-      const sRes = await client.query(`
-        INSERT INTO services (business_id, name, description, duration_minutes, price, category)
-        VALUES ($1, 'Standard Consultation', 'Initial consultation and assessment session.', 45, 1000, 'Consultation')
-        RETURNING id
-      `, [biz.id]);
-
-      // Create starter staff
-      const spRes = await client.query(`
-        INSERT INTO staff_profiles (business_id, name, bio)
-        VALUES ($1, $2, 'Lead specialist and store practitioner.')
-        RETURNING id
-      `, [biz.id, name.trim()]);
-
-      await client.query(`INSERT INTO staff_services (staff_id, service_id) VALUES ($1, $2)`, [spRes.rows[0].id, sRes.rows[0].id]);
-
-      for (let day = 1; day <= 6; day++) {
-        await client.query(`
-          INSERT INTO staff_working_hours (staff_id, day_of_week, start_time, end_time, break_start, break_end, is_working)
-          VALUES ($1, $2, '09:00:00', '18:00:00', '12:00:00', '13:00:00', true)
-        `, [spRes.rows[0].id, day]);
-      }
-    } else {
-      // Customer registration: register customer profile linked to canonical store or default
-      const defaultBiz = await client.query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio' LIMIT 1");
-      const defaultBizId = defaultBiz.rows[0]?.id;
-      if (defaultBizId) {
-        await client.query(`
-          INSERT INTO customers (business_id, name, email, phone)
-          VALUES ($1, $2, $3, $4)
-          ON CONFLICT (business_id, email) DO UPDATE SET name = $2, phone = $4
-        `, [defaultBizId, name.trim(), emailNorm, phone || '+63 900 000 0000']);
-      }
+    // Link customer to canonical or default business
+    const defaultBiz = await client.query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio' LIMIT 1");
+    const defaultBizId = defaultBiz.rows[0]?.id;
+    if (defaultBizId) {
+      await client.query(`
+        INSERT INTO customers (business_id, name, email, phone)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (business_id, email) DO UPDATE SET name = $2, phone = $4
+      `, [defaultBizId, name.trim(), emailNorm, phone || '+63 900 000 0000']);
     }
 
-    // Insert user record: store admin starts as 'pending' for super admin approval, customer starts as 'approved'
-    const initialStatus = targetRole === 'business_admin' ? 'pending' : 'approved';
+    // Insert user record: customer starts immediately as 'approved'
+    const initialStatus = 'approved';
     const userRes = await client.query(`
       INSERT INTO users (business_id, email, password_hash, role, name, status)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $2, $3, 'customer', $4, $5)
       RETURNING id, business_id, email, role, name, status
-    `, [createdBusinessId, emailNorm, passwordHash, targetRole, name.trim(), initialStatus]);
+    `, [defaultBizId || null, emailNorm, passwordHash, name.trim(), initialStatus]);
 
     await client.query('COMMIT');
 
     const newUser = userRes.rows[0];
 
-    // If store admin, do not issue an active session token yet since approval is required
-    if (targetRole === 'business_admin') {
-      // Dispatch confirmation email to store owner informing them review takes 1-2 business days
-      try {
-        await EmailService.sendStoreCreationPendingEmail({
-          recipientEmail: newUser.email,
-          recipientName: newUser.name,
-          storeName: createdBusinessName || 'Your Store',
-        });
-      } catch (emailErr) {
-        console.error('Failed to dispatch store creation pending email:', emailErr);
-      }
-
-      return res.status(201).json({
-        message: 'Your store is successfully created! Please wait 1 to 2 business days for Super Admin approval before full access is granted.',
-        pendingApproval: true,
-        user: {
-          id: newUser.id,
-          email: newUser.email,
-          name: newUser.name,
-          role: newUser.role,
-          status: newUser.status,
-          businessSlug: createdBusinessSlug,
-          businessName: createdBusinessName,
-        },
-      });
-    }
-
-    const token = jwt.sign(
-      {
-        userId: newUser.id,
-        email: newUser.email,
-        name: newUser.name,
-        role: newUser.role,
-        businessId: newUser.business_id,
-      },
-      config.jwtSecret,
-      { expiresIn: '48h' }
-    );
-
+    // Customer sign up is immediately approved and ready to sign in (no Super Admin approval needed)
     res.status(201).json({
-      message: 'Customer account created successfully!',
-      token,
+      message: 'Account created successfully! Please sign in to access your appointments.',
       user: {
         id: newUser.id,
         email: newUser.email,
         name: newUser.name,
         role: newUser.role,
         status: newUser.status,
-        businessId: newUser.business_id,
-        businessSlug: createdBusinessSlug,
-        businessName: createdBusinessName,
       },
     });
   } catch (err: any) {

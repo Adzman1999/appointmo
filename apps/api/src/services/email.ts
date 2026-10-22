@@ -21,6 +21,7 @@ export interface SendStoreApprovalOptions {
   storeSlug: string;
   loginUrl: string;
   tempPassword?: string;
+  password?: string;
 }
 
 export interface EmailServiceResult {
@@ -99,7 +100,8 @@ Thank you for choosing Appointmo!
    * Sends email when Super Admin approves the store, delivering Store Admin role confirmation & sign-in link.
    */
   static async sendStoreApprovalEmail(options: SendStoreApprovalOptions): Promise<EmailServiceResult> {
-    const { recipientEmail, recipientName, storeName, storeSlug, loginUrl, tempPassword } = options;
+    const { recipientEmail, recipientName, storeName, storeSlug, loginUrl, tempPassword, password } = options;
+    const deliveredPassword = password || tempPassword;
 
     const subject = `Approved! Your store "${storeName}" is now active on Appointmo`;
     const textBody = `Hi ${recipientName},
@@ -111,7 +113,7 @@ Your account role has been elevated to Store Admin. You now have full access to 
 Store Portal: ${loginUrl}
 Store Slug: ${storeSlug}
 Email: ${recipientEmail}
-${tempPassword ? `Temporary Password: ${tempPassword}\n` : ''}
+${deliveredPassword ? `Account Password: ${deliveredPassword}\n` : ''}
 Inside your Store Admin portal, you can customize:
 - Store Logo & Description
 - Staff Specialists & Rosters
@@ -140,9 +142,9 @@ Sign in now to begin taking online bookings!
           <div style="font-size: 13px; font-weight: 700; color: #78716c; text-transform: uppercase; margin-bottom: 12px;">Store Admin Credentials &amp; Access</div>
           <div style="font-size: 14px; margin-bottom: 8px;"><strong>Store Name:</strong> ${storeName}</div>
           <div style="font-size: 14px; margin-bottom: 8px;"><strong>Assigned Role:</strong> <span style="background-color: #f43f5e; color: #ffffff; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: 700;">Store Admin</span></div>
-          <div style="font-size: 14px; margin-bottom: 8px;"><strong>Registered Email:</strong> ${recipientEmail}</div>
+          <div style="font-size: 14px; margin-bottom: 8px;"><strong>Registered Email / Username:</strong> <code>${recipientEmail}</code></div>
+          ${deliveredPassword ? `<div style="font-size: 14px; margin-bottom: 8px; background-color: #fef2f2; border: 1px solid #fecaca; padding: 8px 12px; border-radius: 8px;"><strong>Password:</strong> <code style="font-size: 15px; font-weight: bold; color: #991b1b;">${deliveredPassword}</code></div>` : ''}
           <div style="font-size: 14px; margin-bottom: 8px;"><strong>Store Slug:</strong> <code>${storeSlug}</code></div>
-          ${tempPassword ? `<div style="font-size: 14px; margin-bottom: 8px; color: #b91c1c;"><strong>Temporary Password:</strong> <code>${tempPassword}</code></div>` : ''}
         </div>
         <div style="margin: 28px 0; text-align: center;">
           <a href="${loginUrl}" style="background-color: #1c1917; color: #ffffff; padding: 14px 28px; border-radius: 12px; font-weight: 700; text-decoration: none; font-size: 15px; display: inline-block;">

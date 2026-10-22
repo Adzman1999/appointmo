@@ -40,6 +40,10 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
   const [createDescription, setCreateDescription] = useState(initialData?.description || '');
   const [createLogoUrl, setCreateLogoUrl] = useState('');
 
+  // Store Owner / Administrator Details
+  const [ownerName, setOwnerName] = useState('');
+  const [ownerEmail, setOwnerEmail] = useState('');
+
   // Store Location & Contact Details
   const [cityOptions, setCityOptions] = useState<string[]>([
     'Quezon City',
@@ -139,12 +143,14 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
           tagline: createTagline.trim() || undefined,
           description: createDescription.trim() || undefined,
           logoUrl: createLogoUrl.trim() || undefined,
+          ownerName: ownerName.trim() || createName.trim(),
+          ownerEmail: (ownerEmail || createEmail).trim() || undefined,
           city: finalCity,
           address: createAddress.trim() || undefined,
           latitude: createLatitude,
           longitude: createLongitude,
           phone: createPhone.trim() || undefined,
-          email: createEmail.trim() || undefined,
+          email: (ownerEmail || createEmail).trim() || undefined,
           openingHours: formattedOpeningHours,
           website: createWebsite.trim() || undefined,
           socialHandle: createSocialHandle.trim() || undefined,
@@ -247,6 +253,48 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          {/* Owner / Store Administrator Information */}
+          <div className="bg-amber-50/60 dark:bg-amber-950/30 p-3.5 rounded-2xl border border-amber-200/80 dark:border-amber-800/60 space-y-3">
+            <span className="font-bold text-amber-950 dark:text-amber-200 flex items-center space-x-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>Store Owner &amp; Admin Account</span>
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Owner Full Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Maria Santos"
+                  value={ownerName}
+                  onChange={(e) => setOwnerName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Owner Email (Credentials Dispatched Here) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="owner@yourstore.com"
+                  value={ownerEmail}
+                  onChange={(e) => {
+                    setOwnerEmail(e.target.value);
+                    if (!createEmail) setCreateEmail(e.target.value);
+                  }}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
+            </div>
+            <p className="text-[10px] text-amber-800/80 dark:text-amber-300/80">
+              When Super Admin approves this store, the generated Store Admin credentials (email and password) will be sent to this email.
+            </p>
+          </div>
+
           {/* Store Name & Tagline */}
           <div>
             <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">

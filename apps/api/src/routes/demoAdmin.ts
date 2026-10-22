@@ -243,7 +243,8 @@ router.post('/create-business', async (req: Request, res: Response) => {
     const { 
       name, category, description, currency, timezone, logoUrl, 
       tagline, phone, email, address, city, openingHours, website, instagram, socialHandle,
-      latitude, longitude
+      latitude, longitude,
+      ownerName, ownerEmail
     } = req.body;
 
     if (!name || !category) {
@@ -257,21 +258,23 @@ router.post('/create-business', async (req: Request, res: Response) => {
     const finalAddress = address?.trim() || `101 Commercial Ave, ${finalCity}`;
     const finalOpeningHours = openingHours?.trim() || '9:00 AM - 6:00 PM';
     const finalSocMed = (socialHandle || instagram)?.trim() || null;
+    const finalOwnerEmail = (ownerEmail || email)?.trim().toLowerCase() || null;
+    const finalOwnerName = (ownerName || trimmedName).trim();
 
     const slug = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Math.random().toString(36).substring(2, 6);
 
     await client.query('BEGIN');
 
-    // 1. Create Business / Store Record with all store details
+    // 1. Create Business / Store Record with all store details (status pending)
     const bRes = await client.query(`
       INSERT INTO businesses (
         name, slug, description, category, currency, timezone, logo_url,
-        tagline, phone, email, address, city, opening_hours, website, instagram, social_handle
+        tagline, phone, email, address, city, opening_hours, website, instagram, social_handle, status
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'pending')
       RETURNING id, name, slug, category, description, logo_url AS "logoUrl",
                 tagline, phone, email, address, city, opening_hours AS "openingHours",
-                website, instagram, social_handle AS "socialHandle"
+                website, instagram, social_handle AS "socialHandle", status
     `, [
       trimmedName, 
       slug, 
@@ -282,7 +285,7 @@ router.post('/create-business', async (req: Request, res: Response) => {
       logoUrl?.trim() || null,
       tagline?.trim() || null,
       finalPhone,
-      email?.trim() || null,
+      finalOwnerEmail,
       finalAddress,
       finalCity,
       finalOpeningHours,
@@ -291,6 +294,28 @@ router.post('/create-business', async (req: Request, res: Response) => {
       finalSocMed
     ]);
     const newBiz = bRes.rows[0];
+
+    // 1b. Save Owner in users table as 'business_admin' with pending status
+    let createdUser: any = null;
+    if (finalOwnerEmail) {
+      const existUser = await client.query('SELECT id, role, business_id FROM users WHERE email = $1', [finalOwnerEmail]);
+      if (existUser.rows.length > 0) {
+        await client.query(
+          "UPDATE users SET business_id = $1, role = 'business_admin', status = 'pending', name = $2 WHERE email = $3",
+          [newBiz.id, finalOwnerName, finalOwnerEmail]
+        );
+        createdUser = { id: existUser.rows[0].id, email: finalOwnerEmail, name: finalOwnerName };
+      } else {
+        const bcrypt = await import('bcryptjs');
+        const tempHash = await bcrypt.default.hash('PendingApproval_' + Math.random().toString(36).substring(2, 8), 10);
+        const uRes = await client.query(`
+          INSERT INTO users (business_id, email, password_hash, role, name, status)
+          VALUES ($1, $2, $3, 'business_admin', $4, 'pending')
+          RETURNING id, email, name, role, status
+        `, [newBiz.id, finalOwnerEmail, tempHash, finalOwnerName]);
+        createdUser = uRes.rows[0];
+      }
+    }
 
     // City Coordinates Map fallback for synthetic map placement
     const cityCoords: Record<string, { lat: number; lng: number }> = {
@@ -341,9 +366,9 @@ router.post('/create-business', async (req: Request, res: Response) => {
     // 4. Create default staff
     const spRes = await client.query(`
       INSERT INTO staff_profiles (business_id, name, bio)
-      VALUES ($1, 'Lead Practitioner', 'Experienced practitioner and service specialist.')
+      VALUES ($1, $2, 'Lead specialist and store practitioner.')
       RETURNING id
-    `, [newBiz.id]);
+    `, [newBiz.id, finalOwnerName]);
 
     // Link staff service
     await client.query(`INSERT INTO staff_services (staff_id, service_id) VALUES ($1, $2)`, [spRes.rows[0].id, sRes.rows[0].id]);
@@ -356,14 +381,34 @@ router.post('/create-business', async (req: Request, res: Response) => {
       `, [spRes.rows[0].id, day]);
     }
 
+    // 5. Notify Super Admin of New Store Submission via System Notification
+    await client.query(`
+      INSERT INTO notifications (
+        business_id, recipient_type, recipient_identifier, type, title, message, metadata
+      ) VALUES ($1, 'superadmin', 'superadmin', 'system_alert', $2, $3, $4)
+    `, [
+      newBiz.id,
+      `New Store Created: ${trimmedName}`,
+      `A new store "${trimmedName}" (${trimmedCategory}) was created by ${finalOwnerName} (${finalOwnerEmail || 'no email provided'}). It is currently awaiting Super Admin review and approval.`,
+      JSON.stringify({
+        businessId: newBiz.id,
+        storeName: trimmedName,
+        storeSlug: slug,
+        ownerName: finalOwnerName,
+        ownerEmail: finalOwnerEmail,
+        userId: createdUser?.id || null,
+        city: finalCity,
+      })
+    ]);
+
     await client.query('COMMIT');
 
-    // If an email was provided during creation, dispatch the 1-2 business days confirmation email
-    if (email && email.trim()) {
+    // 6. If an email was provided during creation, dispatch the 1-2 business days confirmation email
+    if (finalOwnerEmail) {
       try {
         await EmailService.sendStoreCreationPendingEmail({
-          recipientEmail: email.trim(),
-          recipientName: trimmedName,
+          recipientEmail: finalOwnerEmail,
+          recipientName: finalOwnerName,
           storeName: trimmedName,
         });
       } catch (emailErr) {
@@ -374,7 +419,8 @@ router.post('/create-business', async (req: Request, res: Response) => {
     res.status(201).json({
       message: 'Your store is successfully created! Please wait 1 to 2 business days for Super Admin approval before full access is granted.',
       business: newBiz,
-      branch: brRes.rows[0]
+      branch: brRes.rows[0],
+      user: createdUser,
     });
   } catch (err: any) {
     await client.query('ROLLBACK');
