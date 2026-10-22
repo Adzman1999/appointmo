@@ -74,28 +74,46 @@ export const seedData = async () => {
       `, [businessId]);
       const branch2Id = branch2Res.rows[0].id;
 
-    // 3. Create business admin user, demo customer user, and platform admin user
+    // 3. Create business admin user, demo customer user, and super admin (platform_admin) user
     const passwordHash = await bcrypt.hash('Store2026!', 10);
     const customerPasswordHash = await bcrypt.hash('Customer2026!', 10);
-    const platformPasswordHash = await bcrypt.hash('AppointmoAdmin2026!', 10);
+    const superAdminPasswordHash = await bcrypt.hash('SuperAdmin2026!', 10);
 
+    // Seed Store Admin (Approved)
     await client.query(`
-      INSERT INTO users (business_id, email, password_hash, role, name)
-      VALUES ($1, 'store@appointmo.demo', $2, 'business_admin', 'Lumière Store Manager')
-      ON CONFLICT (email) DO UPDATE SET password_hash = $2, role = 'business_admin', business_id = $1
+      INSERT INTO users (business_id, email, password_hash, role, name, status)
+      VALUES ($1, 'store@appointmo.demo', $2, 'business_admin', 'Lumière Store Manager', 'approved')
+      ON CONFLICT (email) DO UPDATE SET password_hash = $2, role = 'business_admin', business_id = $1, status = 'approved'
     `, [businessId, passwordHash]);
 
+    // Seed Customer (Approved)
     await client.query(`
-      INSERT INTO users (business_id, email, password_hash, role, name)
-      VALUES (NULL, 'customer@example.com', $1, 'customer', 'Demo Customer (Beatriz Alonzo)')
-      ON CONFLICT (email) DO UPDATE SET password_hash = $1, role = 'customer'
+      INSERT INTO users (business_id, email, password_hash, role, name, status)
+      VALUES (NULL, 'customer@appointmo.demo', $1, 'customer', 'Demo Customer (Beatriz Alonzo)', 'approved')
+      ON CONFLICT (email) DO UPDATE SET password_hash = $1, role = 'customer', status = 'approved'
     `, [customerPasswordHash]);
 
+    // Seed test customer compatibility
     await client.query(`
-      INSERT INTO users (business_id, email, password_hash, role, name)
-      VALUES (NULL, 'admin@appointmo.demo', $1, 'platform_admin', 'Appointmo Platform Admin')
-      ON CONFLICT (email) DO UPDATE SET password_hash = $1
-    `, [platformPasswordHash]);
+      INSERT INTO users (business_id, email, password_hash, role, name, status)
+      VALUES (NULL, 'customer@example.com', $1, 'customer', 'Demo Customer (Beatriz Alonzo)', 'approved')
+      ON CONFLICT (email) DO UPDATE SET password_hash = $1, role = 'customer', status = 'approved'
+    `, [customerPasswordHash]);
+
+    // Seed Fixed Super Admin Account
+    await client.query(`
+      INSERT INTO users (business_id, email, password_hash, role, name, status)
+      VALUES (NULL, 'superadmin@appointmo.demo', $1, 'platform_admin', 'Super Administrator', 'approved')
+      ON CONFLICT (email) DO UPDATE SET password_hash = $1, role = 'platform_admin', status = 'approved'
+    `, [superAdminPasswordHash]);
+
+    // Also keep admin@appointmo.demo as alias with AppointmoAdmin2026!
+    const legacyAdminHash = await bcrypt.hash('AppointmoAdmin2026!', 10);
+    await client.query(`
+      INSERT INTO users (business_id, email, password_hash, role, name, status)
+      VALUES (NULL, 'admin@appointmo.demo', $1, 'platform_admin', 'Super Administrator', 'approved')
+      ON CONFLICT (email) DO UPDATE SET password_hash = $1, role = 'platform_admin', status = 'approved'
+    `, [legacyAdminHash]);
 
     // 4. Create 6 Services
     const serviceDefs = [

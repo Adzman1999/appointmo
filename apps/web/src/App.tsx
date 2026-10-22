@@ -10,6 +10,7 @@ import { AdminLoginPage } from './pages/AdminLoginPage';
 import { OwnerDashboardPage } from './pages/OwnerDashboardPage';
 import { SetupPasswordPage } from './pages/SetupPasswordPage';
 import { DemoAdminDashboardPage } from './pages/DemoAdminDashboardPage';
+import { SuperAdminApprovalPage } from './pages/SuperAdminApprovalPage';
 import { Toaster } from 'sonner';
 import { SHOW_PRODUCTION_AUTH } from './config';
 
@@ -59,7 +60,15 @@ export const App: React.FC = () => {
           path="/admin/platform"
           element={
             <ProtectedOwnerRoute>
-              <OwnerDashboardPage />
+              <SuperAdminApprovalPage />
+            </ProtectedOwnerRoute>
+          }
+        />
+        <Route
+          path="/superadmin"
+          element={
+            <ProtectedOwnerRoute>
+              <SuperAdminApprovalPage />
             </ProtectedOwnerRoute>
           }
         />

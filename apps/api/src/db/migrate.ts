@@ -294,6 +294,10 @@ export const runMigrations = async () => {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_reviews_business ON reviews (business_id, rating DESC);
+
+    -- Ensure approval status columns exist
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'approved';
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'approved';
   `);
 
   console.log('✅ Migrations completed successfully.');

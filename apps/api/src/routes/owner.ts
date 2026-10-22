@@ -354,4 +354,93 @@ router.post('/requests/:id/revoke', requireOwnerAuth, async (req: Request, res: 
   }
 });
 
+// 7. List Store Admin Creation Requests (For Super Admin Approval)
+router.get('/store-approvals', requireOwnerAuth, async (req: Request, res: Response) => {
+  try {
+    const result = await query(`
+      SELECT 
+        u.id AS user_id,
+        u.name AS admin_name,
+        u.email AS admin_email,
+        u.created_at AS registered_at,
+        u.status AS user_status,
+        b.id AS business_id,
+        b.name AS store_name,
+        b.slug AS store_slug,
+        b.category AS category,
+        b.city AS city,
+        b.address AS address,
+        b.phone AS store_phone,
+        b.description AS description,
+        b.status AS store_status
+      FROM users u
+      LEFT JOIN businesses b ON u.business_id = b.id
+      WHERE u.role = 'business_admin'
+      ORDER BY 
+        CASE WHEN u.status = 'pending' THEN 0 ELSE 1 END,
+        u.created_at DESC
+    `);
+
+    res.json({ stores: result.rows });
+  } catch (err: any) {
+    console.error('Error fetching store approvals:', err);
+    res.status(500).json({ error: 'Failed to fetch store approvals' });
+  }
+});
+
+// 8. Super Admin: Approve Store Admin Creation
+router.post('/store-approvals/:userId/approve', requireOwnerAuth, async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const userRes = await query('SELECT id, business_id, email, name FROM users WHERE id = $1', [userId]);
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userRes.rows[0];
+
+    // Mark user status approved
+    await query("UPDATE users SET status = 'approved', updated_at = NOW() WHERE id = $1", [userId]);
+
+    // Mark business status approved
+    if (user.business_id) {
+      await query("UPDATE businesses SET status = 'approved', updated_at = NOW() WHERE id = $1", [user.business_id]);
+    }
+
+    res.json({ 
+      message: `Store Admin ${user.email} has been approved! They can now sign in to their store admin portal.`,
+      user: { id: user.id, email: user.email, status: 'approved' }
+    });
+  } catch (err: any) {
+    console.error('Error approving store:', err);
+    res.status(500).json({ error: 'Failed to approve store: ' + err.message });
+  }
+});
+
+// 9. Super Admin: Reject Store Admin Creation
+router.post('/store-approvals/:userId/reject', requireOwnerAuth, async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const userRes = await query('SELECT id, business_id, email FROM users WHERE id = $1', [userId]);
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userRes.rows[0];
+
+    await query("UPDATE users SET status = 'rejected', updated_at = NOW() WHERE id = $1", [userId]);
+    if (user.business_id) {
+      await query("UPDATE businesses SET status = 'rejected', updated_at = NOW() WHERE id = $1", [user.business_id]);
+    }
+
+    res.json({ 
+      message: `Store Admin registration for ${user.email} has been rejected.`,
+      user: { id: user.id, email: user.email, status: 'rejected' }
+    });
+  } catch (err: any) {
+    console.error('Error rejecting store:', err);
+    res.status(500).json({ error: 'Failed to reject store: ' + err.message });
+  }
+});
+
 export default router;

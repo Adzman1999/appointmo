@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Lock, ArrowRight, Store, UserCheck, Shield, Sparkles, Building2, Phone, Mail, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Lock, ArrowRight, Store, UserCheck, Shield, Sparkles, Building2, Phone, Mail, CheckCircle2, ChevronRight, Eye, EyeOff, ShieldAlert } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -14,13 +14,18 @@ export const AdminLoginPage: React.FC = () => {
   const initialMode = searchParams.get('mode') === 'signup' ? 'signup' : 'signin';
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>(initialMode);
 
-  // Active Role tab: 'store' or 'customer'
-  const initialRole = searchParams.get('role') === 'customer' ? 'customer' : 'store';
-  const [role, setRole] = useState<'store' | 'customer'>(initialRole);
+  // Active Role tab: 'store', 'customer', or 'superadmin'
+  const initialRole = searchParams.get('role') === 'customer' 
+    ? 'customer' 
+    : searchParams.get('role') === 'superadmin'
+    ? 'superadmin'
+    : 'store';
+  const [role, setRole] = useState<'store' | 'customer' | 'superadmin'>(initialRole as any);
 
   // Common credentials
   const [email, setEmail] = useState('store@appointmo.demo');
   const [password, setPassword] = useState('Store2026!');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('Lumière Store Manager');
   const [phone, setPhone] = useState('+63 905 242 2821');
 
@@ -36,26 +41,36 @@ export const AdminLoginPage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   // Switch Role helper
-  const handleRoleChange = (newRole: 'store' | 'customer') => {
+  const handleRoleChange = (newRole: 'store' | 'customer' | 'superadmin') => {
     setRole(newRole);
     setError(null);
+    setSuccessNotice(null);
+
     if (newRole === 'store') {
       setEmail('store@appointmo.demo');
       setPassword('Store2026!');
       setName('Lumière Store Manager');
       setPhone('+63 2 8999 0001');
-    } else {
+    } else if (newRole === 'customer') {
       setEmail('customer@appointmo.demo');
       setPassword('Customer2026!');
       setName('Demo Customer');
       setPhone('+63 905 242 2821');
+    } else {
+      // Super Admin role
+      setEmail('superadmin@appointmo.demo');
+      setPassword('SuperAdmin2026!');
+      setName('Super Administrator');
+      setPhone('+63 905 242 2821');
+      setAuthMode('signin'); // Super admin only signs in
     }
   };
 
   // Quick fill credential helper
-  const handleQuickFill = (targetRole: 'store' | 'customer') => {
+  const handleQuickFill = (targetRole: 'store' | 'customer' | 'superadmin') => {
     setAuthMode('signin');
     handleRoleChange(targetRole);
   };
@@ -64,19 +79,20 @@ export const AdminLoginPage: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessNotice(null);
 
     try {
       if (authMode === 'signin') {
         const res: any = await apiFetch('/auth/login', {
           method: 'POST',
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ email: email.trim(), password }),
         });
 
         localStorage.setItem('appointmo_token', res.token);
         localStorage.setItem('appointmo_user', JSON.stringify(res.user));
 
-        if (res.user.role === 'platform_admin') {
-          navigate('/admin/platform');
+        if (res.user.role === 'platform_admin' || res.user.role === 'owner') {
+          navigate('/superadmin');
         } else if (res.user.role === 'customer') {
           navigate(`/manage?email=${encodeURIComponent(res.user.email)}`);
         } else {
@@ -106,8 +122,16 @@ export const AdminLoginPage: React.FC = () => {
           }),
         });
 
-        localStorage.setItem('appointmo_token', res.token);
-        localStorage.setItem('appointmo_user', JSON.stringify(res.user));
+        if (res.pendingApproval) {
+          setSuccessNotice(res.message);
+          setAuthMode('signin');
+          return;
+        }
+
+        if (res.token) {
+          localStorage.setItem('appointmo_token', res.token);
+          localStorage.setItem('appointmo_user', JSON.stringify(res.user));
+        }
 
         if (res.user.role === 'customer') {
           navigate(`/manage?email=${encodeURIComponent(res.user.email)}`);
@@ -185,31 +209,44 @@ export const AdminLoginPage: React.FC = () => {
           </div>
 
           {/* Role Segmented Controller */}
-          <div className="grid grid-cols-2 gap-2 p-1.5 bg-stone-100 dark:bg-stone-800/80 rounded-2xl border border-stone-200 dark:border-stone-700 mb-6">
+          <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-stone-100 dark:bg-stone-800/80 rounded-2xl border border-stone-200 dark:border-stone-700 mb-6">
             <button
               type="button"
               onClick={() => handleRoleChange('store')}
-              className={`flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition ${
+              className={`flex items-center justify-center space-x-1.5 py-2 rounded-xl text-xs font-bold transition ${
                 role === 'store'
                   ? 'bg-amber-400 text-stone-950 shadow'
                   : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
               }`}
             >
-              <Store className="w-4 h-4" />
+              <Store className="w-3.5 h-3.5" />
               <span>Store Admin</span>
             </button>
 
             <button
               type="button"
               onClick={() => handleRoleChange('customer')}
-              className={`flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition ${
+              className={`flex items-center justify-center space-x-1.5 py-2 rounded-xl text-xs font-bold transition ${
                 role === 'customer'
                   ? 'bg-amber-400 text-stone-950 shadow'
                   : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
               }`}
             >
-              <UserCheck className="w-4 h-4" />
+              <UserCheck className="w-3.5 h-3.5" />
               <span>Customer</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleRoleChange('superadmin')}
+              className={`flex items-center justify-center space-x-1.5 py-2 rounded-xl text-xs font-bold transition ${
+                role === 'superadmin'
+                  ? 'bg-rose-500 text-white shadow'
+                  : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+              }`}
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>Super Admin</span>
             </button>
           </div>
 
@@ -218,12 +255,12 @@ export const AdminLoginPage: React.FC = () => {
             <div className="flex items-center justify-between mb-2">
               <span className="font-bold text-amber-950 dark:text-amber-200 flex items-center space-x-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span>Instant Demo Credentials</span>
+                <span>Instant Verified Credentials</span>
               </span>
               <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold uppercase tracking-wider">Click to load</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => handleQuickFill('store')}
@@ -265,8 +302,42 @@ export const AdminLoginPage: React.FC = () => {
                   Pass: <span className="font-mono text-stone-700 dark:text-stone-300 font-semibold">Customer2026!</span>
                 </div>
               </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickFill('superadmin')}
+                className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                  role === 'superadmin' && authMode === 'signin'
+                    ? 'border-rose-400 dark:border-rose-500 bg-white dark:bg-stone-900 shadow-sm'
+                    : 'border-rose-200 dark:border-rose-900/60 bg-white/60 dark:bg-stone-850 hover:bg-white'
+                }`}
+              >
+                <div className="flex items-center space-x-1.5 text-stone-900 dark:text-stone-100 font-bold text-xs">
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                  <span>Super Admin</span>
+                </div>
+                <div className="mt-1 text-[11px] font-mono text-stone-600 dark:text-stone-300 truncate">
+                  superadmin@appointmo.demo
+                </div>
+                <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5">
+                  Pass: <span className="font-mono text-stone-700 dark:text-stone-300 font-semibold">SuperAdmin2026!</span>
+                </div>
+              </button>
             </div>
           </div>
+
+          {successNotice && (
+            <div className="mb-4 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs flex items-start space-x-2.5">
+              <CheckCircle2 className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">Store Registration Under Review</p>
+                <p className="mt-0.5 leading-relaxed">{successNotice}</p>
+                <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
+                  Switch to the <strong>Super Admin</strong> tab to review and approve this new store registration.
+                </p>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs">
@@ -324,17 +395,46 @@ export const AdminLoginPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                Password <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
+                  Password <span className="text-rose-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-[11px] text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100 flex items-center space-x-1 font-medium transition"
+                >
+                  {showPassword ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span>Hide</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Show</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             {/* If Store Admin Sign Up: Instant Store Creation Details */}

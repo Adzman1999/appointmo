@@ -15,7 +15,7 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     const emailNorm = email.toLowerCase().trim();
-    const userRes = await query('SELECT id, business_id, email, password_hash, role, name FROM users WHERE email = $1', [emailNorm]);
+    const userRes = await query('SELECT id, business_id, email, password_hash, role, name, COALESCE(status, \'approved\') as status FROM users WHERE email = $1', [emailNorm]);
 
     if (userRes.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid email or password' });
@@ -25,6 +25,19 @@ router.post('/login', async (req: Request, res: Response) => {
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) {
       return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Enforce Super Admin approval for store admin accounts
+    if (user.role === 'business_admin' && user.status === 'pending') {
+      return res.status(403).json({ 
+        error: 'Your store account is currently pending approval by the Super Admin. You will be able to sign in once approved.' 
+      });
+    }
+
+    if (user.status === 'rejected') {
+      return res.status(403).json({ 
+        error: 'Your store account registration request was not approved. Please contact support.' 
+      });
     }
 
     // Get business slug if store admin
@@ -113,9 +126,9 @@ router.post('/register', async (req: Request, res: Response) => {
       const bRes = await client.query(`
         INSERT INTO businesses (
           name, slug, description, category, currency, timezone,
-          phone, email, address, city, opening_hours, instagram, social_handle
+          phone, email, address, city, opening_hours, instagram, social_handle, status
         )
-        VALUES ($1, $2, $3, $4, 'PHP', 'Asia/Manila', $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, $2, $3, $4, 'PHP', 'Asia/Manila', $5, $6, $7, $8, $9, $10, $11, 'pending')
         RETURNING id, name, slug
       `, [
         finalStoreName, slug, description || `Premier service business offering ${finalCategory}`,
@@ -169,16 +182,35 @@ router.post('/register', async (req: Request, res: Response) => {
       }
     }
 
-    // Insert user record
+    // Insert user record: store admin starts as 'pending' for super admin approval, customer starts as 'approved'
+    const initialStatus = targetRole === 'business_admin' ? 'pending' : 'approved';
     const userRes = await client.query(`
-      INSERT INTO users (business_id, email, password_hash, role, name)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, business_id, email, role, name
-    `, [createdBusinessId, emailNorm, passwordHash, targetRole, name.trim()]);
+      INSERT INTO users (business_id, email, password_hash, role, name, status)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, business_id, email, role, name, status
+    `, [createdBusinessId, emailNorm, passwordHash, targetRole, name.trim(), initialStatus]);
 
     await client.query('COMMIT');
 
     const newUser = userRes.rows[0];
+
+    // If store admin, do not issue an active session token yet since approval is required
+    if (targetRole === 'business_admin') {
+      return res.status(201).json({
+        message: 'Store registration submitted successfully! Your account is pending review and approval by the Super Admin before you can sign in.',
+        pendingApproval: true,
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          name: newUser.name,
+          role: newUser.role,
+          status: newUser.status,
+          businessSlug: createdBusinessSlug,
+          businessName: createdBusinessName,
+        },
+      });
+    }
+
     const token = jwt.sign(
       {
         userId: newUser.id,
@@ -192,13 +224,14 @@ router.post('/register', async (req: Request, res: Response) => {
     );
 
     res.status(201).json({
-      message: targetRole === 'business_admin' ? 'Store and admin account registered successfully!' : 'Customer account created successfully!',
+      message: 'Customer account created successfully!',
       token,
       user: {
         id: newUser.id,
         email: newUser.email,
         name: newUser.name,
         role: newUser.role,
+        status: newUser.status,
         businessId: newUser.business_id,
         businessSlug: createdBusinessSlug,
         businessName: createdBusinessName,
