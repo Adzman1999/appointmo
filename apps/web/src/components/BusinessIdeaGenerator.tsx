@@ -79,7 +79,14 @@ const CURATED_IDEAS: IdeaSuggestion[] = [
 ];
 
 interface BusinessIdeaGeneratorProps {
-  onSelectIdea: (idea: { name: string; category: string; description: string }) => void;
+  onSelectIdea: (idea: {
+    name: string;
+    tagline?: string;
+    category: string;
+    description: string;
+    city?: string;
+    services?: Array<{ name: string; price: number; duration: string }>;
+  }) => void;
 }
 
 export const BusinessIdeaGenerator: React.FC<BusinessIdeaGeneratorProps> = ({ onSelectIdea }) => {
@@ -221,8 +228,10 @@ export const BusinessIdeaGenerator: React.FC<BusinessIdeaGeneratorProps> = ({ on
                 setSelectedName(idea.name);
                 onSelectIdea({
                   name: idea.name,
+                  tagline: idea.tagline,
                   category: idea.category,
                   description: idea.description,
+                  services: idea.services,
                 });
               }}
               className="mt-4 w-full py-2.5 rounded-xl bg-stone-100 hover:bg-stone-900 hover:text-white dark:bg-stone-800 dark:hover:bg-amber-400 dark:hover:text-stone-950 text-stone-800 dark:text-stone-200 text-xs font-semibold transition flex items-center justify-center space-x-1.5"

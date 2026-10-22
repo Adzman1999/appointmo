@@ -12,9 +12,23 @@ import { DemoTopNav } from '../components/DemoTopNav';
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [modalInitialData, setModalInitialData] = useState<{ name?: string; category?: string; description?: string } | undefined>(undefined);
+  const [modalInitialData, setModalInitialData] = useState<{
+    name?: string;
+    tagline?: string;
+    category?: string;
+    description?: string;
+    city?: string;
+    services?: Array<{ name: string; price: number; duration: string }>;
+  } | undefined>(undefined);
 
-  const handleOpenCreateWithIdea = (idea: { name: string; category: string; description: string }) => {
+  const handleOpenCreateWithIdea = (idea: {
+    name: string;
+    tagline?: string;
+    category: string;
+    description: string;
+    city?: string;
+    services?: Array<{ name: string; price: number; duration: string }>;
+  }) => {
     setModalInitialData(idea);
     setIsCreateModalOpen(true);
   };

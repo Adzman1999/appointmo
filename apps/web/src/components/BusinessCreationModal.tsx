@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Instagram, Tag } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Tag, Sparkles } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { LocationPicker } from './LocationPicker';
 
@@ -9,9 +9,11 @@ interface BusinessCreationModalProps {
   onSuccess: (newBusiness: any) => void;
   initialData?: {
     name?: string;
+    tagline?: string;
     category?: string;
     description?: string;
     city?: string;
+    services?: Array<{ name: string; price: number; duration: string }>;
   };
 }
 
@@ -65,6 +67,25 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
 
   const [creatingBusiness, setCreatingBusiness] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  // Sync state whenever initialData or modal open status changes
+  useEffect(() => {
+    if (isOpen) {
+      if (initialData) {
+        setCreateName(initialData.name || '');
+        setCreateTagline(initialData.tagline || '');
+        setCreateCategory(initialData.category || 'Beauty & Wellness');
+        setCreateDescription(initialData.description || '');
+        if (initialData.city) setCreateCity(initialData.city);
+      } else {
+        setCreateName('');
+        setCreateTagline('');
+        setCreateCategory('Beauty & Wellness');
+        setCreateDescription('');
+      }
+      setCreateError(null);
+    }
+  }, [isOpen, initialData]);
 
   if (!isOpen) return null;
 
@@ -302,6 +323,27 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
             />
           </div>
+
+          {/* Suggested Sample Services from Concierge (if generated) */}
+          {initialData?.services && initialData.services.length > 0 && (
+            <div className="p-3.5 bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 rounded-2xl space-y-2">
+              <div className="flex items-center space-x-1.5 text-xs font-bold text-amber-900 dark:text-amber-300">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Suggested Initial Services to Provision:</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {initialData.services.map((s, idx) => (
+                  <div key={idx} className="p-2 rounded-xl bg-white dark:bg-stone-900 border border-amber-200/80 dark:border-amber-900/40 text-stone-900 dark:text-stone-100 text-[11px]">
+                    <div className="font-bold truncate">{s.name}</div>
+                    <div className="flex justify-between text-stone-600 dark:text-stone-400 text-[10px] mt-0.5">
+                      <span>{s.duration}</span>
+                      <span className="font-semibold text-amber-700 dark:text-amber-300">₱{s.price}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Store Contact & Address */}
           <div className="border-t border-stone-200 dark:border-stone-800 pt-3 space-y-3">
