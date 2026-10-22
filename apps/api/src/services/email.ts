@@ -103,73 +103,104 @@ Thank you for choosing Appointmo!
     const { recipientEmail, recipientName, storeName, storeSlug, loginUrl, tempPassword, password } = options;
     const deliveredPassword = password || tempPassword;
 
-    const subject = `Approved! Your store "${storeName}" is now active on Appointmo`;
+    const subject = `Welcome to Appointmo: "${storeName}" is Approved`;
     const textBody = `Hi ${recipientName},
 
-Congratulations! Your store "${storeName}" has been officially approved by the Appointmo Super Admin team.
+We are pleased to inform you that your store "${storeName}" has been officially reviewed and approved by the Appointmo Super Admin team.
 
 Your account role has been elevated to Store Admin. You now have full access to your store management dashboard.
 
-Store Portal: ${loginUrl}
+Store Admin Sign-In: ${loginUrl}
+Storefront URL: ${config.appUrl || 'http://localhost:5173'}/#/${storeSlug}
 Store Slug: ${storeSlug}
-Email: ${recipientEmail}
-${deliveredPassword ? `Account Password: ${deliveredPassword}\n` : ''}
-Inside your Store Admin portal, you can customize:
-- Store Logo & Description
-- Staff Specialists & Rosters
-- Appointment Slots & Working Hours
+Email / Username: ${recipientEmail}
+${deliveredPassword ? `Temporary Password: ${deliveredPassword}\n(Please sign in and change your password upon first login.)\n` : ''}
+
+In your Store Admin portal, you can customize:
+- Store Profile & Description
+- Staff Specialists & Service Assignments
+- Operating Schedule & Appointment Slots
 - Service Menu & Pricing
-- Operational Status (Open / Temporarily Closed)
+- Store Availability Status
 
-Sign in now to begin taking online bookings!
+If you have any questions or require assistance setting up your booking slots, feel free to reply directly to this email.
 
-— The Appointmo Super Admin Team`;
+Best regards,
+The Appointmo Team`;
 
-    const htmlBody = `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; color: #1c1917; line-height: 1.6; background-color: #fafaf9; border-radius: 16px; border: 1px solid #e7e5e4;">
-        <div style="margin-bottom: 24px; display: flex; align-items: center;">
-          <span style="font-size: 22px; font-weight: 800; color: #1c1917; letter-spacing: -0.5px;">Appointmo</span>
-          <span style="margin-left: 8px; font-size: 11px; font-weight: 700; background-color: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 9999px; text-transform: uppercase;">Store Approved</span>
-        </div>
-        <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 16px; color: #1c1917;">Welcome to Appointmo! Your Store is Approved</h2>
-        <p style="font-size: 15px; color: #44403c; margin-bottom: 16px;">
-          Hi <strong>${recipientName}</strong>,
-        </p>
-        <p style="font-size: 15px; color: #44403c; margin-bottom: 20px;">
-          Congratulations! Your store <strong>${storeName}</strong> has been officially approved by the Super Admin team.
-        </p>
-        <div style="background-color: #ffffff; border: 1px solid #e7e5e4; border-radius: 12px; padding: 20px; margin: 24px 0;">
-          <div style="font-size: 13px; font-weight: 700; color: #78716c; text-transform: uppercase; margin-bottom: 12px;">Store Admin Credentials &amp; Access</div>
-          <div style="font-size: 14px; margin-bottom: 8px;"><strong>Store Name:</strong> ${storeName}</div>
-          <div style="font-size: 14px; margin-bottom: 8px;"><strong>Assigned Role:</strong> <span style="background-color: #f43f5e; color: #ffffff; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: 700;">Store Admin</span></div>
-          <div style="font-size: 14px; margin-bottom: 8px;"><strong>Registered Email / Username:</strong> <code>${recipientEmail}</code></div>
-          ${deliveredPassword ? `<div style="font-size: 14px; margin-bottom: 8px; background-color: #fef2f2; border: 1px solid #fecaca; padding: 8px 12px; border-radius: 8px;"><strong>Password:</strong> <code style="font-size: 15px; font-weight: bold; color: #991b1b;">${deliveredPassword}</code></div>` : ''}
-          <div style="font-size: 14px; margin-bottom: 8px;"><strong>Store Slug:</strong> <code>${storeSlug}</code></div>
-        </div>
-        <div style="margin: 28px 0; text-align: center;">
-          <a href="${loginUrl}" style="background-color: #1c1917; color: #ffffff; padding: 14px 28px; border-radius: 12px; font-weight: 700; text-decoration: none; font-size: 15px; display: inline-block;">
-            Sign In to Store Admin Dashboard &rarr;
-          </a>
-        </div>
-        <p style="font-size: 14px; color: #57534e; margin-bottom: 16px;">
-          In your Store Admin dashboard, you can now configure:
-        </p>
-        <ul style="font-size: 14px; color: #57534e; padding-left: 20px; margin-bottom: 24px;">
-          <li style="margin-bottom: 6px;">Store branding, logo, and tagline</li>
-          <li style="margin-bottom: 6px;">Staff specialists &amp; service assignments</li>
-          <li style="margin-bottom: 6px;">Appointment slots &amp; working hours</li>
-          <li style="margin-bottom: 6px;">Service pricing and categories</li>
-          <li>Store operational status (Open / Temporarily Closed)</li>
-        </ul>
-        <hr style="border: none; border-top: 1px solid #e7e5e4; margin: 28px 0 20px;" />
-        <p style="font-size: 13px; color: #78716c; margin-bottom: 4px;">
-          Happy bookings,
-        </p>
-        <p style="font-size: 14px; font-weight: 600; color: #1c1917;">
-          The Appointmo Team
-        </p>
-      </div>
-    `;
+    const htmlBody = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Your store is approved on Appointmo</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f5f5f4; margin: 0; padding: 32px 16px; color: #1c1917; line-height: 1.6;">
+  <div style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #e7e5e4; padding: 36px 28px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+    <div style="border-bottom: 1px solid #f5f5f4; padding-bottom: 20px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+      <span style="font-size: 22px; font-weight: 800; color: #1c1917; letter-spacing: -0.5px;">Appointmo</span>
+      <span style="font-size: 11px; font-weight: 700; background-color: #dcfce7; color: #15803d; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px;">Store Approved</span>
+    </div>
+    
+    <h2 style="font-size: 20px; font-weight: 700; margin: 0 0 16px; color: #1c1917;">Your store is now active!</h2>
+    <p style="font-size: 15px; color: #44403c; margin: 0 0 16px;">
+      Hi <strong>${recipientName}</strong>,
+    </p>
+    <p style="font-size: 15px; color: #44403c; margin: 0 0 20px;">
+      Congratulations! Your business <strong>${storeName}</strong> has been officially approved by the Appointmo administrative team. Your account has been upgraded to <strong>Store Admin</strong>.
+    </p>
+
+    <div style="background-color: #fafaf9; border: 1px solid #e7e5e4; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <div style="font-size: 12px; font-weight: 700; color: #78716c; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px;">Store Admin Access Details</div>
+      
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="padding: 6px 0; color: #78716c; width: 140px;">Store Name:</td>
+          <td style="padding: 6px 0; font-weight: 600; color: #1c1917;">${storeName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #78716c;">Store Role:</td>
+          <td style="padding: 6px 0; font-weight: 600; color: #0284c7;">Store Admin</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #78716c;">Login Email:</td>
+          <td style="padding: 6px 0; font-weight: 600; color: #1c1917;"><code>${recipientEmail}</code></td>
+        </tr>
+        ${deliveredPassword ? `
+        <tr>
+          <td style="padding: 6px 0; color: #78716c;">Temporary Password:</td>
+          <td style="padding: 6px 0;"><code style="font-size: 14px; font-weight: 700; color: #0f172a; background-color: #f1f5f9; padding: 3px 8px; border-radius: 6px; border: 1px solid #cbd5e1;">${deliveredPassword}</code></td>
+        </tr>` : ''}
+        <tr>
+          <td style="padding: 6px 0; color: #78716c;">Storefront Slug:</td>
+          <td style="padding: 6px 0; font-family: monospace; color: #44403c;">/${storeSlug}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="margin: 30px 0 24px; text-align: center;">
+      <a href="${loginUrl}" style="background-color: #1c1917; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 600; text-decoration: none; font-size: 14px; display: inline-block;">
+        Sign In to Store Dashboard &rarr;
+      </a>
+    </div>
+
+    <p style="font-size: 13px; color: #78716c; margin-bottom: 8px;">
+      Next steps for your store:
+    </p>
+    <ul style="font-size: 13px; color: #57534e; padding-left: 20px; margin: 0 0 24px;">
+      <li style="margin-bottom: 4px;">Update your store logo, address, and operating hours.</li>
+      <li style="margin-bottom: 4px;">Add your team members and configure their services.</li>
+      <li style="margin-bottom: 4px;">Share your storefront link with clients to start receiving online bookings.</li>
+    </ul>
+
+    <hr style="border: none; border-top: 1px solid #e7e5e4; margin: 24px 0 20px;" />
+    
+    <div style="font-size: 12px; color: #a8a29e; line-height: 1.5;">
+      <p style="margin: 0 0 4px;">Sent by Appointmo Platform Services</p>
+      <p style="margin: 0;">This email was sent to ${recipientEmail} because your business registration was verified.</p>
+    </div>
+  </div>
+</body>
+</html>`;
 
     return this.dispatchEmail(recipientEmail, subject, textBody, htmlBody);
   }

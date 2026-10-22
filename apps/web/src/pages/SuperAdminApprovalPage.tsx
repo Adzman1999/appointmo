@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ShieldCheck, Check, X, Clock, Store, MapPin, 
   Phone, Mail, Calendar, RefreshCw, LogOut, ArrowRight, AlertCircle, Building2, Eye, EyeOff,
   Bell, KeyRound, Users, UserX, UserCheck, Search, ShieldAlert, Sparkles, ExternalLink,
-  ChevronDown, ChevronUp, Layers, Scissors, UserCog
+  ChevronDown, ChevronUp, Layers, Scissors, UserCog, CheckCircle2, Globe, Tag, DollarSign
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
@@ -34,12 +34,17 @@ interface StoreApprovalItem {
   city: string;
   address: string;
   store_phone: string;
+  store_email?: string;
+  currency?: string;
+  timezone?: string;
   description: string;
   logo_url?: string;
   opening_hours?: string;
   tagline?: string;
   website?: string;
+  instagram?: string;
   social_handle?: string;
+  booking_policies?: any;
   store_status: 'pending' | 'approved' | 'rejected';
   service_count?: number;
   staff_count?: number;
@@ -84,6 +89,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   // Action states
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
@@ -93,15 +99,31 @@ export const SuperAdminApprovalPage: React.FC = () => {
   const [customPassword, setCustomPassword] = useState('');
   const [autoGenPassword, setAutoGenPassword] = useState(true);
 
+  // Modern Confirmation Popup Modal
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmText: string;
+    cancelText?: string;
+    variant: 'danger' | 'warning' | 'primary' | 'success';
+    onConfirm: () => void | Promise<void>;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    variant: 'danger',
+    onConfirm: () => {},
+  });
+
   // Customer Management Action Modal
   const [customerModalData, setCustomerModalData] = useState<{
     customer: CustomerItem;
     targetStatus: 'approved' | 'suspended' | 'disabled' | 'revoked';
     reason: string;
   } | null>(null);
-
-  // Reveal password toggle
-  const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
 
   const fetchStores = async () => {
     setLoadingStores(true);
@@ -137,6 +159,22 @@ export const SuperAdminApprovalPage: React.FC = () => {
     }
   };
 
+  // Click outside to close notifications dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setIsNotifOpen(false);
+      }
+    };
+
+    if (isNotifOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isNotifOpen]);
+
   useEffect(() => {
     fetchStores();
     fetchCustomers();
@@ -149,23 +187,28 @@ export const SuperAdminApprovalPage: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleMarkNotifRead = async (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+  // When clicking a notification item: remove item from UI immediately, mark read, and close dropdown
+  const handleClickNotification = async (id: string) => {
+    // 1. Optimistically remove notification content from list and decrement unread count
+    setNotifications(prev => prev.filter(n => n.id !== id));
     setUnreadCount(prev => Math.max(0, prev - 1));
+
+    // 2. Automatically close the notification dropdown
+    setIsNotifOpen(false);
+
     try {
       await apiFetch(`/owner/notifications/${id}/read`, { method: 'PATCH' });
-      fetchNotifications();
     } catch (err) {
-      console.error(err);
+      console.error('Error marking notification as read:', err);
     }
   };
 
   const handleMarkAllNotifsRead = async () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    setNotifications([]);
     setUnreadCount(0);
+    setIsNotifOpen(false);
     try {
       await apiFetch(`/owner/notifications/mark-all-read`, { method: 'POST' });
-      fetchNotifications();
     } catch (err) {
       console.error(err);
     }
@@ -191,8 +234,8 @@ export const SuperAdminApprovalPage: React.FC = () => {
           customPassword: autoGenPassword ? undefined : customPassword.trim(),
         }),
       });
-      toast.success('Store Admin Approved & Credentials Dispatched', {
-        description: res.message || `${item.store_name} credentials delivered via email.`,
+      toast.success('Store Admin Approved & Email Dispatched', {
+        description: res.message || `${item.store_name} credentials delivered to ${item.admin_email}.`,
       });
       setApproveModalItem(null);
       fetchStores();
@@ -204,23 +247,33 @@ export const SuperAdminApprovalPage: React.FC = () => {
     }
   };
 
-  const handleRejectStore = async (userId: string, storeName: string) => {
-    if (!window.confirm(`Are you sure you want to reject registration for ${storeName}?`)) return;
-    setActionLoadingId(userId);
-    try {
-      const res: any = await apiFetch(`/owner/store-approvals/${userId}/reject`, {
-        method: 'POST',
-      });
-      toast.error('Store Registration Rejected', {
-        description: res.message || `${storeName} registration has been declined.`
-      });
-      fetchStores();
-      fetchNotifications();
-    } catch (err: any) {
-      toast.error('Rejection failed', { description: err.message });
-    } finally {
-      setActionLoadingId(null);
-    }
+  const handleRejectStorePrompt = (userId: string, storeName: string) => {
+    setConfirmModalConfig({
+      isOpen: true,
+      title: 'Reject Store Registration',
+      description: `Are you sure you want to decline registration for "${storeName}"? The store owner will not be granted access to the store management dashboard.`,
+      confirmText: 'Reject Store',
+      cancelText: 'Keep Pending',
+      variant: 'danger',
+      onConfirm: async () => {
+        setActionLoadingId(userId);
+        try {
+          const res: any = await apiFetch(`/owner/store-approvals/${userId}/reject`, {
+            method: 'POST',
+          });
+          toast.error('Store Registration Rejected', {
+            description: res.message || `${storeName} registration has been declined.`
+          });
+          setConfirmModalConfig(prev => ({ ...prev, isOpen: false }));
+          fetchStores();
+          fetchNotifications();
+        } catch (err: any) {
+          toast.error('Rejection failed', { description: err.message });
+        } finally {
+          setActionLoadingId(null);
+        }
+      }
+    });
   };
 
   // Customer Management Handlers
@@ -269,9 +322,20 @@ export const SuperAdminApprovalPage: React.FC = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('appointmo_token');
-    localStorage.removeItem('appointmo_user');
-    navigate('/admin/login');
+    setConfirmModalConfig({
+      isOpen: true,
+      title: 'Sign Out of Super Admin',
+      description: 'Are you sure you want to sign out from the Super Admin portal?',
+      confirmText: 'Sign Out',
+      cancelText: 'Stay Signed In',
+      variant: 'danger',
+      onConfirm: () => {
+        localStorage.removeItem('appointmo_token');
+        localStorage.removeItem('appointmo_user');
+        setConfirmModalConfig(prev => ({ ...prev, isOpen: false }));
+        navigate('/admin/login');
+      }
+    });
   };
 
   // Filters
@@ -306,15 +370,15 @@ export const SuperAdminApprovalPage: React.FC = () => {
                   Super Admin Role
                 </span>
               </div>
-              <p className="text-[11px] text-stone-500 dark:text-stone-400">Store Configurations, Credentials &amp; Customer Governance</p>
+              <p className="text-[11px] text-stone-500 dark:text-stone-400">Store Verification, Full Profiles &amp; Governance</p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2.5">
             <ThemeToggle />
 
-            {/* Notification Bell for Super Admin */}
-            <div className="relative">
+            {/* Notification Bell with Click-Outside Ref */}
+            <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setIsNotifOpen(!isNotifOpen)}
                 className="relative p-2 rounded-xl border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 transition text-stone-600 dark:text-stone-300"
@@ -330,7 +394,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
 
               {/* Notification Dropdown */}
               {isNotifOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xl z-50 overflow-hidden animate-in fade-in">
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xl z-50 overflow-hidden animate-in fade-in">
                   <div className="p-3.5 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between bg-stone-50 dark:bg-stone-800/60">
                     <div className="flex items-center space-x-2">
                       <span className="font-bold text-xs text-stone-900 dark:text-stone-100">Super Admin Alerts</span>
@@ -338,12 +402,12 @@ export const SuperAdminApprovalPage: React.FC = () => {
                         {unreadCount} unread
                       </span>
                     </div>
-                    {unreadCount > 0 && (
+                    {notifications.length > 0 && (
                       <button
                         onClick={handleMarkAllNotifsRead}
                         className="text-[11px] text-amber-600 dark:text-amber-400 hover:underline font-medium"
                       >
-                        Mark all as read
+                        Clear all
                       </button>
                     )}
                   </div>
@@ -351,29 +415,28 @@ export const SuperAdminApprovalPage: React.FC = () => {
                   <div className="max-h-80 overflow-y-auto divide-y divide-stone-100 dark:divide-stone-800 text-xs">
                     {notifications.length === 0 ? (
                       <div className="p-6 text-center text-stone-500 dark:text-stone-400 font-medium">
-                        No notifications yet.
+                        No new notifications.
                       </div>
                     ) : (
                       notifications.map((n) => (
                         <div
                           key={n.id}
-                          onClick={() => handleMarkNotifRead(n.id)}
-                          className={`p-3.5 hover:bg-stone-50 dark:hover:bg-stone-800/60 cursor-pointer transition ${
-                            !n.isRead ? 'bg-amber-50/40 dark:bg-amber-950/30 font-semibold' : ''
-                          }`}
+                          onClick={() => handleClickNotification(n.id)}
+                          className="p-3.5 hover:bg-stone-50 dark:hover:bg-stone-800/60 cursor-pointer transition bg-amber-50/20 dark:bg-amber-950/20"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <span className="text-stone-900 dark:text-stone-100 text-xs font-bold">{n.title}</span>
-                            {!n.isRead && (
-                              <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 mt-1"></span>
-                            )}
+                            <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 mt-1"></span>
                           </div>
                           <p className="text-[11px] text-stone-600 dark:text-stone-300 font-normal mt-0.5 line-clamp-2 leading-relaxed">
                             {n.message}
                           </p>
-                          <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-1">
-                            {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} •{' '}
-                            {new Date(n.createdAt).toLocaleDateString()}
+                          <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-1 flex items-center justify-between">
+                            <span>
+                              {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} •{' '}
+                              {new Date(n.createdAt).toLocaleDateString()}
+                            </span>
+                            <span className="text-amber-600 dark:text-amber-400 font-medium text-[10px]">Click to dismiss &rarr;</span>
                           </div>
                         </div>
                       ))
@@ -408,7 +471,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 pt-8 space-y-6">
-        {/* Banner Overview with Tab Switcher */}
+        {/* Banner Overview */}
         <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2">
@@ -418,7 +481,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
               </h1>
             </div>
             <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
-              Verify and configure store businesses, monitor issued admin credentials, and oversee customer account privileges.
+              Review full store business profiles, verify contact &amp; operational parameters, and oversee customer account privileges.
             </p>
           </div>
 
@@ -450,7 +513,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
             }`}
           >
             <Store className="w-4 h-4" />
-            <span>Store Admins &amp; Configurations</span>
+            <span>Store Businesses &amp; Approvals</span>
             {pendingStoresCount > 0 && (
               <span className="px-2 py-0.5 rounded-full bg-white/20 text-white font-extrabold text-[10px]">
                 {pendingStoresCount}
@@ -476,7 +539,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
           </button>
         </div>
 
-        {/* TAB 1: STORES & CREDENTIALS */}
+        {/* TAB 1: STORES & FULL PROFILES */}
         {activeTab === 'stores' && (
           <div className="space-y-4">
             {/* Filter Tabs for Stores */}
@@ -511,7 +574,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
             {loadingStores ? (
               <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center text-xs text-stone-500 space-y-2">
                 <RefreshCw className="w-6 h-6 animate-spin mx-auto text-amber-500" />
-                <p>Loading store configurations and credentials...</p>
+                <p>Loading stores and profiles...</p>
               </div>
             ) : filteredStores.length === 0 ? (
               <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center space-y-2">
@@ -523,8 +586,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
               <div className="grid grid-cols-1 gap-4">
                 {filteredStores.map((item) => {
                   const isExpanded = expandedStoreId === item.user_id;
-                  const hasCreds = Boolean(item.recent_credentials?.temporaryPassword);
-                  const isPwRevealed = Boolean(revealedPasswords[item.user_id]);
+                  const grantedTimestamp = item.recent_credentials?.grantedAt;
 
                   return (
                     <div
@@ -562,10 +624,20 @@ export const SuperAdminApprovalPage: React.FC = () => {
                                 {item.user_status}
                               </span>
                             </div>
-                            <div className="flex items-center space-x-3 text-xs text-stone-600 dark:text-stone-400 mt-1 font-medium">
+
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-600 dark:text-stone-400 mt-1 font-medium">
                               <span>Category: <strong className="text-stone-900 dark:text-stone-100">{item.category || 'General'}</strong></span>
                               <span>•</span>
                               <span>Hours: <strong className="text-stone-900 dark:text-stone-100">{item.opening_hours || '9:00 AM - 6:00 PM'}</strong></span>
+                              {grantedTimestamp && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center space-x-1">
+                                    <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                    <span>Granted On: {new Date(grantedTimestamp).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                                  </span>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -574,16 +646,16 @@ export const SuperAdminApprovalPage: React.FC = () => {
                         <div className="flex items-center space-x-2">
                           <button
                             onClick={() => setExpandedStoreId(isExpanded ? null : item.user_id)}
-                            className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-xs font-semibold text-stone-700 dark:text-stone-300 transition flex items-center space-x-1"
+                            className="px-3.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-xs font-semibold text-stone-700 dark:text-stone-300 transition flex items-center space-x-1.5"
                           >
-                            <span>Config &amp; Credentials</span>
+                            <span>{isExpanded ? 'Hide Store Info' : 'View Full Store Info'}</span>
                             {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                           </button>
 
                           {item.user_status === 'pending' ? (
                             <>
                               <button
-                                onClick={() => handleRejectStore(item.user_id, item.store_name)}
+                                onClick={() => handleRejectStorePrompt(item.user_id, item.store_name)}
                                 disabled={actionLoadingId === item.user_id}
                                 className="px-3.5 py-2 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold transition flex items-center space-x-1.5 disabled:opacity-50"
                               >
@@ -601,7 +673,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
                             </>
                           ) : item.user_status === 'approved' ? (
                             <button
-                              onClick={() => handleRejectStore(item.user_id, item.store_name)}
+                              onClick={() => handleRejectStorePrompt(item.user_id, item.store_name)}
                               className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-xs font-medium transition"
                               title="Revoke store approval"
                             >
@@ -612,7 +684,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
                               onClick={() => handleOpenApproveModal(item)}
                               className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 text-xs font-semibold transition"
                             >
-                              Re-Approve &amp; Send Credentials
+                              Re-Approve &amp; Send Email
                             </button>
                           )}
                         </div>
@@ -621,9 +693,9 @@ export const SuperAdminApprovalPage: React.FC = () => {
                       {/* Primary Overview Cards */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700/80 text-xs text-stone-700 dark:text-stone-300">
                         <div className="space-y-1">
-                          <span className="text-[11px] text-stone-500 dark:text-stone-400 font-semibold uppercase">Admin Contact</span>
+                          <span className="text-[11px] text-stone-500 dark:text-stone-400 font-semibold uppercase">Store Owner / Admin</span>
                           <div className="font-semibold text-stone-900 dark:text-stone-100">{item.admin_name}</div>
-                          <div className="text-stone-600 dark:text-stone-400 flex items-center space-x-1">
+                          <div className="text-stone-600 dark:text-stone-400 flex items-center space-x-1 font-mono text-[11px]">
                             <Mail className="w-3 h-3 text-amber-500" />
                             <span>{item.admin_email}</span>
                           </div>
@@ -642,27 +714,27 @@ export const SuperAdminApprovalPage: React.FC = () => {
                         </div>
 
                         <div className="space-y-1">
-                          <span className="text-[11px] text-stone-500 dark:text-stone-400 font-semibold uppercase">Registration &amp; Catalog</span>
+                          <span className="text-[11px] text-stone-500 dark:text-stone-400 font-semibold uppercase">Timestamps &amp; Catalog</span>
                           <div className="flex items-center space-x-1 text-stone-900 dark:text-stone-100">
                             <Calendar className="w-3 h-3 text-amber-500" />
-                            <span>{new Date(item.registered_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                            <span>Created: {new Date(item.registered_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
                           </div>
                           <div className="text-stone-600 dark:text-stone-400 flex items-center space-x-3 mt-1">
                             <span>Services: <strong>{item.service_count ?? 0}</strong></span>
                             <span>•</span>
-                            <span>Staff: <strong>{item.staff_count ?? 0}</strong></span>
+                            <span>Staff Specialists: <strong>{item.staff_count ?? 0}</strong></span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Expandable Configuration & Recent Credentials Section */}
+                      {/* Expandable FULL STORE INFO (Credentials omitted for store privacy) */}
                       {isExpanded && (
                         <div className="p-5 rounded-2xl bg-amber-50/40 dark:bg-stone-800/90 border border-amber-200/80 dark:border-stone-700 space-y-4 animate-in fade-in">
                           <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-stone-700">
                             <div className="flex items-center space-x-2">
-                              <KeyRound className="w-4 h-4 text-amber-500" />
+                              <Building2 className="w-4 h-4 text-amber-500" />
                               <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">
-                                Store Admin Configuration &amp; Credentials Snapshot
+                                Comprehensive Store Business Profile
                               </h4>
                             </div>
                             <a
@@ -671,81 +743,96 @@ export const SuperAdminApprovalPage: React.FC = () => {
                               rel="noreferrer"
                               className="text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline flex items-center space-x-1"
                             >
-                              <span>Visit Storefront</span>
+                              <span>Visit Client Storefront</span>
                               <ExternalLink className="w-3 h-3" />
                             </a>
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                            {/* Credentials Card */}
-                            <div className="p-3.5 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 space-y-2">
+                            {/* Business Profile & Brand Info */}
+                            <div className="p-4 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 space-y-2.5">
                               <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
-                                Issued Admin Credentials
-                              </span>
-                              <div className="space-y-1.5 font-mono">
-                                <div className="flex justify-between items-center text-stone-700 dark:text-stone-300">
-                                  <span className="text-stone-500 font-sans">Login Email:</span>
-                                  <span className="font-semibold text-stone-900 dark:text-stone-100">{item.admin_email}</span>
-                                </div>
-
-                                <div className="flex justify-between items-center text-stone-700 dark:text-stone-300">
-                                  <span className="text-stone-500 font-sans">Temporary Password:</span>
-                                  <div className="flex items-center space-x-1.5">
-                                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                      {hasCreds
-                                        ? isPwRevealed
-                                          ? item.recent_credentials?.temporaryPassword
-                                          : '••••••••••••'
-                                        : item.user_status === 'approved'
-                                        ? 'Password hashed (click Re-Approve below to issue & view a new password)'
-                                        : 'Not generated yet (Pending approval)'}
-                                    </span>
-                                    {hasCreds && (
-                                      <button
-                                        type="button"
-                                        onClick={() => setRevealedPasswords(prev => ({ ...prev, [item.user_id]: !prev[item.user_id] }))}
-                                        className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
-                                      >
-                                        {isPwRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="flex justify-between items-center text-stone-700 dark:text-stone-300">
-                                  <span className="text-stone-500 font-sans">Role Assigned:</span>
-                                  <span className="font-semibold text-amber-600 dark:text-amber-400">Store Admin (business_admin)</span>
-                                </div>
-
-                                {item.recent_credentials?.grantedAt && (
-                                  <div className="flex justify-between items-center text-stone-700 dark:text-stone-300">
-                                    <span className="text-stone-500 font-sans">Granted On:</span>
-                                    <span className="text-stone-600 dark:text-stone-400 text-[11px]">
-                                      {new Date(item.recent_credentials.grantedAt).toLocaleString()}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Store Configuration Details */}
-                            <div className="p-3.5 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 space-y-2">
-                              <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
-                                Store Metadata &amp; Branding
+                                Identity &amp; Branding
                               </span>
                               <div className="space-y-1.5 text-stone-700 dark:text-stone-300">
                                 <div>
-                                  <span className="text-stone-500">Tagline:</span>{' '}
-                                  <strong className="text-stone-900 dark:text-stone-100">{item.tagline || 'None provided'}</strong>
+                                  <span className="text-stone-500">Business Name:</span>{' '}
+                                  <strong className="text-stone-900 dark:text-stone-100">{item.store_name}</strong>
                                 </div>
                                 <div>
-                                  <span className="text-stone-500">Website / Social:</span>{' '}
-                                  <span className="font-mono text-stone-900 dark:text-stone-100">{item.website || item.social_handle || 'N/A'}</span>
+                                  <span className="text-stone-500">Tagline / Brand Statement:</span>{' '}
+                                  <strong className="text-stone-900 dark:text-stone-100">{item.tagline || 'None configured'}</strong>
                                 </div>
                                 <div>
-                                  <span className="text-stone-500">Description:</span>{' '}
-                                  <span className="italic text-stone-600 dark:text-stone-400">{item.description || 'No store description'}</span>
+                                  <span className="text-stone-500">Full Description:</span>{' '}
+                                  <p className="italic text-stone-600 dark:text-stone-400 mt-0.5 leading-relaxed bg-stone-50 dark:bg-stone-800/50 p-2.5 rounded-lg border border-stone-200/60 dark:border-stone-800">
+                                    {item.description || 'No detailed description provided.'}
+                                  </p>
                                 </div>
+                                <div className="pt-1 flex flex-wrap items-center gap-3">
+                                  {item.website && (
+                                    <span className="flex items-center space-x-1 text-stone-600 dark:text-stone-400">
+                                      <Globe className="w-3.5 h-3.5 text-amber-500" />
+                                      <span className="font-mono">{item.website}</span>
+                                    </span>
+                                  )}
+                                  {item.social_handle && (
+                                    <span className="flex items-center space-x-1 text-stone-600 dark:text-stone-400 font-mono">
+                                      <Tag className="w-3.5 h-3.5 text-amber-500" />
+                                      <span>@{item.social_handle.replace(/^@/, '')}</span>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Operational & Approval Governance */}
+                            <div className="p-4 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 space-y-2.5">
+                              <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+                                Operations &amp; Verification Status
+                              </span>
+                              <div className="space-y-1.5 text-stone-700 dark:text-stone-300">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-stone-500">Operating Schedule:</span>
+                                  <strong className="text-stone-900 dark:text-stone-100 font-semibold">{item.opening_hours || '9:00 AM - 6:00 PM'}</strong>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-stone-500">Operating City:</span>
+                                  <span className="font-semibold text-stone-900 dark:text-stone-100">{item.city || 'Metro Manila'}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-stone-500">Currency &amp; Timezone:</span>
+                                  <span className="font-mono text-stone-900 dark:text-stone-100">{item.currency || 'PHP'} • {item.timezone || 'Asia/Manila'}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-stone-500">Active Offerings:</span>
+                                  <span className="font-semibold text-stone-900 dark:text-stone-100">{item.service_count ?? 0} Services • {item.staff_count ?? 0} Staff</span>
+                                </div>
+
+                                <div className="pt-2 border-t border-stone-100 dark:border-stone-800 space-y-1">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-stone-500">Store Verification:</span>
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                      item.user_status === 'approved' 
+                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' 
+                                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                    }`}>
+                                      {item.user_status}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-stone-500">Granted On:</span>
+                                    <span className="font-semibold text-stone-900 dark:text-stone-100">
+                                      {grantedTimestamp 
+                                        ? new Date(grantedTimestamp).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+                                        : item.user_status === 'approved' 
+                                        ? 'Approved' 
+                                        : 'Awaiting Super Admin Review'}
+                                    </span>
+                                  </div>
+                                </div>
+
                                 <div className="pt-1 flex items-center space-x-2">
                                   <a
                                     href={`/#/admin/dashboard?slug=${item.store_slug}`}
@@ -1021,7 +1108,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
               </div>
 
               <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-xl text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed font-medium">
-                <strong>Automatic Dispatch:</strong> Upon clicking confirm, this store account will be upgraded to <strong>Store Admin</strong> and an email containing their sign-in username (email) and password will be immediately sent to <strong>{approveModalItem.admin_email}</strong>.
+                <strong>Automatic Delivery:</strong> Upon approval, this store account will be upgraded to <strong>Store Admin</strong> and an email containing their credentials and sign-in link will be dispatched to <strong>{approveModalItem.admin_email}</strong>.
               </div>
 
               <div className="flex space-x-3 pt-2">
@@ -1144,6 +1231,62 @@ export const SuperAdminApprovalPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modern Confirmation Popup Modal (Light & Dark Mode) */}
+      {confirmModalConfig.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-7 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-start space-x-3.5">
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+                confirmModalConfig.variant === 'danger'
+                  ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
+                  : confirmModalConfig.variant === 'warning'
+                  ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'
+                  : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+              }`}>
+                {confirmModalConfig.variant === 'danger' ? (
+                  <AlertCircle className="w-5 h-5" />
+                ) : confirmModalConfig.variant === 'warning' ? (
+                  <ShieldAlert className="w-5 h-5" />
+                ) : (
+                  <CheckCircle2 className="w-5 h-5" />
+                )}
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                  {confirmModalConfig.title}
+                </h3>
+                <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
+                  {confirmModalConfig.description}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmModalConfig(prev => ({ ...prev, isOpen: false }))}
+                className="flex-1 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 text-xs transition"
+              >
+                {confirmModalConfig.cancelText || 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={() => confirmModalConfig.onConfirm()}
+                className={`flex-1 py-2.5 rounded-xl font-bold text-white text-xs transition shadow flex items-center justify-center space-x-1.5 ${
+                  confirmModalConfig.variant === 'danger'
+                    ? 'bg-rose-600 hover:bg-rose-500'
+                    : confirmModalConfig.variant === 'warning'
+                    ? 'bg-amber-600 hover:bg-amber-500'
+                    : 'bg-emerald-600 hover:bg-emerald-500'
+                }`}
+              >
+                <span>{confirmModalConfig.confirmText}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
