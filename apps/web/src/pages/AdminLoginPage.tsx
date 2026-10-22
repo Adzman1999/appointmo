@@ -209,44 +209,31 @@ export const AdminLoginPage: React.FC = () => {
           </div>
 
           {/* Role Segmented Controller */}
-          <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-stone-100 dark:bg-stone-800/80 rounded-2xl border border-stone-200 dark:border-stone-700 mb-6">
+          <div className="grid grid-cols-2 gap-2 p-1.5 bg-stone-100 dark:bg-stone-800/80 rounded-2xl border border-stone-200 dark:border-stone-700 mb-6">
             <button
               type="button"
               onClick={() => handleRoleChange('store')}
-              className={`flex items-center justify-center space-x-1.5 py-2 rounded-xl text-xs font-bold transition ${
+              className={`flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition ${
                 role === 'store'
                   ? 'bg-amber-400 text-stone-950 shadow'
                   : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
               }`}
             >
-              <Store className="w-3.5 h-3.5" />
+              <Store className="w-4 h-4" />
               <span>Store Admin</span>
             </button>
 
             <button
               type="button"
               onClick={() => handleRoleChange('customer')}
-              className={`flex items-center justify-center space-x-1.5 py-2 rounded-xl text-xs font-bold transition ${
+              className={`flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition ${
                 role === 'customer'
                   ? 'bg-amber-400 text-stone-950 shadow'
                   : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
               }`}
             >
-              <UserCheck className="w-3.5 h-3.5" />
+              <UserCheck className="w-4 h-4" />
               <span>Customer</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleRoleChange('superadmin')}
-              className={`flex items-center justify-center space-x-1.5 py-2 rounded-xl text-xs font-bold transition ${
-                role === 'superadmin'
-                  ? 'bg-rose-500 text-white shadow'
-                  : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-              }`}
-            >
-              <ShieldAlert className="w-3.5 h-3.5" />
-              <span>Super Admin</span>
             </button>
           </div>
 
@@ -255,12 +242,12 @@ export const AdminLoginPage: React.FC = () => {
             <div className="flex items-center justify-between mb-2">
               <span className="font-bold text-amber-950 dark:text-amber-200 flex items-center space-x-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span>Instant Verified Credentials</span>
+                <span>Instant Demo Credentials</span>
               </span>
               <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold uppercase tracking-wider">Click to load</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => handleQuickFill('store')}
@@ -300,27 +287,6 @@ export const AdminLoginPage: React.FC = () => {
                 </div>
                 <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5">
                   Pass: <span className="font-mono text-stone-700 dark:text-stone-300 font-semibold">Customer2026!</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickFill('superadmin')}
-                className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
-                  role === 'superadmin' && authMode === 'signin'
-                    ? 'border-rose-400 dark:border-rose-500 bg-white dark:bg-stone-900 shadow-sm'
-                    : 'border-rose-200 dark:border-rose-900/60 bg-white/60 dark:bg-stone-850 hover:bg-white'
-                }`}
-              >
-                <div className="flex items-center space-x-1.5 text-stone-900 dark:text-stone-100 font-bold text-xs">
-                  <ShieldAlert className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                  <span>Super Admin</span>
-                </div>
-                <div className="mt-1 text-[11px] font-mono text-stone-600 dark:text-stone-300 truncate">
-                  superadmin@appointmo.demo
-                </div>
-                <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5">
-                  Pass: <span className="font-mono text-stone-700 dark:text-stone-300 font-semibold">SuperAdmin2026!</span>
                 </div>
               </button>
             </div>

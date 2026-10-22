@@ -75,8 +75,9 @@ router.post('/login', async (req: Request, res: Response) => {
         businessName,
       },
     });
-  } catch (err) {
-    res.status(500).json({ error: 'Authentication failed' });
+  } catch (err: any) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Authentication failed: ' + (err?.message || 'Internal server error') });
   }
 });
 
