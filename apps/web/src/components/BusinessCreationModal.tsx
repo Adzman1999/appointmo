@@ -217,14 +217,12 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  const biz = submittedStoreNotice.business;
                   setSubmittedStoreNotice(null);
-                  onSuccess(biz);
+                  onClose();
                 }}
-                className="bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold px-6 py-2.5 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow text-xs flex items-center space-x-1.5"
+                className="bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold px-6 py-2.5 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow text-xs"
               >
-                <span>Proceed to Store</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                Done
               </button>
             </div>
           </div>

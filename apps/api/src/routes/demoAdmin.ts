@@ -12,16 +12,25 @@ async function getDemoBusinessId(req?: Request): Promise<string> {
   const querySlug = (req?.query?.slug as string | undefined) || (req?.body?.slug as string | undefined);
   const targetSlug = querySlug && querySlug.trim() ? querySlug.trim() : 'lumiere-beauty-studio';
 
-  const bizRes = await query("SELECT id FROM businesses WHERE slug = $1", [targetSlug]);
+  const bizRes = await query("SELECT id, status FROM businesses WHERE slug = $1", [targetSlug]);
   if (bizRes.rows.length === 0) {
-    // Fallback to first available business
-    const anyBiz = await query("SELECT id FROM businesses LIMIT 1");
+    // Fallback to first available approved business
+    const anyBiz = await query("SELECT id FROM businesses WHERE status = 'approved' LIMIT 1");
     if (anyBiz.rows.length === 0) {
       throw new Error('Synthetic demo business not initialized');
     }
     return anyBiz.rows[0].id;
   }
-  return bizRes.rows[0].id;
+
+  const biz = bizRes.rows[0];
+  if (biz.status === 'pending') {
+    throw new Error('This store is currently pending Super Admin approval. Please wait for authorization.');
+  }
+  if (biz.status === 'rejected') {
+    throw new Error('This store registration was rejected by the administrator.');
+  }
+
+  return biz.id;
 }
 
 // 0. Get current active business info and all switchable demo businesses
@@ -30,15 +39,9 @@ router.get('/businesses', async (_req: Request, res: Response) => {
     const listRes = await query(`
       SELECT b.id, b.name, b.slug, b.category, b.description, b.logo_url AS "logoUrl",
              b.phone, b.email, b.address, b.city, b.opening_hours AS "openingHours",
-             b.website, b.instagram, COALESCE(b.social_handle, b.instagram) AS "socialHandle", b.tagline,
-             COUNT(DISTINCT br.id)::int AS "branchCount",
-             COUNT(DISTINCT s.id)::int AS "serviceCount",
-             COUNT(DISTINCT sp.id)::int AS "staffCount"
+             b.website, b.instagram, COALESCE(b.social_handle, b.instagram) AS "socialHandle", b.tagline
       FROM businesses b
-      LEFT JOIN branches br ON b.id = br.business_id AND br.is_active = true
-      LEFT JOIN services s ON b.id = s.business_id AND s.is_active = true
-      LEFT JOIN staff_profiles sp ON b.id = sp.business_id AND sp.is_active = true
-      GROUP BY b.id
+      WHERE b.status = 'approved'
       ORDER BY b.name ASC
     `);
 

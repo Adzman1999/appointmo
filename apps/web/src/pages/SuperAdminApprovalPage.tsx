@@ -737,15 +737,6 @@ export const SuperAdminApprovalPage: React.FC = () => {
                                 Comprehensive Store Business Profile
                               </h4>
                             </div>
-                            <a
-                              href={`/#/${item.store_slug}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline flex items-center space-x-1"
-                            >
-                              <span>Visit Client Storefront</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
@@ -831,15 +822,6 @@ export const SuperAdminApprovalPage: React.FC = () => {
                                         : 'Awaiting Super Admin Review'}
                                     </span>
                                   </div>
-                                </div>
-
-                                <div className="pt-1 flex items-center space-x-2">
-                                  <a
-                                    href={`/#/admin/dashboard?slug=${item.store_slug}`}
-                                    className="text-[11px] font-bold text-stone-900 dark:text-amber-400 underline hover:no-underline"
-                                  >
-                                    Direct Admin Dashboard Route &rarr;
-                                  </a>
                                 </div>
                               </div>
                             </div>

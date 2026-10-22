@@ -16,7 +16,7 @@ router.get('/business', async (req: Request, res: Response) => {
     const bizRes = await query(`
       SELECT b.id, b.name, b.slug, b.description, b.category, b.currency, b.timezone, b.logo_url AS "logoUrl",
              b.phone, b.email, b.address, b.city, b.opening_hours AS "openingHours",
-             b.website, b.instagram, COALESCE(b.social_handle, b.instagram) AS "socialHandle", b.tagline
+             b.website, b.instagram, COALESCE(b.social_handle, b.instagram) AS "socialHandle", b.tagline, b.status
       FROM businesses b
       WHERE b.slug = $1
       LIMIT 1
@@ -27,6 +27,12 @@ router.get('/business', async (req: Request, res: Response) => {
     }
 
     const business = bizRes.rows[0];
+    if (business.status === 'pending') {
+      return res.status(403).json({ error: 'This store is pending Super Admin approval and cannot accept bookings yet.' });
+    }
+    if (business.status === 'rejected') {
+      return res.status(403).json({ error: 'This store registration is inactive.' });
+    }
     const branchesRes = await query(`
       SELECT id, name, address, city, phone, latitude, longitude, location_description AS "locationDescription"
       FROM branches

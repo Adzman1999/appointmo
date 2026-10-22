@@ -154,9 +154,8 @@ export const LandingPage: React.FC = () => {
         isOpen={isCreateModalOpen}
         initialData={modalInitialData}
         onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={(newBiz) => {
+        onSuccess={() => {
           setIsCreateModalOpen(false);
-          navigate(`/demo/admin?slug=${encodeURIComponent(newBiz.slug)}`);
         }}
       />
     </div>
