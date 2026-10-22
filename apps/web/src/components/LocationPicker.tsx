@@ -12,14 +12,14 @@ interface LocationPickerProps {
 const customPinIcon = L.divIcon({
   className: 'custom-map-pin',
   html: `
-    <div style="position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: grab; pointer-events: auto;">
-      <div style="position: absolute; width: 34px; height: 34px; background-color: #f59e0b; border: 3px solid #1c1917; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 4px 14px rgba(0,0,0,0.45);"></div>
-      <div style="position: absolute; width: 14px; height: 14px; background-color: #1c1917; border-radius: 50%; z-index: 10;"></div>
+    <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: grab; pointer-events: auto;">
+      <div style="position: absolute; width: 34px; height: 34px; background-color: #f59e0b; border: 3px solid #1c1917; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 4px 14px rgba(0,0,0,0.45); pointer-events: none;"></div>
+      <div style="position: absolute; width: 14px; height: 14px; background-color: #1c1917; border-radius: 50%; z-index: 10; pointer-events: none;"></div>
     </div>
   `,
-  iconSize: [40, 40],
-  iconAnchor: [20, 40],
-  popupAnchor: [0, -40],
+  iconSize: [44, 44],
+  iconAnchor: [22, 44],
+  popupAnchor: [0, -44],
 });
 
 export const LocationPicker: React.FC<LocationPickerProps> = ({
@@ -127,6 +127,12 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       marker.setLatLng([lat, lng]);
       setCoords({ lat, lng });
       reverseGeocode(lat, lng);
+    });
+
+    // Real-time tracking while dragging the pin
+    marker.on('drag', () => {
+      const pos = marker.getLatLng();
+      setCoords({ lat: pos.lat, lng: pos.lng });
     });
 
     // Drag pin to exact position
@@ -332,7 +338,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
             <div className="flex-1 relative bg-stone-100 dark:bg-stone-800 overflow-hidden">
               <div 
                 ref={mapContainerRef} 
-                className="w-full h-full z-10 touch-none select-none" 
+                className="w-full h-full z-10 select-none" 
                 style={{ minHeight: '100%', height: '100%' }}
               />
 
@@ -456,7 +462,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
           >
             <div 
               ref={mapContainerRef} 
-              className="w-full h-full z-10 touch-none select-none" 
+              className="w-full h-full z-10 select-none" 
             />
 
             {/* Floating Zoom & Fullscreen Controls */}

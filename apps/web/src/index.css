@@ -6,7 +6,7 @@
 
 /* Ensure Leaflet container handles touch, drag, and pinch-zoom without parent scroll interference */
 .leaflet-container {
-  touch-action: none !important;
+  touch-action: pan-x pan-y pinch-zoom !important;
   user-select: none !important;
   -webkit-user-select: none !important;
   cursor: grab;
@@ -16,10 +16,29 @@
   cursor: grabbing;
 }
 
-/* Custom animated map pin style */
+/* Custom animated map pin style and interactivity */
 .custom-map-pin {
-  background: transparent;
-  border: none;
+  background: transparent !important;
+  border: none !important;
+  cursor: grab !important;
+  pointer-events: auto !important;
+  touch-action: none !important;
+}
+
+.custom-map-pin:active {
+  cursor: grabbing !important;
+}
+
+.leaflet-marker-icon.custom-map-pin,
+.leaflet-marker-icon.custom-map-pin * {
+  cursor: grab !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+.leaflet-marker-icon.custom-map-pin:active,
+.leaflet-marker-icon.custom-map-pin:active * {
+  cursor: grabbing !important;
 }
 
 body {
