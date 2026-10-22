@@ -155,7 +155,7 @@ export const BusinessIdeaGenerator: React.FC<BusinessIdeaGeneratorProps> = ({ on
   };
 
   return (
-    <div className="bg-gradient-to-br from-amber-50/70 via-white to-stone-50 dark:from-stone-900/90 dark:via-stone-900 dark:to-stone-950 border border-amber-200/80 dark:border-stone-800 rounded-3xl p-6 sm:p-10 shadow-sm text-left">
+    <div className="bg-gradient-to-br from-amber-100/60 via-stone-50 to-stone-100 dark:from-stone-900/90 dark:via-stone-900 dark:to-stone-950 border border-amber-200/90 dark:border-stone-800 rounded-3xl p-6 sm:p-10 shadow-sm text-left">
       <div className="max-w-2xl mb-6">
         <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 text-xs font-semibold mb-3 border border-amber-300/40 dark:border-amber-800">
           <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
@@ -225,12 +225,12 @@ export const BusinessIdeaGenerator: React.FC<BusinessIdeaGeneratorProps> = ({ on
               </p>
 
               {/* Recommended Location Intelligence */}
-              <div className="mt-3 p-2.5 rounded-xl bg-stone-50 dark:bg-stone-850/80 border border-stone-200/80 dark:border-stone-800 space-y-1">
+              <div className="mt-3 p-3 rounded-xl bg-amber-500/10 dark:bg-stone-800/90 border border-amber-500/25 dark:border-stone-700/80 space-y-1.5">
                 <div className="flex items-center space-x-1.5 text-[11px] font-bold text-stone-900 dark:text-stone-100">
-                  <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                  <span>Best Location: <strong className="text-amber-700 dark:text-amber-300 font-extrabold">{idea.recommendedLocation}</strong></span>
+                  <MapPin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span>Best Location: <strong className="text-amber-800 dark:text-amber-300 font-extrabold">{idea.recommendedLocation}</strong></span>
                 </div>
-                <p className="text-[10px] text-stone-500 dark:text-stone-400 leading-tight">
+                <p className="text-[11px] text-stone-700 dark:text-stone-300 font-medium leading-relaxed">
                   {idea.locationReason}
                 </p>
               </div>

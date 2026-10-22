@@ -454,7 +454,7 @@ export const ManageBookingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-24 transition-colors">
+    <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-24 transition-colors">
       {/* Top Segmented Navigation Bar with Global Reset */}
       <DemoTopNav 
         currentRole="customer" 

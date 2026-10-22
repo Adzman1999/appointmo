@@ -99,7 +99,7 @@ export const DiscoveryPage: React.FC = () => {
   const allBranches = businesses.flatMap(b => b.branches.map(br => ({ biz: b, branch: br })));
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-24 transition-colors">
+    <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-24 transition-colors">
       {/* Top Segmented Navigation Bar */}
       <DemoTopNav currentRole="customer" />
 

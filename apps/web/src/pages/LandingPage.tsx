@@ -34,7 +34,7 @@ export const LandingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 selection:bg-stone-200 dark:selection:bg-stone-800 transition-colors">
+    <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 selection:bg-stone-200 dark:selection:bg-stone-800 transition-colors">
       {/* Top Demo Navigation Bar with Direct Role Switcher */}
       <DemoTopNav currentRole="customer" />
 

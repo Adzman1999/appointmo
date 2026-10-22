@@ -60,7 +60,7 @@ export const BusinessDashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20 transition-colors">
+    <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20 transition-colors">
       {/* Top Navbar */}
       <div className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-3.5 px-6 mb-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
