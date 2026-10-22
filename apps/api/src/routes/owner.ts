@@ -497,8 +497,9 @@ router.post('/store-approvals/:userId/approve', requireOwnerAuth, async (req: Re
     }
 
     // Dispatch approval email with store admin role confirmation and credentials
+    let emailResult: any = null;
     try {
-      await EmailService.sendStoreApprovalEmail({
+      emailResult = await EmailService.sendStoreApprovalEmail({
         recipientEmail: user.email,
         recipientName: user.name || 'Store Admin',
         storeName: user.store_name || 'Your Store',
@@ -507,14 +508,20 @@ router.post('/store-approvals/:userId/approve', requireOwnerAuth, async (req: Re
         password: generatedPassword,
         tempPassword: generatedPassword,
       });
-    } catch (emailErr) {
+    } catch (emailErr: any) {
       console.error('Failed to dispatch store approval email:', emailErr);
+      emailResult = { success: false, error: emailErr.message, isMock: false };
     }
 
     res.json({ 
-      message: `Store Admin ${user.email} for "${user.store_name}" has been approved! Password credentials (${generatedPassword}) and login link have been dispatched via email to ${user.email}.`,
+      message: emailResult?.isMock
+        ? `Store Admin ${user.email} approved! NOTE: Real email sending requires RESEND_API_KEY. Temporary password (${generatedPassword}) has been saved in the Super Admin dashboard and logged to console.`
+        : `Store Admin ${user.email} for "${user.store_name}" has been approved! Password credentials (${generatedPassword}) and login link have been dispatched via email to ${user.email}.`,
       user: { id: user.id, email: user.email, status: 'approved', role: 'business_admin' },
       generatedPassword,
+      isMock: emailResult?.isMock || false,
+      emailSent: emailResult?.success || false,
+      emailError: emailResult?.error || null,
     });
   } catch (err: any) {
     console.error('Error approving store:', err);

@@ -696,7 +696,9 @@ export const SuperAdminApprovalPage: React.FC = () => {
                                         ? isPwRevealed
                                           ? item.recent_credentials?.temporaryPassword
                                           : '••••••••••••'
-                                        : 'Not generated yet (Pending)'}
+                                        : item.user_status === 'approved'
+                                        ? 'Password hashed (click Re-Approve below to issue & view a new password)'
+                                        : 'Not generated yet (Pending approval)'}
                                     </span>
                                     {hasCreds && (
                                       <button
