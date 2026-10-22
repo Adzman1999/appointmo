@@ -22,12 +22,12 @@ export const AdminLoginPage: React.FC = () => {
     : 'store';
   const [role, setRole] = useState<'store' | 'customer' | 'superadmin'>(initialRole as any);
 
-  // Common credentials
-  const [email, setEmail] = useState('store@appointmo.demo');
-  const [password, setPassword] = useState('Store2026!');
+  // Common credentials - empty defaults so visitors create or type their own accounts
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [name, setName] = useState('Lumière Store Manager');
-  const [phone, setPhone] = useState('+63 905 242 2821');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
 
   // Store Sign Up Details
   const [storeName, setStoreName] = useState('');
@@ -36,7 +36,7 @@ export const AdminLoginPage: React.FC = () => {
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
   const [openingHours, setOpeningHours] = useState('9:00 AM - 6:00 PM');
-  const [socialHandle, setSocialHandle] = useState('@mystore');
+  const [socialHandle, setSocialHandle] = useState('');
   const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -44,35 +44,10 @@ export const AdminLoginPage: React.FC = () => {
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   // Switch Role helper
-  const handleRoleChange = (newRole: 'store' | 'customer' | 'superadmin') => {
+  const handleRoleChange = (newRole: 'store' | 'customer') => {
     setRole(newRole);
     setError(null);
     setSuccessNotice(null);
-
-    if (newRole === 'store') {
-      setEmail('store@appointmo.demo');
-      setPassword('Store2026!');
-      setName('Lumière Store Manager');
-      setPhone('+63 2 8999 0001');
-    } else if (newRole === 'customer') {
-      setEmail('customer@appointmo.demo');
-      setPassword('Customer2026!');
-      setName('Demo Customer');
-      setPhone('+63 905 242 2821');
-    } else {
-      // Super Admin role
-      setEmail('superadmin@appointmo.demo');
-      setPassword('SuperAdmin2026!');
-      setName('Super Administrator');
-      setPhone('+63 905 242 2821');
-      setAuthMode('signin'); // Super admin only signs in
-    }
-  };
-
-  // Quick fill credential helper
-  const handleQuickFill = (targetRole: 'store' | 'customer' | 'superadmin') => {
-    setAuthMode('signin');
-    handleRoleChange(targetRole);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -235,61 +210,6 @@ export const AdminLoginPage: React.FC = () => {
               <UserCheck className="w-4 h-4" />
               <span>Customer</span>
             </button>
-          </div>
-
-          {/* Quick Demo Credentials Box */}
-          <div className="mb-6 p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-xs">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-bold text-amber-950 dark:text-amber-200 flex items-center space-x-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span>Instant Demo Credentials</span>
-              </span>
-              <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold uppercase tracking-wider">Click to load</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickFill('store')}
-                className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
-                  role === 'store' && authMode === 'signin'
-                    ? 'border-amber-400 dark:border-amber-500 bg-white dark:bg-stone-900 shadow-sm'
-                    : 'border-amber-200 dark:border-amber-800/80 bg-white/60 dark:bg-stone-850 hover:bg-white'
-                }`}
-              >
-                <div className="flex items-center space-x-1.5 text-stone-900 dark:text-stone-100 font-bold text-xs">
-                  <Store className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  <span>Store Admin</span>
-                </div>
-                <div className="mt-1 text-[11px] font-mono text-stone-600 dark:text-stone-300 truncate">
-                  store@appointmo.demo
-                </div>
-                <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5">
-                  Pass: <span className="font-mono text-stone-700 dark:text-stone-300 font-semibold">Store2026!</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickFill('customer')}
-                className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
-                  role === 'customer' && authMode === 'signin'
-                    ? 'border-amber-400 dark:border-amber-500 bg-white dark:bg-stone-900 shadow-sm'
-                    : 'border-amber-200 dark:border-amber-800/80 bg-white/60 dark:bg-stone-850 hover:bg-white'
-                }`}
-              >
-                <div className="flex items-center space-x-1.5 text-stone-900 dark:text-stone-100 font-bold text-xs">
-                  <UserCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  <span>Customer</span>
-                </div>
-                <div className="mt-1 text-[11px] font-mono text-stone-600 dark:text-stone-300 truncate">
-                  customer@appointmo.demo
-                </div>
-                <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5">
-                  Pass: <span className="font-mono text-stone-700 dark:text-stone-300 font-semibold">Customer2026!</span>
-                </div>
-              </button>
-            </div>
           </div>
 
           {successNotice && (
