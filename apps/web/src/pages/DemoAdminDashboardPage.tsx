@@ -4,7 +4,7 @@ import {
   Calendar, Users, DollarSign, CheckCircle2, 
   Search, Filter, Clock, ArrowRight, Sparkles, Building2, 
   Check, X, AlertTriangle, Shield, Bell, ChevronRight, UserCheck, 
-  RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store, MapPin, Lightbulb, TrendingUp
+  RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store, MapPin, Lightbulb, TrendingUp, LogOut
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { BusinessLogo } from '../components/BusinessLogo';
@@ -477,10 +477,20 @@ export const DemoAdminDashboardPage: React.FC = () => {
             </div>
 
             <button
+              onClick={() => {
+                localStorage.removeItem('appointmo_auth');
+                navigate('/admin/login');
+              }}
+              title="Sign Out"
+              className="p-2 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-500 hover:text-rose-600 dark:text-stone-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+            <button
               onClick={() => navigate('/')}
               className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-stone-800 transition text-xs font-semibold"
             >
-              Exit to Home
+              Home
             </button>
           </div>
         </div>

@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   Calendar, Clock, User, AlertCircle, CheckCircle2, XCircle, 
   Bell, Check, CalendarDays, RefreshCw, Sparkles, Search, 
-  History, ArrowRight, ShieldCheck, MapPin, Tag, Phone, Mail, ChevronRight, Filter
+  History, ArrowRight, ShieldCheck, MapPin, Tag, Phone, Mail, ChevronRight, Filter, Download, ExternalLink, Repeat, Info, LogOut
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
@@ -95,6 +95,51 @@ export const ManageBookingPage: React.FC = () => {
   // Notification dropdown state
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  // Calendar export helper functions
+  const downloadIcsFile = (appt: CustomerAppointment) => {
+    const start = new Date(appt.startTime).toISOString().replace(/-|:|\.\d\d\d/g, '');
+    const end = new Date(appt.endTime).toISOString().replace(/-|:|\.\d\d\d/g, '');
+    const summary = `${appt.serviceName} at ${appt.businessName}`;
+    const description = `Appointment Booking Ref: ${appt.bookingReference}\\nSpecialist: ${appt.staffName}\\nLocation: ${appt.branchAddress || appt.branchName}`;
+    const location = `${appt.branchName}, ${appt.branchAddress || ''}`;
+
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Appointmo//Scheduling System//EN',
+      'BEGIN:VEVENT',
+      `UID:${appt.bookingReference}@appointmo.com`,
+      `DTSTAMP:${start}`,
+      `DTSTART:${start}`,
+      `DTEND:${end}`,
+      `SUMMARY:${summary}`,
+      `DESCRIPTION:${description}`,
+      `LOCATION:${location}`,
+      'STATUS:CONFIRMED',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${appt.bookingReference}-appointment.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Calendar file downloaded (.ics)');
+  };
+
+  const getGoogleCalendarUrl = (appt: CustomerAppointment) => {
+    const start = new Date(appt.startTime).toISOString().replace(/-|:|\.\d\d\d/g, '');
+    const end = new Date(appt.endTime).toISOString().replace(/-|:|\.\d\d\d/g, '');
+    const title = encodeURIComponent(`${appt.serviceName} - ${appt.businessName}`);
+    const details = encodeURIComponent(`Booking Reference: ${appt.bookingReference}\nSpecialist: ${appt.staffName}\nService: ${appt.serviceName}`);
+    const location = encodeURIComponent(`${appt.branchName}, ${appt.branchAddress || ''}`);
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}&location=${location}`;
+  };
 
   // Load customer portal data
   const loadCustomerPortal = async (custId?: string, email?: string) => {
@@ -436,11 +481,11 @@ export const ManageBookingPage: React.FC = () => {
                     {customer?.name || 'Customer Account'}
                   </h1>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
-                    Active Demo User
+                    Customer Account
                   </span>
                 </div>
                 <p className="text-[11px] text-stone-600 dark:text-stone-300 font-medium">
-                  {customer?.email || 'customer@example.com'} • {customer?.phone || '+63 900 000 0000'}
+                  {customer?.email || 'customer@appointmo.demo'} • {customer?.phone || '+63 905 242 2821'}
                 </p>
               </div>
             </div>
@@ -544,6 +589,16 @@ export const ManageBookingPage: React.FC = () => {
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               <span>Concierge</span>
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem('appointmo_auth');
+                navigate('/admin/login');
+              }}
+              title="Sign Out"
+              className="p-2 rounded-xl border border-stone-200 dark:border-stone-800 text-stone-500 hover:text-rose-600 dark:text-stone-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+            >
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -1134,16 +1189,72 @@ export const ManageBookingPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Suggested Appointment Quick Actions: Calendar Export & Preparation Guide */}
+              <div className="space-y-3">
+                <div className="flex items-center space-x-1.5 text-xs font-bold text-stone-900 dark:text-stone-100">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Smart Appointment Actions</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => downloadIcsFile(selectedAppt)}
+                    className="flex items-center justify-center space-x-1.5 p-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-xs font-semibold transition"
+                    title="Export .ics file for Apple Calendar or Outlook"
+                  >
+                    <Download className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Download .ics</span>
+                  </button>
+
+                  <a
+                    href={getGoogleCalendarUrl(selectedAppt)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center space-x-1.5 p-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-xs font-semibold transition"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Google Calendar</span>
+                  </a>
+                </div>
+
+                {/* Appointment Prep & Arrival Guide */}
+                <div className="p-3 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/50 rounded-2xl text-[11px] text-amber-950 dark:text-amber-200 space-y-1.5">
+                  <div className="font-bold flex items-center space-x-1.5 text-xs text-amber-900 dark:text-amber-300">
+                    <Info className="w-3.5 h-3.5" />
+                    <span>Arrival &amp; Preparation Notice</span>
+                  </div>
+                  <ul className="list-disc pl-4 space-y-0.5 text-stone-700 dark:text-stone-300">
+                    <li>Please arrive 10-15 minutes prior to scheduled time.</li>
+                    <li>Bring or show your booking reference: <strong className="font-mono">{selectedAppt.bookingReference}</strong></li>
+                    <li>Free cancellation or reschedule is available up to 2 hours before start.</li>
+                  </ul>
+                </div>
+              </div>
+
               {/* Reschedule & Cancellation Options or Status Notice */}
               {selectedAppt.status === 'completed' ? (
-                <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60 text-center space-y-1">
-                  <div className="flex items-center justify-center space-x-1.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Appointment Completed</span>
+                <div className="space-y-3">
+                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60 text-center space-y-1">
+                    <div className="flex items-center justify-center space-x-1.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Appointment Completed</span>
+                    </div>
+                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                      This service has concluded. We hope you enjoyed your experience!
+                    </p>
                   </div>
-                  <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
-                    This service has concluded. Completed appointments are archived and cannot be cancelled or modified.
-                  </p>
+
+                  <button
+                    onClick={() => {
+                      setSelectedAppt(null);
+                      navigate(`/browse?business=${encodeURIComponent(selectedAppt.businessSlug || '')}&service=${encodeURIComponent(selectedAppt.serviceId || '')}`);
+                    }}
+                    className="w-full flex items-center justify-center space-x-1.5 py-3 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow"
+                  >
+                    <Repeat className="w-3.5 h-3.5" />
+                    <span>Rebook This Service Again</span>
+                  </button>
                 </div>
               ) : selectedAppt.status === 'cancelled' ? (
                 <div className="text-center p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 text-xs">

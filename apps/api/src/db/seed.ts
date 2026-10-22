@@ -74,15 +74,22 @@ export const seedData = async () => {
       `, [businessId]);
       const branch2Id = branch2Res.rows[0].id;
 
-    // 3. Create business admin user and platform admin user
-    const passwordHash = await bcrypt.hash('Lumiere2026!', 10);
+    // 3. Create business admin user, demo customer user, and platform admin user
+    const passwordHash = await bcrypt.hash('Store2026!', 10);
+    const customerPasswordHash = await bcrypt.hash('Customer2026!', 10);
     const platformPasswordHash = await bcrypt.hash('AppointmoAdmin2026!', 10);
 
     await client.query(`
       INSERT INTO users (business_id, email, password_hash, role, name)
-      VALUES ($1, 'demo.manager@example.com', $2, 'business_admin', 'Camille Del Rosario (Synthetic Admin)')
-      ON CONFLICT (email) DO UPDATE SET password_hash = $2
+      VALUES ($1, 'store@appointmo.demo', $2, 'business_admin', 'Lumière Store Manager')
+      ON CONFLICT (email) DO UPDATE SET password_hash = $2, role = 'business_admin', business_id = $1
     `, [businessId, passwordHash]);
+
+    await client.query(`
+      INSERT INTO users (business_id, email, password_hash, role, name)
+      VALUES (NULL, 'customer@example.com', $1, 'customer', 'Demo Customer (Beatriz Alonzo)')
+      ON CONFLICT (email) DO UPDATE SET password_hash = $1, role = 'customer'
+    `, [customerPasswordHash]);
 
     await client.query(`
       INSERT INTO users (business_id, email, password_hash, role, name)
