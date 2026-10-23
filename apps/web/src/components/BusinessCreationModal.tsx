@@ -266,6 +266,26 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
         business: res.business,
         message: res.message || 'Your store is successfully created! Please wait 1 to 2 business days for review and approval before full access is granted.',
       });
+
+      // Clear all form inputs after successful creation
+      setCreateName('');
+      setCreateTagline('');
+      setCreateDescription('');
+      setCreateLogoUrl('');
+      setOwnerFirstName('');
+      setOwnerMiddleName('');
+      setOwnerLastName('');
+      setOwnerEmail('');
+      setOwnerPassword('');
+      setCreateStateProvince('');
+      setCreatePostalCode('');
+      setCreateAddress('');
+      setCreatePhone('');
+      setCreateEmail('');
+      setCreateWebsite('');
+      setCreateSocialHandle('');
+      setCustomCategoryInput('');
+      setCustomCityInput('');
     } catch (err: any) {
       setCreateError(err.message || 'Failed to create store');
     } finally {
@@ -816,7 +836,16 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={creatingBusiness || !createName.trim()}
+              disabled={
+                creatingBusiness ||
+                !createName.trim() ||
+                !ownerFirstName.trim() ||
+                !ownerLastName.trim() ||
+                !ownerEmail.trim() ||
+                ownerPassword.trim().length < 6 ||
+                (createPhone.trim() ? !validateFullPhoneNumber(createPhone, selectedCountry, false).isValid : false) ||
+                timeError !== null
+              }
               className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow disabled:opacity-50"
             >
               {creatingBusiness ? 'Setting up Store...' : 'Launch Store'}

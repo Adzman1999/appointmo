@@ -104,6 +104,14 @@ export const AdminLoginPage: React.FC = () => {
         });
 
         setSuccessNotice(res.message || 'Account created successfully! Please sign in with your credentials.');
+        // Clear all form input fields completely upon successful sign up
+        setFirstName('');
+        setMiddleName('');
+        setLastName('');
+        setPhone('');
+        setPassword('');
+        // Keep or clear email depending on user convenience, user asked "when done sign up; try to clear the field; apply to all entire form"
+        setEmail('');
         setAuthMode('signin');
       }
     } catch (err: any) {
@@ -315,7 +323,16 @@ export const AdminLoginPage: React.FC = () => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={
+                loading ||
+                !email.trim() ||
+                !password ||
+                (authMode === 'signup' &&
+                  (!firstName.trim() ||
+                    !lastName.trim() ||
+                    !validateFullPhoneNumber(phone, selectedCountry, true).isValid ||
+                    password.length < 6))
+              }
               className="w-full bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold py-3.5 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition text-xs shadow-md flex items-center justify-center space-x-2 disabled:opacity-50"
             >
               <span>

@@ -219,6 +219,14 @@ export const QuickBookingPage: React.FC = () => {
         description: `Booking Reference: ${res.booking.bookingReference}`
       });
 
+      // Clear all customer input fields upon successful booking
+      setCustomerFirstName('');
+      setCustomerMiddleName('');
+      setCustomerLastName('');
+      setCustomerEmail('');
+      setCustomerPhone('');
+      setNotes('');
+
       // Persist latest booking reference and management token to localStorage for instant 1-click management access
       if (res?.booking?.bookingReference && res?.booking?.managementToken) {
         localStorage.setItem('appointmo_latest_booking', JSON.stringify({
@@ -554,7 +562,14 @@ export const QuickBookingPage: React.FC = () => {
               <div className="pt-6">
                 <button
                   type="submit"
-                  disabled={bookingLoading || !selectedSlot || !customerFirstName.trim() || !customerLastName.trim() || !customerEmail.trim() || !customerPhone.trim()}
+                  disabled={
+                    bookingLoading ||
+                    !selectedSlot ||
+                    !customerFirstName.trim() ||
+                    !customerLastName.trim() ||
+                    !customerEmail.trim() ||
+                    !validateFullPhoneNumber(customerPhone, business?.country || 'Philippines', true).isValid
+                  }
                   className="w-full bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold py-3.5 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition text-xs shadow-md disabled:opacity-50 flex items-center justify-center space-x-2"
                 >
                   <span>{bookingLoading ? 'Reserving...' : 'Confirm Appointment Booking'}</span>

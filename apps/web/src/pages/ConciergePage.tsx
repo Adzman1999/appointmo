@@ -117,6 +117,13 @@ export const ConciergePage: React.FC = () => {
 
       setBookingSuccess(res.booking);
       setBookingRec(null);
+      // Clear fields upon booking completion
+      setCustomerFirstName('');
+      setCustomerMiddleName('');
+      setCustomerLastName('');
+      setCustomerEmail('');
+      setCustomerPhone('');
+      setNotes('');
     } catch (err: any) {
       setBookingError(err.message || 'Could not complete booking. Slot may have been taken.');
     } finally {
@@ -516,7 +523,13 @@ export const ConciergePage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={bookingLoading || !customerFirstName.trim() || !customerLastName.trim() || !customerEmail.trim() || !customerPhone.trim()}
+                  disabled={
+                    bookingLoading ||
+                    !customerFirstName.trim() ||
+                    !customerLastName.trim() ||
+                    !customerEmail.trim() ||
+                    !validateFullPhoneNumber(customerPhone, 'Philippines', true).isValid
+                  }
                   className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-stone-900 text-white hover:bg-stone-800 transition shadow disabled:opacity-50"
                 >
                   {bookingLoading ? 'Reserving...' : 'Confirm Booking'}
