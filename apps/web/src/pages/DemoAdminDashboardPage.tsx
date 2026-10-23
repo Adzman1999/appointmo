@@ -14,6 +14,7 @@ import { ThemeToggle } from '../components/ThemeToggle';
 import { DemoTopNav } from '../components/DemoTopNav';
 import { Pagination } from '../components/Pagination';
 import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol, formatPhoneNumberLive, normalizePhoneNumber } from '../lib/countryConfig';
+import { CountryPhoneInput } from '../components/CountryPhoneInput';
 import { toast } from 'sonner';
 
 export const DemoAdminDashboardPage: React.FC = () => {
@@ -194,8 +195,26 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [editStaffHireDate, setEditStaffHireDate] = useState('');
   const [editStaffEmail, setEditStaffEmail] = useState('');
   const [editStaffPhone, setEditStaffPhone] = useState('');
-  const [editStaffEmergency, setEditStaffEmergency] = useState('');
+  const [editStaffEmergencyName, setEditStaffEmergencyName] = useState('');
+  const [editStaffEmergencyPhone, setEditStaffEmergencyPhone] = useState('');
   const [savingStaffHris, setSavingStaffHris] = useState(false);
+
+  // Helper to split existing emergency contact into name and phone
+  const parseStaffEmergency = (raw?: string) => {
+    if (!raw) return { name: '', phone: '' };
+    const phoneRegex = /(\+?\d[\d\s\-()]{7,}\d)/;
+    const match = raw.match(phoneRegex);
+    if (match) {
+      const phone = match[0].trim();
+      let name = raw.replace(match[0], '').replace(/[-–—()]/g, ' ').replace(/\s+/g, ' ').trim();
+      const parenMatch = raw.match(/^([^(]+(?:\([a-zA-Z\s]+\))?)/);
+      if (parenMatch && !parenMatch[1].includes(phone)) {
+        name = parenMatch[1].replace(/[-–—:]/g, '').trim();
+      }
+      return { name, phone };
+    }
+    return { name: raw.trim(), phone: '' };
+  };
 
   // Pending State Calculation
   const isPending = currentBusiness?.status === 'pending' || editStatus === 'pending' || (storedUser?.role === 'business_admin' && storedUser?.status === 'pending');
@@ -212,6 +231,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [newServicePrice, setNewServicePrice] = useState('');
   const [newServiceDurationHours, setNewServiceDurationHours] = useState('0');
   const [newServiceDurationMinutes, setNewServiceDurationMinutes] = useState('45');
+  const [isCustomDuration, setIsCustomDuration] = useState(false);
+  const [customDurationMinutes, setCustomDurationMinutes] = useState('45');
   const [newServiceCategory, setNewServiceCategory] = useState('Beauty & Wellness');
   const [isNewCustomCategory, setIsNewCustomCategory] = useState(false);
   const [newCustomCategoryInput, setNewCustomCategoryInput] = useState('');
@@ -870,9 +891,11 @@ export const DemoAdminDashboardPage: React.FC = () => {
     }
     if (!newServiceName.trim() || !newServicePrice) return;
 
-    const totalMinutes = (Number(newServiceDurationHours) * 60) + Number(newServiceDurationMinutes);
-    if (totalMinutes <= 0) {
-      toast.error('Invalid Duration', { description: 'Please select a duration greater than 0 minutes.' });
+    const totalMinutes = isCustomDuration
+      ? Number(customDurationMinutes)
+      : (Number(newServiceDurationHours) * 60) + Number(newServiceDurationMinutes);
+    if (totalMinutes <= 0 || isNaN(totalMinutes)) {
+      toast.error('Invalid Duration', { description: 'Please enter or select a duration greater than 0 minutes.' });
       return;
     }
 
@@ -899,6 +922,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
       setNewServicePrice('');
       setNewServiceDurationHours('0');
       setNewServiceDurationMinutes('45');
+      setIsCustomDuration(false);
+      setCustomDurationMinutes('45');
       setIsNewCustomCategory(false);
       setNewCustomCategoryInput('');
       setNewServiceDesc('');
@@ -916,6 +941,19 @@ export const DemoAdminDashboardPage: React.FC = () => {
     e.preventDefault();
     if (!editingStaffMember) return;
     setSavingStaffHris(true);
+
+    // Combine emergency contact name and phone formatted
+    let combinedEmergency: string | null = null;
+    const cleanEmergencyName = editStaffEmergencyName.trim();
+    const cleanEmergencyPhone = editStaffEmergencyPhone.trim();
+    if (cleanEmergencyName && cleanEmergencyPhone) {
+      combinedEmergency = `${cleanEmergencyName} (${cleanEmergencyPhone})`;
+    } else if (cleanEmergencyName) {
+      combinedEmergency = cleanEmergencyName;
+    } else if (cleanEmergencyPhone) {
+      combinedEmergency = cleanEmergencyPhone;
+    }
+
     try {
       await apiFetch(`/demo/admin/staff/${editingStaffMember.id}?slug=${encodeURIComponent(activeSlug)}`, {
         method: 'PUT',
@@ -929,7 +967,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
           hireDate: editStaffHireDate,
           email: editStaffEmail.trim() || null,
           phone: editStaffPhone.trim() || null,
-          emergencyContact: editStaffEmergency.trim() || null,
+          emergencyContact: combinedEmergency,
         }),
       });
       toast.success('Employee HR Record Updated', {
@@ -1602,23 +1640,19 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             </label>
                             {editCountry && (
                               <span className="text-[10px] text-stone-400">
-                                Max {getCountryByName(editCountry).maxPhoneLength} chars
+                                Preserved {getCountryByName(editCountry).dialCode} • Max {getCountryByName(editCountry).nationalPhoneLength} digits
                               </span>
                             )}
                           </div>
-                          <input
-                            type="tel"
+                          <CountryPhoneInput
+                            countryNameOrCode={editCountry}
                             value={editPhone}
-                            placeholder={getCountryByName(editCountry).phonePlaceholder || '+63 917 123 4567'}
-                            maxLength={getCountryByName(editCountry).maxPhoneLength}
-                            onChange={(e) => {
+                            onChange={(val) => {
                               setIsSettingsDirty(true);
-                              const countryCfg = getCountryByName(editCountry);
-                              const formatted = formatPhoneNumberLive(e.target.value, countryCfg.code);
-                              setEditPhone(formatted.slice(0, countryCfg.maxPhoneLength));
+                              setEditPhone(val);
                             }}
                             disabled={isPending}
-                            className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                            placeholder={getCountryByName(editCountry).code === 'PH' ? '905 242 2821' : undefined}
                           />
                         </div>
                         <div>
@@ -1975,7 +2009,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                               setEditStaffHireDate(st.hireDate ? st.hireDate.substring(0, 10) : '');
                               setEditStaffEmail(st.email || '');
                               setEditStaffPhone(st.phone || '');
-                              setEditStaffEmergency(st.emergencyContact || '');
+                              const parsedEm = parseStaffEmergency(st.emergencyContact);
+                              setEditStaffEmergencyName(parsedEm.name);
+                              setEditStaffEmergencyPhone(parsedEm.phone);
                             }}
                             className="px-2.5 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 font-semibold hover:border-amber-500 hover:text-amber-600 transition flex items-center space-x-1"
                           >
@@ -2406,7 +2442,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                                     setEditStaffHireDate(staff.hireDate ? staff.hireDate.substring(0, 10) : '');
                                     setEditStaffEmail(staff.email || '');
                                     setEditStaffPhone(staff.phone || '');
-                                    setEditStaffEmergency(staff.emergencyContact || '');
+                                    const parsedEm = parseStaffEmergency(staff.emergencyContact);
+                                    setEditStaffEmergencyName(parsedEm.name);
+                                    setEditStaffEmergencyPhone(parsedEm.phone);
                                   }}
                                   className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 hover:border-amber-400 text-stone-700 dark:text-stone-300 font-semibold text-xs hover:bg-stone-50 dark:hover:bg-stone-800 transition"
                                 >
@@ -3327,46 +3365,81 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
                     Price ({getCurrencySymbol(editCurrency).trim()} {editCurrency}) <span className="text-rose-500 font-bold">* (Required)</span>
                   </label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="1500"
-                    value={newServicePrice}
-                    onChange={(e) => setNewServicePrice(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                  />
+                  <div className="relative flex items-center rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 overflow-hidden focus-within:border-stone-900 dark:focus-within:border-amber-400">
+                    <span className="px-3 py-2 bg-stone-100 dark:bg-stone-700/60 text-stone-700 dark:text-stone-200 font-bold text-xs border-r border-stone-200 dark:border-stone-700 select-none">
+                      {getCurrencySymbol(editCurrency)}
+                    </span>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="any"
+                      placeholder="1500"
+                      value={newServicePrice}
+                      onChange={(e) => setNewServicePrice(e.target.value)}
+                      className="w-full px-3 py-2 bg-transparent text-stone-900 dark:text-stone-100 focus:outline-none text-xs"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Duration <span className="text-rose-500 font-bold">* (Required)</span>
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <select
-                        value={newServiceDurationHours}
-                        onChange={(e) => setNewServiceDurationHours(e.target.value)}
-                        className="w-full px-2 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
-                      >
-                        <option value="0">0 hrs</option>
-                        <option value="1">1 hr</option>
-                        <option value="2">2 hrs</option>
-                        <option value="3">3 hrs</option>
-                        <option value="4">4 hrs</option>
-                      </select>
-                    </div>
-                    <div>
-                      <select
-                        value={newServiceDurationMinutes}
-                        onChange={(e) => setNewServiceDurationMinutes(e.target.value)}
-                        className="w-full px-2 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
-                      >
-                        <option value="15">15 mins</option>
-                        <option value="30">30 mins</option>
-                        <option value="45">45 mins</option>
-                        <option value="60">60 mins</option>
-                      </select>
-                    </div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300">
+                      Duration <span className="text-rose-500 font-bold">* (Required)</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomDuration(!isCustomDuration)}
+                      className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:underline"
+                    >
+                      {isCustomDuration ? 'Preset Picker' : 'Custom Mins'}
+                    </button>
                   </div>
+
+                  {isCustomDuration ? (
+                    <div className="relative flex items-center rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 overflow-hidden focus-within:border-stone-900 dark:focus-within:border-amber-400">
+                      <input
+                        type="number"
+                        min="5"
+                        max="720"
+                        step="5"
+                        placeholder="e.g. 75"
+                        value={customDurationMinutes}
+                        onChange={(e) => setCustomDurationMinutes(e.target.value)}
+                        className="w-full px-3 py-2 bg-transparent text-stone-900 dark:text-stone-100 focus:outline-none text-xs"
+                      />
+                      <span className="px-3 py-2 bg-stone-100 dark:bg-stone-700/60 text-stone-500 dark:text-stone-300 text-xs border-l border-stone-200 dark:border-stone-700 select-none">
+                        mins
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <select
+                          value={newServiceDurationHours}
+                          onChange={(e) => setNewServiceDurationHours(e.target.value)}
+                          className="w-full px-2 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
+                        >
+                          <option value="0">0 hrs</option>
+                          <option value="1">1 hr</option>
+                          <option value="2">2 hrs</option>
+                          <option value="3">3 hrs</option>
+                          <option value="4">4 hrs</option>
+                        </select>
+                      </div>
+                      <div>
+                        <select
+                          value={newServiceDurationMinutes}
+                          onChange={(e) => setNewServiceDurationMinutes(e.target.value)}
+                          className="w-full px-2 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
+                        >
+                          <option value="15">15 mins</option>
+                          <option value="30">30 mins</option>
+                          <option value="45">45 mins</option>
+                          <option value="60">60 mins</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -3531,9 +3604,11 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Staff Work Email</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Staff Work Email <span className="text-stone-400 font-normal">(Optional)</span>
+                  </label>
                   <input
                     type="email"
                     value={editStaffEmail}
@@ -3543,26 +3618,66 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Phone Number</label>
-                  <input
-                    type="text"
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300">
+                      Phone Number <span className="text-stone-400 font-normal">(Optional)</span>
+                    </label>
+                    {editCountry && (
+                      <span className="text-[10px] text-stone-400">
+                        {getCountryByName(editCountry).dialCode} • Max {getCountryByName(editCountry).nationalPhoneLength} digits
+                      </span>
+                    )}
+                  </div>
+                  <CountryPhoneInput
+                    countryNameOrCode={editCountry}
                     value={editStaffPhone}
-                    onChange={(e) => setEditStaffPhone(e.target.value)}
-                    placeholder="+63 917 000 0000"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                    onChange={(val) => setEditStaffPhone(val)}
+                    placeholder={getCountryByName(editCountry).code === 'PH' ? '905 242 2821' : undefined}
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Emergency Contact Info</label>
-                <input
-                  type="text"
-                  value={editStaffEmergency}
-                  onChange={(e) => setEditStaffEmergency(e.target.value)}
-                  placeholder="e.g. Juan Santos (Spouse) - 0918-123-4567"
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
-                />
+              {/* Separated Emergency Contact Fields */}
+              <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-stone-900 dark:text-stone-100 text-xs flex items-center space-x-1.5">
+                    <span>🚨 Emergency Contact Details</span>
+                  </span>
+                  <span className="text-[10px] text-stone-400">(Optional for HR records)</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                      Contact Person & Relationship
+                    </label>
+                    <input
+                      type="text"
+                      value={editStaffEmergencyName}
+                      onChange={(e) => setEditStaffEmergencyName(e.target.value)}
+                      placeholder="e.g. Juan Santos (Spouse)"
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-semibold text-stone-700 dark:text-stone-300">
+                        Emergency Phone Number
+                      </label>
+                      {editCountry && (
+                        <span className="text-[10px] text-stone-400">
+                          {getCountryByName(editCountry).dialCode}
+                        </span>
+                      )}
+                    </div>
+                    <CountryPhoneInput
+                      countryNameOrCode={editCountry}
+                      value={editStaffEmergencyPhone}
+                      onChange={(val) => setEditStaffEmergencyPhone(val)}
+                      placeholder={getCountryByName(editCountry).code === 'PH' ? '905 242 2821' : undefined}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="flex space-x-3 pt-3">

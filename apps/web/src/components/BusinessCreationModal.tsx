@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Tag, Sparkles, CheckCircle2, ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol, formatPhoneNumberLive, normalizePhoneNumber } from '../lib/countryConfig';
+import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol, normalizePhoneNumber } from '../lib/countryConfig';
+import { CountryPhoneInput } from './CountryPhoneInput';
 
 interface BusinessCreationModalProps {
   isOpen: boolean;
@@ -665,21 +666,15 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                   </label>
                   {selectedCountry && (
                     <span className="text-[10px] text-stone-400">
-                      Max {getCountryByName(selectedCountry).maxPhoneLength} chars
+                      Preserved {getCountryByName(selectedCountry).dialCode} • Max {getCountryByName(selectedCountry).nationalPhoneLength} digits
                     </span>
                   )}
                 </div>
-                <input
-                  type="tel"
-                  placeholder={getCountryByName(selectedCountry).phonePlaceholder || '+63 917 123 4567'}
-                  maxLength={getCountryByName(selectedCountry).maxPhoneLength}
+                <CountryPhoneInput
+                  countryNameOrCode={selectedCountry}
                   value={createPhone}
-                  onChange={(e) => {
-                    const countryCfg = getCountryByName(selectedCountry);
-                    const formatted = formatPhoneNumberLive(e.target.value, countryCfg.code);
-                    setCreatePhone(formatted.slice(0, countryCfg.maxPhoneLength));
-                  }}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  onChange={(val) => setCreatePhone(val)}
+                  placeholder={getCountryByName(selectedCountry).code === 'PH' ? '905 242 2821' : undefined}
                 />
               </div>
               <div>

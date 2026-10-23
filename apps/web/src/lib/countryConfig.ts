@@ -557,6 +557,62 @@ export const formatPhoneNumberLive = (input: string, countryCode: string): strin
   }
 };
 
+// Extract national digits without dial code and without leading zeroes
+export const extractNationalDigits = (fullPhone: string, dialCode: string): string => {
+  if (!fullPhone) return '';
+  let trimmed = fullPhone.trim();
+  if (trimmed.startsWith(dialCode)) {
+    trimmed = trimmed.slice(dialCode.length);
+  } else if (trimmed.startsWith('+')) {
+    trimmed = trimmed.replace(/^\+\d+\s*/, '');
+  }
+  let digits = trimmed.replace(/\D/g, '');
+  if (digits.startsWith('0')) {
+    digits = digits.slice(1);
+  }
+  return digits;
+};
+
+// Live format national digits as user types, preserving dial code out of the input,
+// stripping leading 0, and capping input strictly at max national digits
+export const formatNationalDigitsLive = (
+  input: string,
+  countryCode: string,
+  dialCode: string,
+  maxNationalDigits = 10
+): string => {
+  if (!input) return '';
+  let digits = input.replace(/\D/g, '');
+
+  // Strip dial code if user pasted full international number with dialCode
+  const dialDigits = dialCode.replace(/\D/g, '');
+  if (digits.startsWith(dialDigits) && digits.length > dialDigits.length) {
+    digits = digits.slice(dialDigits.length);
+  }
+
+  // Strip leading 0 (e.g. 0905 -> 905)
+  if (digits.startsWith('0')) {
+    digits = digits.slice(1);
+  }
+
+  // Cap at max national digits
+  digits = digits.slice(0, maxNationalDigits);
+  if (!digits) return '';
+
+  const full = dialCode + digits;
+  try {
+    const code = (countryCode || 'PH').toUpperCase() as CountryCode;
+    const ayt = new AsYouType(code);
+    const formatted = ayt.input(full);
+    if (formatted.startsWith(dialCode)) {
+      return formatted.slice(dialCode.length).trim();
+    }
+    return digits;
+  } catch {
+    return digits;
+  }
+};
+
 // Normalize phone number on submit/save to international E.164-compatible format if valid
 export const normalizePhoneNumber = (input: string, countryCode: string): string => {
   if (!input) return '';
