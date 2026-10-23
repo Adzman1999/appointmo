@@ -90,7 +90,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [editEndTime, setEditEndTime] = useState('18:00');
   const [timeError, setTimeError] = useState<string | null>(null);
   const [isTimeModified, setIsTimeModified] = useState(false);
-  const [isSettingsDirty, setIsSettingsDirty] = useState(false);
+  const isSettingsDirtyRef = useRef(false);
+  const [isSettingsDirty, setIsSettingsDirtyState] = useState(false);
+  const setIsSettingsDirty = (val: boolean) => {
+    isSettingsDirtyRef.current = val;
+    setIsSettingsDirtyState(val);
+  };
   const [editOpeningHours, setEditOpeningHours] = useState('');
   const [editWebsite, setEditWebsite] = useState('');
   const [editSocialHandle, setEditSocialHandle] = useState('');
@@ -374,7 +379,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
       if (sRes.business) {
         // Protect user-edited form state from being clobbered by background polling
-        if (!isSettingsDirty) {
+        if (!isSettingsDirtyRef.current) {
           setEditName(sRes.business.name || '');
           setEditTagline(sRes.business.tagline || '');
           setEditCategory(sRes.business.category || 'Beauty & Wellness');
@@ -427,7 +432,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
         }
 
         // Only overwrite start/end time from server if the user hasn't modified it locally
-        if (!isTimeModified && !isSettingsDirty && sRes.business.openingHours) {
+        if (!isTimeModified && !isSettingsDirtyRef.current && sRes.business.openingHours) {
           const parts = sRes.business.openingHours.split('-').map((s: string) => s.trim());
           if (parts.length === 2) {
             const parseTo24 = (t: string) => {
@@ -1707,6 +1712,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             required
                             value={editEndTime}
                             onChange={(e) => {
+                              setIsSettingsDirty(true);
                               setIsTimeModified(true);
                               setEditEndTime(e.target.value);
                               validateTimeRange(editStartTime, e.target.value);
@@ -1735,7 +1741,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <button
                           type="button"
                           disabled={isPending}
-                          onClick={() => setEditStatus('approved')}
+                          onClick={() => {
+                            setIsSettingsDirty(true);
+                            setEditStatus('approved');
+                          }}
                           className={`p-3 rounded-2xl border text-left text-xs transition ${
                             editStatus === 'approved'
                               ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200'
@@ -1752,7 +1761,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <button
                           type="button"
                           disabled={isPending}
-                          onClick={() => setEditStatus('closed')}
+                          onClick={() => {
+                            setIsSettingsDirty(true);
+                            setEditStatus('closed');
+                          }}
                           className={`p-3 rounded-2xl border text-left text-xs transition ${
                             editStatus === 'closed'
                               ? 'border-rose-500 bg-rose-50/60 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200'
@@ -2011,6 +2023,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         type="button"
                         disabled={isPending}
                         onClick={() => {
+                          setIsSettingsDirty(true);
                           setWeeklySchedule(prev => prev.map((item, idx) => ({
                             ...item,
                             isWorking: idx < 5, // Mon-Fri
@@ -2025,6 +2038,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         type="button"
                         disabled={isPending}
                         onClick={() => {
+                          setIsSettingsDirty(true);
                           setWeeklySchedule(prev => prev.map(item => ({
                             ...item,
                             isWorking: true, // All 7 days
@@ -2055,6 +2069,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             checked={slot.isWorking}
                             disabled={isPending}
                             onChange={(e) => {
+                              setIsSettingsDirty(true);
                               const updated = [...weeklySchedule];
                               updated[idx].isWorking = e.target.checked;
                               setWeeklySchedule(updated);
@@ -2078,6 +2093,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                               value={slot.startTime}
                               disabled={isPending}
                               onChange={(e) => {
+                                setIsSettingsDirty(true);
                                 const updated = [...weeklySchedule];
                                 updated[idx].startTime = e.target.value;
                                 setWeeklySchedule(updated);
@@ -2090,6 +2106,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                               value={slot.endTime}
                               disabled={isPending}
                               onChange={(e) => {
+                                setIsSettingsDirty(true);
                                 const updated = [...weeklySchedule];
                                 updated[idx].endTime = e.target.value;
                                 setWeeklySchedule(updated);
@@ -2166,7 +2183,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={requireApproval}
-                          onChange={(e) => setRequireApproval(e.target.checked)}
+                          onChange={(e) => {
+                            setIsSettingsDirty(true);
+                            setRequireApproval(e.target.checked);
+                          }}
                           disabled={isPending}
                           className="w-4 h-4 text-amber-500 rounded border-stone-300"
                         />
@@ -2188,7 +2208,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         min="1"
                         max="72"
                         value={minLeadHours}
-                        onChange={(e) => setMinLeadHours(Number(e.target.value))}
+                        onChange={(e) => {
+                          setIsSettingsDirty(true);
+                          setMinLeadHours(Number(e.target.value));
+                        }}
                         disabled={isPending}
                         className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
                       />
@@ -2207,7 +2230,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         min="7"
                         max="365"
                         value={maxAdvanceDays}
-                        onChange={(e) => setMaxAdvanceDays(Number(e.target.value))}
+                        onChange={(e) => {
+                          setIsSettingsDirty(true);
+                          setMaxAdvanceDays(Number(e.target.value));
+                        }}
                         disabled={isPending}
                         className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
                       />
@@ -2223,7 +2249,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       </label>
                       <select
                         value={slotInterval}
-                        onChange={(e) => setSlotInterval(Number(e.target.value))}
+                        onChange={(e) => {
+                          setIsSettingsDirty(true);
+                          setSlotInterval(Number(e.target.value));
+                        }}
                         disabled={isPending}
                         className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
                       >
@@ -2249,7 +2278,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={autoReminderEmail}
-                          onChange={(e) => setAutoReminderEmail(e.target.checked)}
+                          onChange={(e) => {
+                            setIsSettingsDirty(true);
+                            setAutoReminderEmail(e.target.checked);
+                          }}
                           disabled={isPending}
                           className="w-4 h-4 text-amber-500 rounded border-stone-300"
                         />
