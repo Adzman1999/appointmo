@@ -154,13 +154,28 @@ router.post('/register', async (req: Request, res: Response) => {
 
     const newUser = userRes.rows[0];
 
-    // Customer sign up is immediately approved and ready to sign in (no Super Admin approval needed)
+    // Issue JWT token immediately so customer is logged in upon registration
+    const token = jwt.sign(
+      {
+        userId: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
+        businessId: newUser.business_id,
+      },
+      config.jwtSecret,
+      { expiresIn: '48h' }
+    );
+
+    // Customer sign up is immediately approved and ready
     res.status(201).json({
-      message: 'Account created successfully! Please sign in to access your appointments.',
+      message: 'Account created successfully! Welcome to Appointmo.',
+      token,
       user: {
         id: newUser.id,
         email: newUser.email,
         name: newUser.name,
+        phone: newUser.phone || null,
         role: newUser.role,
         status: newUser.status,
       },

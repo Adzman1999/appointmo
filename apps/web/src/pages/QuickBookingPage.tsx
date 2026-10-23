@@ -98,43 +98,28 @@ export const QuickBookingPage: React.FC = () => {
         if (u.email && !customerEmail) setCustomerEmail(u.email);
         if (u.phone && !customerPhone) setCustomerPhone(u.phone);
         if (u.email) {
-          // If we loaded from authenticated account, we can return early
           return;
         }
       } catch (_) {}
     }
 
-    // 2. Try fetching current demo customer portal profile
-    apiFetch<any>('/demo/admin/customer-portal')
-      .then(res => {
-        if (res?.customer) {
-          if (res.customer.name && !customerFirstName) {
-            const parsed = parseFormalName(res.customer.name);
-            setCustomerFirstName(parsed.firstName);
-            setCustomerMiddleName(parsed.middleName || '');
-            setCustomerLastName(parsed.lastName);
+    // 2. Fallback to latest booking stored in localStorage (ignore any demo emails)
+    const stored = localStorage.getItem('appointmo_latest_booking');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed.customerEmail && !parsed.customerEmail.includes('appointmo.demo')) {
+          if (parsed.customerName && !customerFirstName) {
+            const parsedName = parseFormalName(parsed.customerName);
+            setCustomerFirstName(parsedName.firstName);
+            setCustomerMiddleName(parsedName.middleName || '');
+            setCustomerLastName(parsedName.lastName);
           }
-          if (!customerEmail) setCustomerEmail(res.customer.email || '');
-          if (!customerPhone) setCustomerPhone(res.customer.phone || '');
+          if (parsed.customerEmail && !customerEmail) setCustomerEmail(parsed.customerEmail);
+          if (parsed.customerPhone && !customerPhone) setCustomerPhone(parsed.customerPhone);
         }
-      })
-      .catch(() => {
-        // 3. Fallback to latest booking stored in localStorage
-        const stored = localStorage.getItem('appointmo_latest_booking');
-        if (stored) {
-          try {
-            const parsed = JSON.parse(stored);
-            if (parsed.customerName && !customerFirstName) {
-              const parsedName = parseFormalName(parsed.customerName);
-              setCustomerFirstName(parsedName.firstName);
-              setCustomerMiddleName(parsedName.middleName || '');
-              setCustomerLastName(parsedName.lastName);
-            }
-            if (parsed.customerEmail && !customerEmail) setCustomerEmail(parsed.customerEmail);
-            if (parsed.customerPhone && !customerPhone) setCustomerPhone(parsed.customerPhone);
-          } catch (_) {}
-        }
-      });
+      } catch (_) {}
+    }
   }, []);
 
   // 1. Fetch Business Profile

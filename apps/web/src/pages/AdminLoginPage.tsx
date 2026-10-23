@@ -104,15 +104,23 @@ export const AdminLoginPage: React.FC = () => {
           }),
         });
 
-        setSuccessNotice(res.message || 'Account created successfully! Please sign in with your credentials.');
         // Clear all form input fields completely upon successful sign up
         setFirstName('');
         setMiddleName('');
         setLastName('');
         setPhone('');
         setPassword('');
-        // Keep or clear email depending on user convenience, user asked "when done sign up; try to clear the field; apply to all entire form"
         setEmail('');
+
+        // If backend returned immediate token & user session, log in directly to customer portal!
+        if (res.token && res.user) {
+          localStorage.setItem('appointmo_token', res.token);
+          localStorage.setItem('appointmo_user', JSON.stringify(res.user));
+          navigate(`/manage?email=${encodeURIComponent(res.user.email)}`);
+          return;
+        }
+
+        setSuccessNotice(res.message || 'Account created successfully! Please sign in with your credentials.');
         setAuthMode('signin');
       }
     } catch (err: any) {

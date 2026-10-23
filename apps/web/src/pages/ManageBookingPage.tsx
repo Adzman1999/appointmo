@@ -232,6 +232,14 @@ export const ManageBookingPage: React.FC = () => {
   };
 
   useEffect(() => {
+    // Clean up any stale demo references from legacy browser storage
+    try {
+      const storedLatest = localStorage.getItem('appointmo_latest_booking');
+      if (storedLatest && storedLatest.includes('customer@appointmo.demo')) {
+        localStorage.removeItem('appointmo_latest_booking');
+      }
+    } catch (_) {}
+
     // 1. Prioritize ?email= from query parameters (e.g. from login redirect)
     const urlEmail = searchParams.get('email');
     if (urlEmail) {
@@ -245,23 +253,43 @@ export const ManageBookingPage: React.FC = () => {
       try {
         const u = JSON.parse(storedUserRaw);
         if (u.email && u.role === 'customer') {
+          // Immediately set customer profile from session to avoid blank flashes
+          setCustomer({
+            id: u.id || '',
+            name: u.name || 'Valued Customer',
+            email: u.email,
+            phone: u.phone || '',
+            createdAt: new Date().toISOString()
+          });
           loadCustomerPortal(undefined, u.email.trim());
           return;
         }
       } catch (_) {}
     }
 
-    // 3. Check if recent booking in localStorage has customer info
+    // 3. Check if recent booking in localStorage has authentic customer info
     const stored = localStorage.getItem('appointmo_latest_booking');
     let emailFallback: string | undefined;
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        if (parsed.customerEmail) emailFallback = parsed.customerEmail;
+        if (parsed.customerEmail && !parsed.customerEmail.includes('appointmo.demo')) {
+          emailFallback = parsed.customerEmail;
+        }
       } catch (_) {}
     }
 
-    loadCustomerPortal(undefined, emailFallback);
+    if (emailFallback) {
+      loadCustomerPortal(undefined, emailFallback);
+    } else {
+      // If no customer session and no email provided, redirect user to sign in
+      const hasAuth = localStorage.getItem('appointmo_token');
+      if (!hasAuth) {
+        navigate('/admin/login');
+      } else {
+        loadCustomerPortal();
+      }
+    }
   }, [searchParams]);
 
   // Poll for updates every 4 seconds to capture admin approvals / status updates / new appointments in real-time
