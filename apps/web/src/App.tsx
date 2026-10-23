@@ -5,7 +5,6 @@ import { LandingPage } from './pages/LandingPage';
 import { DiscoveryPage } from './pages/DiscoveryPage';
 import { QuickBookingPage } from './pages/QuickBookingPage';
 import { ConciergePage } from './pages/ConciergePage';
-import { ManageBookingPage } from './pages/ManageBookingPage';
 import { CustomerPortalPage } from './pages/CustomerPortalPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { OwnerDashboardPage } from './pages/OwnerDashboardPage';
