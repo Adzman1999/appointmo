@@ -1,6 +1,12 @@
+import { countries, ICountry as CountriesListData, getEmojiFlag } from 'countries-list';
+import { getExampleNumber, parsePhoneNumberFromString, AsYouType, CountryCode } from 'libphonenumber-js';
+import mobileExamples from 'libphonenumber-js/examples.mobile.json';
+
 export interface CountryConfig {
   code: string;
   name: string;
+  nativeName?: string;
+  emojiFlag?: string;
   currency: string;
   currencySymbol: string;
   dialCode: string;
@@ -9,19 +15,45 @@ export interface CountryConfig {
   defaultState?: string;
   defaultCity?: string;
   cities: string[];
+  maxPhoneLength: number;
+  nationalPhoneLength: number;
 }
 
-export const SUPPORTED_COUNTRIES: CountryConfig[] = [
-  {
-    code: 'PH',
-    name: 'Philippines',
-    currency: 'PHP',
-    currencySymbol: '₱',
-    dialCode: '+63',
-    phonePlaceholder: '+63 917 123 4567',
-    defaultTimezone: 'Asia/Manila',
-    defaultState: 'Metro Manila',
+// Currency Symbol resolver
+export const getCurrencySymbol = (currency?: string): string => {
+  if (!currency) return '₱';
+  const c = currency.toUpperCase();
+  if (c === 'PHP') return '₱';
+  if (c === 'USD') return '$';
+  if (c === 'SGD') return 'S$';
+  if (c === 'AED') return 'AED ';
+  if (c === 'GBP') return '£';
+  if (c === 'AUD') return 'A$';
+  if (c === 'CAD') return 'CA$';
+  if (c === 'JPY') return '¥';
+  if (c === 'MYR') return 'RM ';
+  if (c === 'EUR') return '€';
+  if (c === 'INR') return '₹';
+  if (c === 'CNY') return '¥';
+  if (c === 'KRW') return '₩';
+  if (c === 'THB') return '฿';
+  if (c === 'IDR') return 'Rp ';
+  if (c === 'VND') return '₫';
+  if (c === 'SAR') return 'SAR ';
+  if (c === 'QAR') return 'QAR ';
+  if (c === 'NZD') return 'NZ$';
+  if (c === 'CHF') return 'CHF ';
+  if (c === 'HKD') return 'HK$';
+  if (c === 'TWD') return 'NT$';
+  return `${c} `;
+};
+
+// Curated prominent cities for world countries to provide rich, smart auto-complete options
+export const WORLD_CITIES_REGISTRY: Record<string, { cities: string[]; defaultCity: string; defaultState?: string; timezone?: string }> = {
+  PH: {
     defaultCity: 'Quezon City',
+    defaultState: 'Metro Manila',
+    timezone: 'Asia/Manila',
     cities: [
       'Quezon City',
       'Makati',
@@ -32,6 +64,7 @@ export const SUPPORTED_COUNTRIES: CountryConfig[] = [
       'Manila',
       'Alabang / Muntinlupa',
       'Pasay',
+      'Parañaque',
       'Cebu City',
       'Mandaue City',
       'Davao City',
@@ -43,18 +76,15 @@ export const SUPPORTED_COUNTRIES: CountryConfig[] = [
       'Antipolo / Rizal',
       'Cavite / Dasmariñas',
       'Laguna / Santa Rosa',
+      'Batangas City',
+      'General Santos',
+      'Zamboanga City',
     ],
   },
-  {
-    code: 'US',
-    name: 'United States',
-    currency: 'USD',
-    currencySymbol: '$',
-    dialCode: '+1',
-    phonePlaceholder: '+1 (555) 000-0000',
-    defaultTimezone: 'America/New_York',
-    defaultState: 'California',
+  US: {
     defaultCity: 'Los Angeles',
+    defaultState: 'California',
+    timezone: 'America/New_York',
     cities: [
       'Los Angeles',
       'New York City',
@@ -71,18 +101,17 @@ export const SUPPORTED_COUNTRIES: CountryConfig[] = [
       'Denver',
       'Atlanta',
       'Phoenix',
+      'San Jose',
+      'Portland',
+      'Washington, D.C.',
+      'Honolulu',
+      'Nashville',
     ],
   },
-  {
-    code: 'SG',
-    name: 'Singapore',
-    currency: 'SGD',
-    currencySymbol: 'S$',
-    dialCode: '+65',
-    phonePlaceholder: '+65 9123 4567',
-    defaultTimezone: 'Asia/Singapore',
-    defaultState: 'Central Region',
+  SG: {
     defaultCity: 'Downtown Core',
+    defaultState: 'Central Region',
+    timezone: 'Asia/Singapore',
     cities: [
       'Downtown Core',
       'Orchard / Somerset',
@@ -96,18 +125,14 @@ export const SUPPORTED_COUNTRIES: CountryConfig[] = [
       'Tanjong Pagar',
       'Bedok',
       'Ang Mo Kio',
+      'Changi',
+      'Sentosa / Harbourfront',
     ],
   },
-  {
-    code: 'AE',
-    name: 'United Arab Emirates',
-    currency: 'AED',
-    currencySymbol: 'AED',
-    dialCode: '+971',
-    phonePlaceholder: '+971 50 123 4567',
-    defaultTimezone: 'Asia/Dubai',
-    defaultState: 'Dubai',
+  AE: {
     defaultCity: 'Dubai',
+    defaultState: 'Dubai',
+    timezone: 'Asia/Dubai',
     cities: [
       'Dubai',
       'Abu Dhabi',
@@ -116,18 +141,13 @@ export const SUPPORTED_COUNTRIES: CountryConfig[] = [
       'Ras Al Khaimah',
       'Fujairah',
       'Al Ain',
+      'Umm Al Quwain',
     ],
   },
-  {
-    code: 'GB',
-    name: 'United Kingdom',
-    currency: 'GBP',
-    currencySymbol: '£',
-    dialCode: '+44',
-    phonePlaceholder: '+44 7911 123456',
-    defaultTimezone: 'Europe/London',
-    defaultState: 'Greater London',
+  GB: {
     defaultCity: 'London',
+    defaultState: 'Greater London',
+    timezone: 'Europe/London',
     cities: [
       'London',
       'Manchester',
@@ -139,18 +159,16 @@ export const SUPPORTED_COUNTRIES: CountryConfig[] = [
       'Leeds',
       'Cardiff',
       'Newcastle',
+      'Belfast',
+      'Sheffield',
+      'Oxford',
+      'Cambridge',
     ],
   },
-  {
-    code: 'AU',
-    name: 'Australia',
-    currency: 'AUD',
-    currencySymbol: 'A$',
-    dialCode: '+61',
-    phonePlaceholder: '+61 400 000 000',
-    defaultTimezone: 'Australia/Sydney',
-    defaultState: 'New South Wales',
+  AU: {
     defaultCity: 'Sydney',
+    defaultState: 'New South Wales',
+    timezone: 'Australia/Sydney',
     cities: [
       'Sydney',
       'Melbourne',
@@ -160,18 +178,15 @@ export const SUPPORTED_COUNTRIES: CountryConfig[] = [
       'Gold Coast',
       'Canberra',
       'Hobart',
+      'Darwin',
+      'Sunshine Coast',
+      'Newcastle',
     ],
   },
-  {
-    code: 'CA',
-    name: 'Canada',
-    currency: 'CAD',
-    currencySymbol: 'CA$',
-    dialCode: '+1',
-    phonePlaceholder: '+1 (416) 555-0199',
-    defaultTimezone: 'America/Toronto',
-    defaultState: 'Ontario',
+  CA: {
     defaultCity: 'Toronto',
+    defaultState: 'Ontario',
+    timezone: 'America/Toronto',
     cities: [
       'Toronto',
       'Vancouver',
@@ -181,18 +196,15 @@ export const SUPPORTED_COUNTRIES: CountryConfig[] = [
       'Edmonton',
       'Quebec City',
       'Winnipeg',
+      'Halifax',
+      'Victoria',
+      'Mississauga',
     ],
   },
-  {
-    code: 'JP',
-    name: 'Japan',
-    currency: 'JPY',
-    currencySymbol: '¥',
-    dialCode: '+81',
-    phonePlaceholder: '+81 90 1234 5678',
-    defaultTimezone: 'Asia/Tokyo',
-    defaultState: 'Tokyo',
+  JP: {
     defaultCity: 'Tokyo',
+    defaultState: 'Tokyo',
+    timezone: 'Asia/Tokyo',
     cities: [
       'Tokyo',
       'Osaka',
@@ -202,18 +214,15 @@ export const SUPPORTED_COUNTRIES: CountryConfig[] = [
       'Sapporo',
       'Nagoya',
       'Kobe',
+      'Hiroshima',
+      'Sendai',
+      'Okinawa / Naha',
     ],
   },
-  {
-    code: 'MY',
-    name: 'Malaysia',
-    currency: 'MYR',
-    currencySymbol: 'RM',
-    dialCode: '+60',
-    phonePlaceholder: '+60 12-345 6789',
-    defaultTimezone: 'Asia/Kuala_Lumpur',
-    defaultState: 'Federal Territory',
+  MY: {
     defaultCity: 'Kuala Lumpur',
+    defaultState: 'Federal Territory',
+    timezone: 'Asia/Kuala_Lumpur',
     cities: [
       'Kuala Lumpur',
       'Penang / George Town',
@@ -224,30 +233,306 @@ export const SUPPORTED_COUNTRIES: CountryConfig[] = [
       'Kota Kinabalu',
       'Kuching',
       'Ipoh',
+      'Subang Jaya',
+      'Cyberjaya',
     ],
   },
-];
-
-export const getCountryByName = (name?: string): CountryConfig => {
-  if (!name) return SUPPORTED_COUNTRIES[0];
-  const found = SUPPORTED_COUNTRIES.find(
-    (c) => c.name.toLowerCase() === name.toLowerCase() || c.code.toLowerCase() === name.toLowerCase()
-  );
-  return found || SUPPORTED_COUNTRIES[0];
+  SA: {
+    defaultCity: 'Riyadh',
+    defaultState: 'Riyadh Region',
+    timezone: 'Asia/Riyadh',
+    cities: [
+      'Riyadh',
+      'Jeddah',
+      'Mecca',
+      'Medina',
+      'Dammam',
+      'Khobar',
+      'Dhahran',
+      'Tabuk',
+      'Abha',
+    ],
+  },
+  QA: {
+    defaultCity: 'Doha',
+    defaultState: 'Ad Dawhah',
+    timezone: 'Asia/Qatar',
+    cities: [
+      'Doha',
+      'Al Rayyan',
+      'Al Wakrah',
+      'Lusail',
+      'Al Khor',
+    ],
+  },
+  NZ: {
+    defaultCity: 'Auckland',
+    defaultState: 'Auckland Region',
+    timezone: 'Pacific/Auckland',
+    cities: [
+      'Auckland',
+      'Wellington',
+      'Christchurch',
+      'Hamilton',
+      'Tauranga',
+      'Queenstown',
+      'Dunedin',
+    ],
+  },
+  DE: {
+    defaultCity: 'Berlin',
+    defaultState: 'Berlin',
+    timezone: 'Europe/Berlin',
+    cities: [
+      'Berlin',
+      'Munich',
+      'Frankfurt',
+      'Hamburg',
+      'Cologne',
+      'Stuttgart',
+      'Düsseldorf',
+      'Leipzig',
+    ],
+  },
+  FR: {
+    defaultCity: 'Paris',
+    defaultState: 'Île-de-France',
+    timezone: 'Europe/Paris',
+    cities: [
+      'Paris',
+      'Lyon',
+      'Marseille',
+      'Toulouse',
+      'Nice',
+      'Nantes',
+      'Strasbourg',
+      'Bordeaux',
+    ],
+  },
+  IT: {
+    defaultCity: 'Rome',
+    defaultState: 'Lazio',
+    timezone: 'Europe/Rome',
+    cities: [
+      'Rome',
+      'Milan',
+      'Florence',
+      'Naples',
+      'Turin',
+      'Venice',
+      'Bologna',
+      'Palermo',
+    ],
+  },
+  ES: {
+    defaultCity: 'Madrid',
+    defaultState: 'Community of Madrid',
+    timezone: 'Europe/Madrid',
+    cities: [
+      'Madrid',
+      'Barcelona',
+      'Valencia',
+      'Seville',
+      'Málaga',
+      'Bilbao',
+      'Zaragoza',
+    ],
+  },
+  KR: {
+    defaultCity: 'Seoul',
+    defaultState: 'Seoul Capital Area',
+    timezone: 'Asia/Seoul',
+    cities: [
+      'Seoul',
+      'Busan',
+      'Incheon',
+      'Daegu',
+      'Daejeon',
+      'Gwangju',
+      'Jeju City',
+    ],
+  },
+  HK: {
+    defaultCity: 'Central & Western',
+    defaultState: 'Hong Kong Island',
+    timezone: 'Asia/Hong_Kong',
+    cities: [
+      'Central & Western',
+      'Wan Chai',
+      'Causeway Bay',
+      'Tsim Sha Tsui',
+      'Mong Kok',
+      'Kowloon City',
+      'Sha Tin',
+    ],
+  },
+  IN: {
+    defaultCity: 'Mumbai',
+    defaultState: 'Maharashtra',
+    timezone: 'Asia/Kolkata',
+    cities: [
+      'Mumbai',
+      'New Delhi',
+      'Bengaluru',
+      'Hyderabad',
+      'Chennai',
+      'Kolkata',
+      'Pune',
+      'Ahmedabad',
+    ],
+  },
+  ID: {
+    defaultCity: 'Jakarta',
+    defaultState: 'DKI Jakarta',
+    timezone: 'Asia/Jakarta',
+    cities: [
+      'Jakarta',
+      'Surabaya',
+      'Bandung',
+      'Medan',
+      'Bali / Denpasar',
+      'Semarang',
+      'Yogyakarta',
+    ],
+  },
+  TH: {
+    defaultCity: 'Bangkok',
+    defaultState: 'Bangkok Metropolis',
+    timezone: 'Asia/Bangkok',
+    cities: [
+      'Bangkok',
+      'Chiang Mai',
+      'Phuket',
+      'Pattaya',
+      'Nonthaburi',
+      'Hua Hin',
+      'Hat Yai',
+    ],
+  },
+  VN: {
+    defaultCity: 'Ho Chi Minh City',
+    defaultState: 'South Vietnam',
+    timezone: 'Asia/Ho_Chi_Minh',
+    cities: [
+      'Ho Chi Minh City',
+      'Hanoi',
+      'Da Nang',
+      'Hai Phong',
+      'Can Tho',
+      'Nha Trang',
+    ],
+  },
 };
 
-export const getCurrencySymbol = (currency?: string): string => {
-  if (!currency) return '₱';
-  const c = currency.toUpperCase();
-  if (c === 'PHP') return '₱';
-  if (c === 'USD') return '$';
-  if (c === 'SGD') return 'S$';
-  if (c === 'AED') return 'AED ';
-  if (c === 'GBP') return '£';
-  if (c === 'AUD') return 'A$';
-  if (c === 'CAD') return 'CA$';
-  if (c === 'JPY') return '¥';
-  if (c === 'MYR') return 'RM ';
-  if (c === 'EUR') return '€';
-  return `${c} `;
+// Retrieve phone length and formatting metadata using libphonenumber-js
+export const getPhoneRequirements = (countryCode: string) => {
+  try {
+    const ex = getExampleNumber(countryCode.toUpperCase() as CountryCode, mobileExamples);
+    if (ex) {
+      const dialCode = `+${ex.countryCallingCode}`;
+      const intlExample = ex.format('INTERNATIONAL');
+      const nationalLength = ex.nationalNumber.length;
+      return {
+        dialCode,
+        placeholder: intlExample,
+        nationalLength,
+        // formatted international string limit with extra cushion for spacing
+        maxTotalLength: intlExample.length + 3,
+      };
+    }
+  } catch (e) {
+    // fallback
+  }
+  return {
+    dialCode: '+1',
+    placeholder: '+1 (555) 000-0000',
+    nationalLength: 10,
+    maxTotalLength: 18,
+  };
+};
+
+// Build the standard supported countries list powered by countries-list and libphonenumber-js
+const rawCountryCodes = Object.keys(countries) as Array<keyof typeof countries>;
+
+export const SUPPORTED_COUNTRIES: CountryConfig[] = rawCountryCodes.map((isoCode) => {
+  const info: CountriesListData = countries[isoCode];
+  const phoneReq = getPhoneRequirements(isoCode);
+  const primary = WORLD_CITIES_REGISTRY[isoCode];
+
+  // Resolve primary currency
+  const rawCur = Array.isArray(info.currency) && info.currency.length > 0 ? info.currency[0] : (info.currency as any) || 'USD';
+  const currency = String(rawCur);
+
+  // Resolve primary dial code
+  const phonePrefix = Array.isArray(info.phone) && info.phone.length > 0
+    ? `+${info.phone[0]}`
+    : phoneReq.dialCode;
+
+  // Resolve cities
+  let cities = primary ? primary.cities : [];
+  if (cities.length === 0 && info.capital) {
+    cities = [info.capital];
+  }
+  if (cities.length === 0) {
+    cities = [info.name];
+  }
+
+  const defaultCity = primary?.defaultCity || info.capital || cities[0] || info.name;
+  const defaultState = primary?.defaultState || '';
+  const defaultTimezone = primary?.timezone || 'UTC';
+
+  let emojiFlag = '';
+  try {
+    emojiFlag = getEmojiFlag(isoCode);
+  } catch {
+    // ignore
+  }
+
+  return {
+    code: isoCode,
+    name: info.name,
+    nativeName: info.native,
+    emojiFlag,
+    currency,
+    currencySymbol: getCurrencySymbol(currency),
+    dialCode: phonePrefix,
+    phonePlaceholder: phoneReq.placeholder,
+    defaultTimezone,
+    defaultState,
+    defaultCity,
+    cities,
+    maxPhoneLength: phoneReq.maxTotalLength,
+    nationalPhoneLength: phoneReq.nationalLength,
+  };
+}).sort((a, b) => {
+  // Prioritize Philippines, United States, Singapore, UAE, United Kingdom, Australia, Canada, Japan, Malaysia at the top
+  const priorityOrder = ['PH', 'US', 'SG', 'AE', 'GB', 'AU', 'CA', 'JP', 'MY', 'SA', 'QA', 'NZ'];
+  const aIdx = priorityOrder.indexOf(a.code);
+  const bIdx = priorityOrder.indexOf(b.code);
+  if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+  if (aIdx !== -1) return -1;
+  if (bIdx !== -1) return 1;
+  return a.name.localeCompare(b.name);
+});
+
+// Fast lookup helper by country name or code
+export const getCountryByName = (nameOrCode?: string): CountryConfig => {
+  if (!nameOrCode) {
+    return SUPPORTED_COUNTRIES.find((c) => c.code === 'PH') || SUPPORTED_COUNTRIES[0];
+  }
+  const query = nameOrCode.trim().toLowerCase();
+  const match = SUPPORTED_COUNTRIES.find(
+    (c) => c.name.toLowerCase() === query || c.code.toLowerCase() === query
+  );
+  return match || SUPPORTED_COUNTRIES.find((c) => c.code === 'PH') || SUPPORTED_COUNTRIES[0];
+};
+
+// Format phone number live as user types using libphonenumber-js AsYouType
+export const formatPhoneNumberLive = (input: string, countryCode: string): string => {
+  try {
+    const formatter = new AsYouType(countryCode.toUpperCase() as CountryCode);
+    return formatter.input(input);
+  } catch (e) {
+    return input;
+  }
 };

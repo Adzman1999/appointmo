@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Tag, Sparkles, CheckCircle2, ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol } from '../lib/countryConfig';
+import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol, formatPhoneNumberLive } from '../lib/countryConfig';
 
 interface BusinessCreationModalProps {
   isOpen: boolean;
@@ -68,7 +68,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
   const [createAddress, setCreateAddress] = useState('');
   const [createLatitude, setCreateLatitude] = useState<number | undefined>(undefined);
   const [createLongitude, setCreateLongitude] = useState<number | undefined>(undefined);
-  const [createPhone, setCreatePhone] = useState('+63 2 8999 0001');
+  const [createPhone, setCreatePhone] = useState('');
   const [createEmail, setCreateEmail] = useState('');
   const [createStartTime, setCreateStartTime] = useState('09:00');
   const [createEndTime, setCreateEndTime] = useState('18:00');
@@ -88,11 +88,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
       setCreateStateProvince(cfg.defaultState);
     }
 
-    // Sync phone dial code
-    if (!createPhone || createPhone.startsWith('+')) {
-      setCreatePhone(`${cfg.dialCode} `);
-    }
-
+    // Do not autofill contact phone with fake numbers; keep empty or let user input according to country format
     // Smart sync cities list to this country
     if (cfg.cities && cfg.cities.length > 0) {
       setCityOptions(cfg.cities);
@@ -337,7 +333,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Owner Full Name <span className="text-rose-500">*</span>
+                  Owner Full Name <span className="text-rose-500 font-bold">* (Required)</span>
                 </label>
                 <input
                   type="text"
@@ -350,23 +346,20 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               </div>
               <div>
                 <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Owner Email / Sign-In <span className="text-rose-500">*</span>
+                  Owner Email / Sign-In <span className="text-rose-500 font-bold">* (Required)</span>
                 </label>
                 <input
                   type="email"
                   required
                   placeholder="owner@yourstore.com"
                   value={ownerEmail}
-                  onChange={(e) => {
-                    setOwnerEmail(e.target.value);
-                    if (!createEmail) setCreateEmail(e.target.value);
-                  }}
+                  onChange={(e) => setOwnerEmail(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                 />
               </div>
               <div>
                 <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Admin Password <span className="text-rose-500">*</span>
+                  Admin Password <span className="text-rose-500 font-bold">* (Required, Min. 6 chars)</span>
                 </label>
                 <div className="relative">
                   <input
@@ -401,7 +394,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
 
             <div>
               <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                Store / Business Name <span className="text-rose-500">*</span>
+                Store / Business Name <span className="text-rose-500 font-bold">* (Required)</span>
               </label>
               <input
                 type="text"
@@ -415,7 +408,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
 
             <div>
               <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                Tagline / Catchphrase (Optional)
+                Tagline / Catchphrase <span className="text-stone-400 font-normal">(Optional)</span>
               </label>
               <input
                 type="text"
@@ -429,7 +422,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             {/* Category */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block font-semibold text-stone-700 dark:text-stone-300">Category</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300">
+                  Category <span className="text-rose-500 font-bold">* (Required)</span>
+                </label>
                 <button
                   type="button"
                   onClick={() => {
@@ -438,7 +433,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                   }}
                   className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 underline"
                 >
-                  {isCustomCategory ? 'Choose Existing' : '+ Add New'}
+                  {isCustomCategory ? 'Choose Existing' : '+ Add New Category'}
                 </button>
               </div>
               {isCustomCategory ? (
@@ -468,7 +463,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
 
             <div>
               <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                Logo / Store Cover URL (Optional — auto-generates branded fallback if empty)
+                Logo / Store Cover URL <span className="text-stone-400 font-normal">(Optional)</span>
               </label>
               <input
                 type="url"
@@ -480,7 +475,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             </div>
 
             <div>
-              <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Description</label>
+              <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                Store Description <span className="text-stone-400 font-normal">(Optional)</span>
+              </label>
               <textarea
                 rows={2}
                 placeholder="Briefly describe what services, atmosphere, or specialties your store provides..."
@@ -523,7 +520,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Country
+                  Country <span className="text-rose-500 font-bold">* (Required)</span>
                 </label>
                 <select
                   value={selectedCountry}
@@ -532,7 +529,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 >
                   {SUPPORTED_COUNTRIES.map((c) => (
                     <option key={c.code} value={c.name}>
-                      {c.name} ({c.dialCode})
+                      {c.emojiFlag ? `${c.emojiFlag} ` : ''}{c.name} ({c.dialCode})
                     </option>
                   ))}
                 </select>
@@ -540,7 +537,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
 
               <div>
                 <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Store Currency
+                  Store Currency <span className="text-stone-400 font-normal">(Auto-synced)</span>
                 </label>
                 <input
                   type="text"
@@ -565,7 +562,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center space-x-1">
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300">City / Municipality <span className="text-rose-500">*</span></label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300">
+                    City / Municipality <span className="text-rose-500 font-bold">* (Required)</span>
+                  </label>
                   {initialData?.city && (
                     <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.2 rounded-md">
                       AI Suggested
@@ -580,7 +579,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                   }}
                   className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 underline"
                 >
-                  {isCustomCity ? 'Choose City' : '+ Add Custom City'}
+                  {isCustomCity ? 'Choose List' : '+ Add Custom City'}
                 </button>
               </div>
               {isCustomCity ? (
@@ -611,7 +610,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Province / State
+                  Province / State <span className="text-stone-400 font-normal">(Optional)</span>
                 </label>
                 <input
                   type="text"
@@ -623,7 +622,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               </div>
               <div>
                 <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Postal / ZIP Code
+                  Postal / ZIP Code <span className="text-stone-400 font-normal">(Optional)</span>
                 </label>
                 <input
                   type="text"
@@ -637,7 +636,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
 
             <div>
               <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                Detailed Street Address / Unit / Mall Level
+                Detailed Street Address / Unit / Mall Level <span className="text-stone-400 font-normal">(Optional)</span>
               </label>
               <input
                 type="text"
@@ -660,17 +659,33 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Contact Phone</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300">
+                    Contact Phone <span className="text-stone-400 font-normal">(Optional)</span>
+                  </label>
+                  {selectedCountry && (
+                    <span className="text-[10px] text-stone-400">
+                      Max {getCountryByName(selectedCountry).maxPhoneLength} chars
+                    </span>
+                  )}
+                </div>
                 <input
-                  type="text"
-                  placeholder="+63 2 8999 0001"
+                  type="tel"
+                  placeholder={getCountryByName(selectedCountry).phonePlaceholder || '+63 917 123 4567'}
+                  maxLength={getCountryByName(selectedCountry).maxPhoneLength}
                   value={createPhone}
-                  onChange={(e) => setCreatePhone(e.target.value)}
+                  onChange={(e) => {
+                    const countryCfg = getCountryByName(selectedCountry);
+                    const formatted = formatPhoneNumberLive(e.target.value, countryCfg.code);
+                    setCreatePhone(formatted.slice(0, countryCfg.maxPhoneLength));
+                  }}
                   className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                 />
               </div>
               <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Email (Public / Inquiries)</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Store Email (Public / Inquiries) <span className="text-stone-400 font-normal">(Optional)</span>
+                </label>
                 <input
                   type="email"
                   placeholder="contact@yourstore.com"
@@ -683,7 +698,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Social Media Handle (Any Platform)</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Social Media Handle <span className="text-stone-400 font-normal">(Optional)</span>
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. @yourstore, fb.com/yourstore, or tiktok.com/@store"
@@ -693,7 +710,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Website URL (Optional)</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Website URL <span className="text-stone-400 font-normal">(Optional)</span>
+                </label>
                 <input
                   type="url"
                   placeholder="https://yourstore.ph"
@@ -716,7 +735,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block mb-1">Opening Time</span>
+                <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                  Opening Time <span className="text-rose-500 font-bold">* (Required)</span>
+                </span>
                 <input
                   type="time"
                   required
@@ -731,7 +752,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 />
               </div>
               <div>
-                <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block mb-1">Closing Time</span>
+                <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                  Closing Time <span className="text-rose-500 font-bold">* (Required)</span>
+                </span>
                 <input
                   type="time"
                   required

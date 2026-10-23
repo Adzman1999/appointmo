@@ -13,7 +13,7 @@ import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { DemoTopNav } from '../components/DemoTopNav';
 import { Pagination } from '../components/Pagination';
-import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol } from '../lib/countryConfig';
+import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol, formatPhoneNumberLive } from '../lib/countryConfig';
 import { toast } from 'sonner';
 
 export const DemoAdminDashboardPage: React.FC = () => {
@@ -118,11 +118,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       setEditStateProvince(cfg.defaultState);
     }
 
-    // Sync phone dial code prefix
-    if (!editPhone || editPhone.startsWith('+')) {
-      setEditPhone(`${cfg.dialCode} `);
-    }
-
+    // Do not autofill phone number; allow user to type based on national/international country length
     // Smart sync cities list to this country
     if (cfg.cities && cfg.cities.length > 0) {
       setCityOptions(cfg.cities);
@@ -1290,7 +1286,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                         <div>
-                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store / Business Name</label>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                            Store / Business Name <span className="text-rose-500 font-bold">* (Required)</span>
+                          </label>
                           <input
                             type="text"
                             value={editName}
@@ -1302,7 +1300,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Tagline / Catchphrase (Optional)</label>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                            Tagline / Catchphrase <span className="text-stone-400 font-normal">(Optional)</span>
+                          </label>
                           <input
                             type="text"
                             value={editTagline}
@@ -1317,7 +1317,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       {/* Category */}
                       <div className="text-xs">
                         <div className="flex items-center justify-between mb-1">
-                          <label className="block font-semibold text-stone-700 dark:text-stone-300">Category</label>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300">
+                            Category <span className="text-rose-500 font-bold">* (Required)</span>
+                          </label>
                           <button
                             type="button"
                             onClick={() => {
@@ -1326,7 +1328,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             }}
                             className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 underline"
                           >
-                            {isCustomCategory ? 'Choose Existing' : '+ Add New'}
+                            {isCustomCategory ? 'Choose Existing' : '+ Add New Category'}
                           </button>
                         </div>
                         {isCustomCategory ? (
@@ -1358,7 +1360,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
                       {/* Store Description */}
                       <div className="text-xs">
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Description</label>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                          Store Description <span className="text-stone-400 font-normal">(Optional)</span>
+                        </label>
                         <textarea
                           rows={3}
                           value={editDescription}
@@ -1372,7 +1376,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       {/* Logo URL with Live Preview */}
                       <div className="p-4 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs space-y-2.5 transition-colors">
                         <label className="block font-semibold text-stone-800 dark:text-stone-200">
-                          Logo / Store Cover URL (Optional — auto-generates branded fallback if empty)
+                          Logo / Store Cover URL <span className="text-stone-400 font-normal">(Optional)</span>
                         </label>
                         <div className="flex items-center space-x-3">
                           <div className="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
@@ -1408,7 +1412,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                         <div>
                           <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                            Country
+                            Country <span className="text-rose-500 font-bold">* (Required)</span>
                           </label>
                           <select
                             value={editCountry}
@@ -1418,7 +1422,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           >
                             {SUPPORTED_COUNTRIES.map((c) => (
                               <option key={c.code} value={c.name}>
-                                {c.name} ({c.dialCode})
+                                {c.emojiFlag ? `${c.emojiFlag} ` : ''}{c.name} ({c.dialCode})
                               </option>
                             ))}
                           </select>
@@ -1426,7 +1430,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
                         <div>
                           <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                            Store Currency
+                            Store Currency <span className="text-stone-400 font-normal">(Auto-synced)</span>
                           </label>
                           <input
                             type="text"
@@ -1450,7 +1454,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       {/* City / Primary Location */}
                       <div className="text-xs">
                         <div className="flex items-center justify-between mb-1">
-                          <label className="block font-semibold text-stone-700 dark:text-stone-300">City / Location</label>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300">
+                            City / Location <span className="text-rose-500 font-bold">* (Required)</span>
+                          </label>
                           <button
                             type="button"
                             onClick={() => {
@@ -1459,7 +1465,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             }}
                             className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 underline"
                           >
-                            {isCustomCity ? 'Choose City' : '+ Add Custom City'}
+                            {isCustomCity ? 'Choose List' : '+ Add Custom City'}
                           </button>
                         </div>
                         {isCustomCity ? (
@@ -1492,7 +1498,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                         <div>
                           <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                            Province / State
+                            Province / State <span className="text-stone-400 font-normal">(Optional)</span>
                           </label>
                           <input
                             type="text"
@@ -1505,7 +1511,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         </div>
                         <div>
                           <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                            Postal / ZIP Code
+                            Postal / ZIP Code <span className="text-stone-400 font-normal">(Optional)</span>
                           </label>
                           <input
                             type="text"
@@ -1520,7 +1526,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
                       <div className="text-xs">
                         <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                          Detailed Street Address / Unit / Mall Level
+                          Detailed Street Address / Unit / Mall Level <span className="text-stone-400 font-normal">(Optional)</span>
                         </label>
                         <input
                           type="text"
@@ -1544,18 +1550,34 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                         <div>
-                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Contact Phone</label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block font-semibold text-stone-700 dark:text-stone-300">
+                              Contact Phone <span className="text-stone-400 font-normal">(Optional)</span>
+                            </label>
+                            {editCountry && (
+                              <span className="text-[10px] text-stone-400">
+                                Max {getCountryByName(editCountry).maxPhoneLength} chars
+                              </span>
+                            )}
+                          </div>
                           <input
-                            type="text"
+                            type="tel"
                             value={editPhone}
-                            onChange={(e) => setEditPhone(e.target.value)}
-                            placeholder="+63 2 8999 0001"
+                            placeholder={getCountryByName(editCountry).phonePlaceholder || '+63 917 123 4567'}
+                            maxLength={getCountryByName(editCountry).maxPhoneLength}
+                            onChange={(e) => {
+                              const countryCfg = getCountryByName(editCountry);
+                              const formatted = formatPhoneNumberLive(e.target.value, countryCfg.code);
+                              setEditPhone(formatted.slice(0, countryCfg.maxPhoneLength));
+                            }}
                             disabled={isPending}
                             className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                           />
                         </div>
                         <div>
-                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Email (Optional)</label>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                            Store Email <span className="text-stone-400 font-normal">(Optional)</span>
+                          </label>
                           <input
                             type="email"
                             value={editEmail}
@@ -1567,7 +1589,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         </div>
 
                         <div>
-                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Official Website (Optional)</label>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                            Official Website <span className="text-stone-400 font-normal">(Optional)</span>
+                          </label>
                           <input
                             type="url"
                             value={editWebsite}
@@ -1578,7 +1602,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Social Media Handle (Optional)</label>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                            Social Media Handle <span className="text-stone-400 font-normal">(Optional)</span>
+                          </label>
                           <input
                             type="text"
                             value={editSocialHandle}
@@ -1602,7 +1628,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
                       <div className="grid grid-cols-2 gap-4 text-xs">
                         <div>
-                          <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block mb-1">Opening Time</span>
+                          <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                            Opening Time <span className="text-rose-500 font-bold">* (Required)</span>
+                          </span>
                           <input
                             type="time"
                             required
@@ -1619,7 +1647,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block mb-1">Closing Time</span>
+                          <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                            Closing Time <span className="text-rose-500 font-bold">* (Required)</span>
+                          </span>
                           <input
                             type="time"
                             required
@@ -2399,7 +2429,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
                   <div className="space-y-4 text-xs">
                     <div>
-                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Full Name</label>
+                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                        Full Name <span className="text-rose-500 font-bold">* (Required)</span>
+                      </label>
                       <input
                         type="text"
                         required
@@ -2412,7 +2444,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Email Address</label>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                          Email Address <span className="text-rose-500 font-bold">* (Required)</span>
+                        </label>
                         <input
                           type="email"
                           required
@@ -2423,7 +2457,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Phone Number</label>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                          Phone Number <span className="text-stone-400 font-normal">(Optional)</span>
+                        </label>
                         <input
                           type="text"
                           value={accountPhone}
@@ -2441,7 +2477,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-stone-500 dark:text-stone-400 mb-1">Current Password (Required only if changing password)</label>
+                        <label className="block text-stone-500 dark:text-stone-400 mb-1">
+                          Current Password <span className="text-stone-400 font-normal">(Optional — required only if changing password)</span>
+                        </label>
                         <div className="relative">
                           <input
                             type={showCurrentPass ? "text" : "password"}
@@ -2462,7 +2500,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-stone-500 dark:text-stone-400 mb-1">New Password</label>
+                          <label className="block text-stone-500 dark:text-stone-400 mb-1">
+                            New Password <span className="text-stone-400 font-normal">(Optional, Min. 6 chars)</span>
+                          </label>
                           <div className="relative">
                             <input
                               type={showNewPass ? "text" : "password"}
@@ -2482,7 +2522,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         </div>
 
                         <div>
-                          <label className="block text-stone-500 dark:text-stone-400 mb-1">Confirm New Password</label>
+                          <label className="block text-stone-500 dark:text-stone-400 mb-1">
+                            Confirm New Password <span className="text-stone-400 font-normal">(Optional)</span>
+                          </label>
                           <input
                             type="password"
                             value={confirmPassword}
@@ -3183,7 +3225,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
             <form onSubmit={handleAddService} className="space-y-4 text-xs">
               <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Service Name</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Service Name <span className="text-rose-500 font-bold">* (Required)</span>
+                </label>
                 <input
                   type="text"
                   required
@@ -3197,7 +3241,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Price ({getCurrencySymbol(editCurrency).trim()} {editCurrency})
+                    Price ({getCurrencySymbol(editCurrency).trim()} {editCurrency}) <span className="text-rose-500 font-bold">* (Required)</span>
                   </label>
                   <input
                     type="number"
@@ -3209,7 +3253,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Duration</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Duration <span className="text-rose-500 font-bold">* (Required)</span>
+                  </label>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <select
@@ -3242,7 +3288,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300">Category</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300">
+                    Category <span className="text-rose-500 font-bold">* (Required)</span>
+                  </label>
                   <button
                     type="button"
                     onClick={() => {
@@ -3280,7 +3328,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Short Description</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Short Description <span className="text-stone-400 font-normal">(Optional)</span>
+                </label>
                 <textarea
                   rows={2}
                   placeholder="What is included in this session..."
