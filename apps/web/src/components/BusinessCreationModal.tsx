@@ -354,7 +354,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
           <div className="bg-amber-50/60 dark:bg-amber-950/30 p-4 rounded-2xl border border-amber-200/80 dark:border-amber-800/60 space-y-3">
             <div className="flex items-center space-x-2">
               <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              <span className="font-bold text-amber-950 dark:text-amber-200 text-sm">
+              <span className="font-bold text-amber-950 dark:text-amber-200 text-sm" >
                 1. Owner &amp; Administrator Credentials
               </span>
             </div>
@@ -479,13 +479,13 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                   placeholder="e.g. Photography Studio"
                   value={customCategoryInput}
                   onChange={(e) => setCustomCategoryInput(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  className="w-full h-10 px-3.5 py-2 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                 />
               ) : (
                 <select
                   value={createCategory}
                   onChange={(e) => setCreateCategory(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  className="w-full h-10 px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                 >
                   {categoryOptions.map((cat, i) => (
                     <option key={i} value={cat}>
@@ -560,7 +560,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 <select
                   value={selectedCountry}
                   onChange={(e) => handleCountryChange(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  className="w-full h-10 px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                 >
                   {SUPPORTED_COUNTRIES.map((c) => (
                     <option key={c.code} value={c.name}>
@@ -578,7 +578,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                   type="text"
                   readOnly
                   value={`${selectedCurrency} (${getCurrencySymbol(selectedCurrency).trim()})`}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-100 dark:bg-stone-800/80 text-stone-700 dark:text-stone-300 text-xs font-semibold"
+                  className="w-full h-10 px-3.5 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-100 dark:bg-stone-800/80 text-stone-700 dark:text-stone-300 text-xs font-semibold"
                 />
               </div>
             </div>
@@ -625,13 +625,13 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                   placeholder="e.g. Cebu City, Davao City"
                   value={customCityInput}
                   onChange={(e) => setCustomCityInput(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  className="w-full h-10 px-3.5 py-2 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                 />
               ) : (
                 <select
                   value={createCity}
                   onChange={(e) => setCreateCity(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  className="w-full h-10 px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                 >
                   {cityOptions.map((c, i) => (
                     <option key={i} value={c}>

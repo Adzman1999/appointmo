@@ -50,14 +50,14 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
   return (
     <div className="space-y-1">
       <div
-        className={`relative flex items-center rounded-xl border bg-white dark:bg-stone-800 overflow-hidden transition-colors ${
+        className={`relative flex items-center h-10 rounded-xl border bg-white dark:bg-stone-800 overflow-hidden transition-colors ${
           isInvalidStart
             ? 'border-rose-400 dark:border-rose-600 focus-within:border-rose-500'
             : 'border-stone-300 dark:border-stone-700 focus-within:border-stone-900 dark:focus-within:border-amber-400'
         } ${disabled ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''} ${className}`}
       >
         {/* Locked, preserved dial code badge */}
-        <div className="flex items-center space-x-1.5 px-3 py-2 bg-stone-100/80 dark:bg-stone-800/90 border-r border-stone-200 dark:border-stone-700 select-none text-stone-700 dark:text-stone-300 font-mono font-bold text-xs shrink-0">
+        <div className="flex items-center space-x-1.5 px-3 h-full bg-stone-100/80 dark:bg-stone-800/90 border-r border-stone-200 dark:border-stone-700 select-none text-stone-700 dark:text-stone-300 font-mono font-bold text-xs shrink-0">
           {country.emojiFlag && <span className="text-sm leading-none">{country.emojiFlag}</span>}
           <span>{dialCode}</span>
         </div>
@@ -72,7 +72,7 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
           value={displayNational}
           onChange={handleInputChange}
           placeholder={placeholder || (country.code === 'PH' ? '905 242 2821' : `e.g. ${nationalLength} digits`)}
-          className="w-full min-w-0 px-3 py-2 bg-transparent text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs font-mono focus:outline-none"
+          className="w-full h-full min-w-0 px-3 py-2 bg-transparent text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs font-mono focus:outline-none"
         />
 
         {/* Digits counter helper */}

@@ -203,19 +203,18 @@ export const AdminLoginPage: React.FC = () => {
             {/* If Sign Up: ask for Formal Name, Country, and Phone */}
             {authMode === 'signup' && (
               <div className="space-y-3">
-                <div>
-                  <FormalNameFields
-                    firstName={firstName}
-                    middleName={middleName}
-                    lastName={lastName}
-                    onFirstNameChange={setFirstName}
-                    onMiddleNameChange={setMiddleName}
-                    onLastNameChange={setLastName}
-                    required={true}
-                  />
-                </div>
+                <FormalNameFields
+                  firstName={firstName}
+                  middleName={middleName}
+                  lastName={lastName}
+                  onFirstNameChange={setFirstName}
+                  onMiddleNameChange={setMiddleName}
+                  onLastNameChange={setLastName}
+                  required={true}
+                  layout="stacked"
+                />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
                       Country <span className="text-rose-500 font-bold">*</span>
@@ -226,7 +225,7 @@ export const AdminLoginPage: React.FC = () => {
                         setSelectedCountry(e.target.value);
                         setPhone(''); // reset phone when switching countries for clean format
                       }}
-                      className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                      className="w-full h-10 px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                     >
                       {SUPPORTED_COUNTRIES.map((c) => (
                         <option key={c.code} value={c.name}>

@@ -3699,7 +3699,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   <select
                     value={editStaffEmploymentType}
                     onChange={(e) => setEditStaffEmploymentType(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                    className="w-full h-10 px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
                   >
                     <option value="Full-Time">Full-Time</option>
                     <option value="Part-Time">Part-Time</option>
