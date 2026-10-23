@@ -407,7 +407,7 @@ router.get('/notifications', requireOwnerAuth, async (req: Request, res: Respons
     const listRes = await query(`
       SELECT n.id, n.type, n.title, n.message, n.is_read AS "isRead", n.metadata, n.created_at AS "createdAt"
       FROM notifications n
-      WHERE n.recipient_type = 'superadmin' OR n.recipient_identifier = 'superadmin'
+      WHERE (n.recipient_type = 'superadmin' OR n.recipient_identifier = 'superadmin') AND n.is_read = false
       ORDER BY n.created_at DESC
       LIMIT 50
     `);

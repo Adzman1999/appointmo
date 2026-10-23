@@ -307,6 +307,36 @@ export const runMigrations = async () => {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS recent_credentials JSONB;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS status_reason TEXT;
+
+    -- HRIS & Staff Compensation & Payroll Extensions
+    ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS position VARCHAR(100) DEFAULT 'Specialist';
+    ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS employment_type VARCHAR(50) DEFAULT 'Full-Time'; -- Full-Time, Part-Time, Contractor
+    ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS base_salary NUMERIC(10, 2) DEFAULT 0.00;
+    ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS commission_rate NUMERIC(5, 2) DEFAULT 0.00; -- Percentage e.g. 10.00%
+    ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS hire_date DATE DEFAULT CURRENT_DATE;
+    ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+    ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+    ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS emergency_contact VARCHAR(255);
+    ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active';
+
+    -- Payroll Ledger & Compensation Records
+    CREATE TABLE IF NOT EXISTS payroll_records (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      staff_id UUID NOT NULL REFERENCES staff_profiles(id) ON DELETE CASCADE,
+      pay_period_start DATE NOT NULL,
+      pay_period_end DATE NOT NULL,
+      base_pay NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+      commission_pay NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+      bonuses NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+      deductions NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+      net_salary NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+      payment_status VARCHAR(50) NOT NULL DEFAULT 'paid', -- pending, paid
+      payment_date TIMESTAMPTZ DEFAULT NOW(),
+      notes TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_payroll_business ON payroll_records (business_id, staff_id);
   `);
 
   console.log('✅ Migrations completed successfully.');

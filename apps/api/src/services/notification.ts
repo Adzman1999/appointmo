@@ -39,7 +39,7 @@ export class NotificationService {
       FROM notifications n
       LEFT JOIN appointments a ON n.appointment_id = a.id
       LEFT JOIN services s ON a.service_id = s.id
-      WHERE n.business_id = $1 AND n.recipient_type = 'admin'
+      WHERE n.business_id = $1 AND n.recipient_type = 'admin' AND n.is_read = false
       ORDER BY n.created_at DESC
       LIMIT $2
     `, [businessId, limit]);

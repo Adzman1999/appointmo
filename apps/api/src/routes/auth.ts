@@ -158,4 +158,104 @@ router.post('/register', async (req: Request, res: Response) => {
   }
 });
 
+// Update Current User Account (Name, Email, Phone, Password)
+router.put('/account', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    const token = authHeader.split(' ')[1];
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, config.jwtSecret);
+    } catch {
+      return res.status(401).json({ error: 'Invalid or expired session token' });
+    }
+
+    const userId = decoded.userId || decoded.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Invalid session' });
+    }
+
+    const { name, email, phone, currentPassword, newPassword } = req.body;
+
+    // Fetch existing user
+    const userRes = await query('SELECT id, email, password_hash, name, phone, role, status, business_id FROM users WHERE id = $1', [userId]);
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: 'User account not found' });
+    }
+    const currentUser = userRes.rows[0];
+
+    // If changing password, verify current password
+    if (newPassword && newPassword.trim()) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: 'Current password is required to set a new password' });
+      }
+      const isMatch = await bcrypt.compare(currentPassword, currentUser.password_hash);
+      if (!isMatch) {
+        return res.status(400).json({ error: 'Current password does not match' });
+      }
+      if (newPassword.trim().length < 6) {
+        return res.status(400).json({ error: 'New password must be at least 6 characters' });
+      }
+    }
+
+    // Check if new email is taken by someone else
+    const finalEmail = (email || currentUser.email).toLowerCase().trim();
+    if (finalEmail !== currentUser.email) {
+      const emailCheck = await query('SELECT id FROM users WHERE email = $1 AND id != $2', [finalEmail, userId]);
+      if (emailCheck.rows.length > 0) {
+        return res.status(409).json({ error: 'Email address is already in use by another account' });
+      }
+    }
+
+    const finalName = name ? name.trim() : currentUser.name;
+    const finalPhone = phone !== undefined ? phone.trim() : currentUser.phone;
+    let finalPasswordHash = currentUser.password_hash;
+    if (newPassword && newPassword.trim()) {
+      finalPasswordHash = await bcrypt.hash(newPassword.trim(), 10);
+    }
+
+    const updatedRes = await query(`
+      UPDATE users 
+      SET name = $1, email = $2, phone = $3, password_hash = $4, updated_at = NOW()
+      WHERE id = $5
+      RETURNING id, name, email, phone, role, status, business_id
+    `, [finalName, finalEmail, finalPhone, finalPasswordHash, userId]);
+
+    const updatedUser = updatedRes.rows[0];
+
+    // Issue refreshed token
+    const newToken = jwt.sign(
+      {
+        userId: updatedUser.id,
+        id: updatedUser.id,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        businessId: updatedUser.business_id,
+      },
+      config.jwtSecret,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      message: 'Account details updated successfully',
+      token: newToken,
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        name: updatedUser.name,
+        phone: updatedUser.phone,
+        role: updatedUser.role,
+        status: updatedUser.status,
+        businessId: updatedUser.business_id,
+      }
+    });
+  } catch (err: any) {
+    console.error('Update account error:', err);
+    res.status(500).json({ error: 'Failed to update account: ' + err.message });
+  }
+});
+
 export default router;

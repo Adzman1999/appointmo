@@ -205,19 +205,18 @@ export const SuperAdminApprovalPage: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // When clicking a notification item: close dropdown, mark read, and open full details modal
+  // When clicking a notification item: close dropdown, auto-remove from list, and open full details modal
   const handleClickNotification = async (notif: any) => {
     setSelectedNotif(notif);
     setIsNotifOpen(false);
-    // Mark as read in state
-    setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, isRead: true } : n));
+    // Auto remove viewed notification from the active list
+    setNotifications(prev => prev.filter(n => n.id !== notif.id));
     if (!notif.isRead) {
       setUnreadCount(prev => Math.max(0, prev - 1));
     }
 
     try {
       await apiFetch(`/owner/notifications/${notif.id}/read`, { method: 'PATCH' });
-      fetchNotifications();
     } catch (err) {
       console.error('Error marking notification as read:', err);
     }

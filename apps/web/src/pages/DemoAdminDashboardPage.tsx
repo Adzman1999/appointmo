@@ -5,7 +5,8 @@ import {
   Search, Filter, Clock, ArrowRight, Sparkles, Building2, 
   Check, X, AlertTriangle, Shield, Bell, ChevronRight, UserCheck, 
   RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store, MapPin, Lightbulb, TrendingUp, LogOut,
-  Settings, Image, Scissors, Briefcase, Power, Save, Globe, Share2, Mail, Phone, Sliders, ShieldCheck
+  Settings, Image, Scissors, Briefcase, Power, Save, Globe, Share2, Mail, Phone, Sliders, ShieldCheck,
+  User, Lock, Eye, EyeOff, Receipt, Wallet, Award, FileSpreadsheet
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { BusinessLogo } from '../components/BusinessLogo';
@@ -20,8 +21,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   // Active Admin View Tab: 'appointments' or 'setup'
   const [activeTab, setActiveTab] = useState<'appointments' | 'setup'>('appointments');
-  // Store Setup Sub-Navigation Menu
-  const [setupSubTab, setSetupSubTab] = useState<'profile' | 'services' | 'staff' | 'schedule' | 'policies'>('profile');
+  // Store Setup Sub-Navigation Menu: profile, services, staff, hris, schedule, policies, account
+  const [setupSubTab, setSetupSubTab] = useState<'profile' | 'services' | 'staff' | 'hris' | 'schedule' | 'policies' | 'account'>('profile');
 
   const [businesses, setBusinesses] = useState<any[]>([]);
   // Resolve active store slug from URL or user context, default to lumiere-beauty-studio
@@ -45,19 +46,48 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [storeStaff, setStoreStaff] = useState<any[]>([]);
   const [storeWorkingHours, setStoreWorkingHours] = useState<any[]>([]);
   
-  // Edit Form Fields
+  // Edit Form Fields (Matching "Launch Your Own Store" Creation Form)
   const [editName, setEditName] = useState('');
   const [editTagline, setEditTagline] = useState('');
+  const [editCategory, setEditCategory] = useState('Beauty & Wellness');
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [customCategoryInput, setCustomCategoryInput] = useState('');
+  const categoryOptions = [
+    'Beauty & Wellness',
+    'Dental Services',
+    'Veterinary Services',
+    'Professional Consultations',
+    'Automotive & Detailing',
+    'Health & Fitness',
+  ];
+
+  const [editCity, setEditCity] = useState('Quezon City');
+  const [isCustomCity, setIsCustomCity] = useState(false);
+  const [customCityInput, setCustomCityInput] = useState('');
+  const cityOptions = [
+    'Quezon City',
+    'Makati',
+    'Taguig / BGC',
+    'Pasig / Ortigas',
+    'San Juan / Greenhills',
+    'Mandaluyong',
+    'Manila',
+    'Alabang / Muntinlupa',
+    'Pasay',
+  ];
+
   const [editDescription, setEditDescription] = useState('');
   const [editLogoUrl, setEditLogoUrl] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editAddress, setEditAddress] = useState('');
-  const [editCity, setEditCity] = useState('');
+  const [editStartTime, setEditStartTime] = useState('09:00');
+  const [editEndTime, setEditEndTime] = useState('18:00');
   const [editOpeningHours, setEditOpeningHours] = useState('');
   const [editWebsite, setEditWebsite] = useState('');
   const [editSocialHandle, setEditSocialHandle] = useState('');
   const [editStatus, setEditStatus] = useState<'approved' | 'closed' | 'pending'>('approved');
+
   // Suggested Booking Configurations
   const [requireApproval, setRequireApproval] = useState(false);
   const [minLeadHours, setMinLeadHours] = useState(2);
@@ -65,6 +95,43 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [slotInterval, setSlotInterval] = useState(45);
   const [autoReminderEmail, setAutoReminderEmail] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
+
+  // Admin Account Profile State
+  const [accountName, setAccountName] = useState(storedUser?.name || '');
+  const [accountEmail, setAccountEmail] = useState(storedUser?.email || '');
+  const [accountPhone, setAccountPhone] = useState(storedUser?.phone || '');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [updatingAccount, setUpdatingAccount] = useState(false);
+
+  // HRIS & Payroll Records State
+  const [payrollRecords, setPayrollRecords] = useState<any[]>([]);
+  const [loadingPayroll, setLoadingPayroll] = useState(false);
+  const [showPayrollModal, setShowPayrollModal] = useState(false);
+  const [payrollStaffId, setPayrollStaffId] = useState('');
+  const [payPeriodStart, setPayPeriodStart] = useState('');
+  const [payPeriodEnd, setPayPeriodEnd] = useState('');
+  const [basePay, setBasePay] = useState('');
+  const [commissionPay, setCommissionPay] = useState('');
+  const [bonuses, setBonuses] = useState('');
+  const [deductions, setDeductions] = useState('');
+  const [payrollNotes, setPayrollNotes] = useState('');
+  const [recordingPayroll, setRecordingPayroll] = useState(false);
+
+  // Detailed Staff Profile Modal (for HRIS management)
+  const [editingStaffMember, setEditingStaffMember] = useState<any | null>(null);
+  const [editStaffPosition, setEditStaffPosition] = useState('Specialist');
+  const [editStaffEmploymentType, setEditStaffEmploymentType] = useState('Full-Time');
+  const [editStaffBaseSalary, setEditStaffBaseSalary] = useState('25000');
+  const [editStaffCommissionRate, setEditStaffCommissionRate] = useState('10');
+  const [editStaffHireDate, setEditStaffHireDate] = useState('');
+  const [editStaffEmail, setEditStaffEmail] = useState('');
+  const [editStaffPhone, setEditStaffPhone] = useState('');
+  const [editStaffEmergency, setEditStaffEmergency] = useState('');
+  const [savingStaffHris, setSavingStaffHris] = useState(false);
 
   // Pending State Calculation
   const isPending = currentBusiness?.status === 'pending' || editStatus === 'pending' || (storedUser?.role === 'business_admin' && storedUser?.status === 'pending');
@@ -75,12 +142,15 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [newStaffBio, setNewStaffBio] = useState('');
   const [addingStaff, setAddingStaff] = useState(false);
 
-  // Quick Service Creation Form
+  // Quick Service Creation Form (with Time Picker & Category Selection)
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
   const [newServiceName, setNewServiceName] = useState('');
   const [newServicePrice, setNewServicePrice] = useState('');
-  const [newServiceDuration, setNewServiceDuration] = useState('45');
-  const [newServiceCategory, setNewServiceCategory] = useState('General');
+  const [newServiceDurationHours, setNewServiceDurationHours] = useState('0');
+  const [newServiceDurationMinutes, setNewServiceDurationMinutes] = useState('45');
+  const [newServiceCategory, setNewServiceCategory] = useState('Beauty & Wellness');
+  const [isNewCustomCategory, setIsNewCustomCategory] = useState(false);
+  const [newCustomCategoryInput, setNewCustomCategoryInput] = useState('');
   const [newServiceDesc, setNewServiceDesc] = useState('');
   const [addingService, setAddingService] = useState(false);
 
@@ -246,16 +316,38 @@ export const DemoAdminDashboardPage: React.FC = () => {
       if (sRes.business) {
         setEditName(sRes.business.name || '');
         setEditTagline(sRes.business.tagline || '');
+        setEditCategory(sRes.business.category || 'Beauty & Wellness');
         setEditDescription(sRes.business.description || '');
         setEditLogoUrl(sRes.business.logoUrl || '');
         setEditPhone(sRes.business.phone || '');
         setEditEmail(sRes.business.email || '');
         setEditAddress(sRes.business.address || '');
-        setEditCity(sRes.business.city || '');
-        setEditOpeningHours(sRes.business.openingHours || '');
+        setEditCity(sRes.business.city || 'Quezon City');
+        setEditOpeningHours(sRes.business.openingHours || '9:00 AM - 6:00 PM');
         setEditWebsite(sRes.business.website || '');
         setEditSocialHandle(sRes.business.socialHandle || '');
         setEditStatus(sRes.business.status || 'approved');
+
+        // Parse opening hours into start and end time if possible (e.g. "9:00 AM - 6:00 PM")
+        if (sRes.business.openingHours) {
+          const parts = sRes.business.openingHours.split('-').map((s: string) => s.trim());
+          if (parts.length === 2) {
+            const parseTo24 = (t: string) => {
+              const match = t.match(/(\d+):?(\d*)\s*(AM|PM)?/i);
+              if (match) {
+                let h = parseInt(match[1]);
+                const m = match[2] ? parseInt(match[2]) : 0;
+                const ampm = match[3] ? match[3].toUpperCase() : '';
+                if (ampm === 'PM' && h < 12) h += 12;
+                if (ampm === 'AM' && h === 12) h = 0;
+                return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+              }
+              return '09:00';
+            };
+            setEditStartTime(parseTo24(parts[0]));
+            setEditEndTime(parseTo24(parts[1]));
+          }
+        }
 
         if (sRes.business.bookingPolicies) {
           const bp = typeof sRes.business.bookingPolicies === 'string'
@@ -288,6 +380,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
   useEffect(() => {
     fetchBusinesses();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'setup' && setupSubTab === 'hris') {
+      fetchPayroll();
+    }
+  }, [activeTab, setupSubTab, activeSlug]);
 
   useEffect(() => {
     setLoading(true);
@@ -469,17 +567,17 @@ export const DemoAdminDashboardPage: React.FC = () => {
     }
   };
 
-  // View notification full info
+  // View notification full info: open modal, auto-remove from notification list
   const handleViewNotification = async (notif: any) => {
     setSelectedNotif(notif);
     setIsNotifOpen(false);
-    setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, isRead: true } : n));
+    // Auto remove from notification list once viewed
+    setNotifications(prev => prev.filter(n => n.id !== notif.id));
     if (!notif.isRead) {
       setUnreadCount(prev => Math.max(0, prev - 1));
     }
     try {
       await apiFetch(`/demo/admin/notifications/${notif.id}/read`, { method: 'PATCH' });
-      fetchNotifications();
     } catch (err) {
       console.error(err);
     }
@@ -507,6 +605,24 @@ export const DemoAdminDashboardPage: React.FC = () => {
       });
       return;
     }
+    // Format 24-hr time string (e.g. "09:00", "18:00") into friendly display e.g. "9:00 AM - 6:00 PM"
+    const formatTimeRange = (start: string, end: string) => {
+      const formatSingle = (timeStr: string) => {
+        if (!timeStr) return '';
+        const [hours, mins] = timeStr.split(':').map(Number);
+        if (isNaN(hours)) return timeStr;
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const adjHours = hours % 12 || 12;
+        const adjMins = mins ? String(mins).padStart(2, '0') : '00';
+        return `${adjHours}:${adjMins} ${period}`;
+      };
+      return `${formatSingle(start || '09:00')} - ${formatSingle(end || '18:00')}`;
+    };
+
+    const finalCategory = isCustomCategory ? customCategoryInput.trim() : editCategory.trim();
+    const finalCity = isCustomCity ? customCityInput.trim() : editCity.trim();
+    const formattedHours = formatTimeRange(editStartTime, editEndTime);
+
     setSavingSettings(true);
     try {
       const res: any = await apiFetch(`/demo/admin/settings?slug=${encodeURIComponent(activeSlug)}`, {
@@ -514,13 +630,14 @@ export const DemoAdminDashboardPage: React.FC = () => {
         body: JSON.stringify({
           name: editName.trim(),
           tagline: editTagline.trim(),
+          category: finalCategory || 'Beauty & Wellness',
           description: editDescription.trim(),
           logoUrl: editLogoUrl.trim() || null,
           phone: editPhone.trim(),
           email: editEmail.trim(),
           address: editAddress.trim(),
-          city: editCity.trim(),
-          openingHours: editOpeningHours.trim(),
+          city: finalCity || 'Quezon City',
+          openingHours: formattedHours,
           website: editWebsite.trim() || null,
           socialHandle: editSocialHandle.trim() || null,
           status: editStatus,
@@ -579,7 +696,63 @@ export const DemoAdminDashboardPage: React.FC = () => {
     }
   };
 
-  // Add Service
+  // Fetch HRIS Payroll records
+  const fetchPayroll = async () => {
+    setLoadingPayroll(true);
+    try {
+      const res: any = await apiFetch(`/demo/admin/payroll?slug=${encodeURIComponent(activeSlug)}`);
+      setPayrollRecords(res.payroll || []);
+    } catch (err: any) {
+      console.error('Failed to load payroll:', err);
+    } finally {
+      setLoadingPayroll(false);
+    }
+  };
+
+  // Update Account Profile
+  const handleUpdateAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword && newPassword !== confirmPassword) {
+      toast.error('Password mismatch', { description: 'New password and confirmation password must match.' });
+      return;
+    }
+    setUpdatingAccount(true);
+    try {
+      const res: any = await apiFetch('/auth/account', {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: accountName.trim(),
+          email: accountEmail.trim(),
+          phone: accountPhone.trim(),
+          currentPassword: currentPassword.trim() || undefined,
+          newPassword: newPassword.trim() || undefined,
+        }),
+      });
+
+      if (res.token) {
+        localStorage.setItem('appointmo_token', res.token);
+      }
+      if (res.user) {
+        localStorage.setItem('appointmo_user', JSON.stringify({
+          ...storedUser,
+          ...res.user,
+        }));
+      }
+
+      toast.success('Account Updated', {
+        description: res.message || 'Your account credentials and details have been updated successfully.'
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      toast.error('Failed to update account', { description: err.message });
+    } finally {
+      setUpdatingAccount(false);
+    }
+  };
+
+  // Add Service (with Duration time picker and Custom Category)
   const handleAddService = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isPending) {
@@ -589,6 +762,19 @@ export const DemoAdminDashboardPage: React.FC = () => {
       return;
     }
     if (!newServiceName.trim() || !newServicePrice) return;
+
+    const totalMinutes = (Number(newServiceDurationHours) * 60) + Number(newServiceDurationMinutes);
+    if (totalMinutes <= 0) {
+      toast.error('Invalid Duration', { description: 'Please select a duration greater than 0 minutes.' });
+      return;
+    }
+
+    const finalCategory = isNewCustomCategory ? newCustomCategoryInput.trim() : newServiceCategory.trim();
+    if (!finalCategory) {
+      toast.error('Category Required', { description: 'Please choose or enter a category for this service.' });
+      return;
+    }
+
     setAddingService(true);
     try {
       await apiFetch(`/demo/admin/services?slug=${encodeURIComponent(activeSlug)}`, {
@@ -596,14 +782,18 @@ export const DemoAdminDashboardPage: React.FC = () => {
         body: JSON.stringify({
           name: newServiceName.trim(),
           price: Number(newServicePrice),
-          durationMinutes: Number(newServiceDuration) || 45,
-          category: newServiceCategory.trim() || 'General',
+          durationMinutes: totalMinutes,
+          category: finalCategory,
           description: newServiceDesc.trim() || 'Store appointment service',
         }),
       });
       toast.success('Service menu item added successfully');
       setNewServiceName('');
       setNewServicePrice('');
+      setNewServiceDurationHours('0');
+      setNewServiceDurationMinutes('45');
+      setIsNewCustomCategory(false);
+      setNewCustomCategoryInput('');
       setNewServiceDesc('');
       setShowAddServiceModal(false);
       fetchDashboardData();
@@ -611,6 +801,80 @@ export const DemoAdminDashboardPage: React.FC = () => {
       toast.error('Failed to add service', { description: err.message });
     } finally {
       setAddingService(false);
+    }
+  };
+
+  // Save / Update Staff Member HRIS Details
+  const handleSaveStaffHris = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStaffMember) return;
+    setSavingStaffHris(true);
+    try {
+      await apiFetch(`/demo/admin/staff/${editingStaffMember.id}?slug=${encodeURIComponent(activeSlug)}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: editingStaffMember.name,
+          bio: editingStaffMember.bio,
+          position: editStaffPosition.trim() || 'Specialist',
+          employmentType: editStaffEmploymentType,
+          baseSalary: Number(editStaffBaseSalary) || 0,
+          commissionRate: Number(editStaffCommissionRate) || 0,
+          hireDate: editStaffHireDate,
+          email: editStaffEmail.trim() || null,
+          phone: editStaffPhone.trim() || null,
+          emergencyContact: editStaffEmergency.trim() || null,
+        }),
+      });
+      toast.success('Employee HR Record Updated', {
+        description: `Compensation and employee information saved for ${editingStaffMember.name}.`
+      });
+      setEditingStaffMember(null);
+      fetchDashboardData();
+    } catch (err: any) {
+      toast.error('Failed to update employee details', { description: err.message });
+    } finally {
+      setSavingStaffHris(false);
+    }
+  };
+
+  // Record Payroll / Salary Payment
+  const handleRecordPayroll = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!payrollStaffId || !payPeriodStart || !payPeriodEnd) {
+      toast.error('Required fields missing', { description: 'Please select staff and complete pay period dates.' });
+      return;
+    }
+    setRecordingPayroll(true);
+    try {
+      await apiFetch(`/demo/admin/payroll?slug=${encodeURIComponent(activeSlug)}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          staffId: payrollStaffId,
+          payPeriodStart,
+          payPeriodEnd,
+          basePay: Number(basePay) || 0,
+          commissionPay: Number(commissionPay) || 0,
+          bonuses: Number(bonuses) || 0,
+          deductions: Number(deductions) || 0,
+          paymentStatus: 'paid',
+          notes: payrollNotes.trim() || 'Bi-monthly compensation disbursement',
+        }),
+      });
+      toast.success('Salary Payment Recorded', {
+        description: 'Employee payroll transaction and payslip ledger updated.'
+      });
+      setShowPayrollModal(false);
+      setPayrollStaffId('');
+      setBasePay('');
+      setCommissionPay('');
+      setBonuses('');
+      setDeductions('');
+      setPayrollNotes('');
+      fetchPayroll();
+    } catch (err: any) {
+      toast.error('Failed to record payroll', { description: err.message });
+    } finally {
+      setRecordingPayroll(false);
     }
   };
 
@@ -867,8 +1131,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 { id: 'profile', label: 'Store Profile & Branding', icon: Store, count: null },
                 { id: 'services', label: 'Services & Pricing', icon: Scissors, count: storeServices.length },
                 { id: 'staff', label: 'Staff Specialists', icon: Users, count: storeStaff.length },
+                { id: 'hris', label: 'HRIS & Payroll Records', icon: Wallet, count: 'HR' },
                 { id: 'schedule', label: 'Schedule & Hours', icon: Clock, count: null },
                 { id: 'policies', label: 'Suggested Config & Policies', icon: Sliders, count: 'New' },
+                { id: 'account', label: 'Admin Account & Security', icon: ShieldCheck, count: null },
               ].map((tab) => {
                 const IconComponent = tab.icon;
                 const isSelected = setupSubTab === tab.id;
@@ -920,39 +1186,129 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           type="text"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
+                          placeholder="e.g. Atelier Skin Clinic"
                           required
                           disabled={isPending}
-                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                         />
                       </div>
                       <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Tagline / Catchphrase</label>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Tagline / Catchphrase (Optional)</label>
                         <input
                           type="text"
                           value={editTagline}
                           onChange={(e) => setEditTagline(e.target.value)}
-                          placeholder="e.g. Premium Aesthetic Treatments"
+                          placeholder="e.g. Your Premier Sanctuary for Holistic Wellness & Style"
                           disabled={isPending}
-                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                         />
                       </div>
                     </div>
 
+                    {/* Category and City Selection Matching Launch Modal */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      {/* Category Selection */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300">Category</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsCustomCategory(!isCustomCategory);
+                              setCustomCategoryInput('');
+                            }}
+                            className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 underline"
+                          >
+                            {isCustomCategory ? 'Choose Existing' : '+ Add New'}
+                          </button>
+                        </div>
+                        {isCustomCategory ? (
+                          <input
+                            type="text"
+                            required
+                            autoFocus
+                            placeholder="e.g. Photography Studio"
+                            value={customCategoryInput}
+                            onChange={(e) => setCustomCategoryInput(e.target.value)}
+                            disabled={isPending}
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                          />
+                        ) : (
+                          <select
+                            value={editCategory}
+                            onChange={(e) => setEditCategory(e.target.value)}
+                            disabled={isPending}
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                          >
+                            {categoryOptions.map((cat, i) => (
+                              <option key={i} value={cat}>
+                                {cat}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+
+                      {/* City / Primary Location */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300">City / Location</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsCustomCity(!isCustomCity);
+                              setCustomCityInput('');
+                            }}
+                            className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 underline"
+                          >
+                            {isCustomCity ? 'Choose City' : '+ Add Custom'}
+                          </button>
+                        </div>
+                        {isCustomCity ? (
+                          <input
+                            type="text"
+                            required
+                            autoFocus
+                            placeholder="e.g. Cebu IT Park, Davao City"
+                            value={customCityInput}
+                            onChange={(e) => setCustomCityInput(e.target.value)}
+                            disabled={isPending}
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                          />
+                        ) : (
+                          <select
+                            value={editCity}
+                            onChange={(e) => setEditCity(e.target.value)}
+                            disabled={isPending}
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                          >
+                            {cityOptions.map((c, i) => (
+                              <option key={i} value={c}>
+                                {c}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="text-xs">
-                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Description &amp; About</label>
+                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Description</label>
                       <textarea
                         rows={3}
                         value={editDescription}
                         onChange={(e) => setEditDescription(e.target.value)}
-                        placeholder="Describe what services you offer, your studio vibe, and what clients can expect..."
+                        placeholder="Briefly describe what services, atmosphere, or specialties your store provides..."
                         disabled={isPending}
-                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                       />
                     </div>
 
                     {/* Logo URL with Live Preview */}
                     <div className="p-4 rounded-2xl bg-stone-100/80 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 text-xs space-y-2.5 transition-colors">
-                      <label className="block font-semibold text-stone-800 dark:text-stone-200">Store Logo URL</label>
+                      <label className="block font-semibold text-stone-800 dark:text-stone-200">
+                        Logo / Store Cover URL (Optional — auto-generates branded fallback if empty)
+                      </label>
                       <div className="flex items-center space-x-3">
                         <div className="w-12 h-12 rounded-xl bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
                           {editLogoUrl ? (
@@ -965,7 +1321,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           type="url"
                           value={editLogoUrl}
                           onChange={(e) => setEditLogoUrl(e.target.value)}
-                          placeholder="https://example.com/logo.png"
+                          placeholder="e.g. https://images.unsplash.com/... or image link"
                           disabled={isPending}
                           className={`flex-1 px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                         />
@@ -978,76 +1334,92 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     {/* Contact & Location Details */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                       <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Phone</label>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Contact Phone</label>
                         <input
                           type="text"
                           value={editPhone}
                           onChange={(e) => setEditPhone(e.target.value)}
+                          placeholder="+63 2 8999 0001"
                           disabled={isPending}
-                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                         />
                       </div>
                       <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Email</label>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Email (Optional)</label>
                         <input
                           type="email"
                           value={editEmail}
                           onChange={(e) => setEditEmail(e.target.value)}
+                          placeholder="contact@yourstore.demo"
                           disabled={isPending}
-                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">City / Region</label>
-                        <input
-                          type="text"
-                          value={editCity}
-                          onChange={(e) => setEditCity(e.target.value)}
-                          disabled={isPending}
-                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Operating Hours / Schedule</label>
-                        <input
-                          type="text"
-                          value={editOpeningHours}
-                          onChange={(e) => setEditOpeningHours(e.target.value)}
-                          placeholder="e.g. 9:00 AM - 6:00 PM (Mon-Sat)"
-                          disabled={isPending}
-                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Full Studio Address</label>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                          Street Address / Unit / Mall Level
+                        </label>
                         <input
                           type="text"
                           value={editAddress}
                           onChange={(e) => setEditAddress(e.target.value)}
+                          placeholder="e.g. Level 2, Grand Promenade Mall, 88 Commercial Ave"
                           disabled={isPending}
-                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                         />
                       </div>
+
+                      {/* Operating Hours as Start Time & End Time Pickers */}
+                      <div className="sm:col-span-2">
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                          Operating Hours (Daily Opening &amp; Closing)
+                        </label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <span className="text-[10px] text-stone-500 dark:text-stone-400 block mb-0.5">Opening Time</span>
+                            <input
+                              type="time"
+                              required
+                              value={editStartTime}
+                              onChange={(e) => setEditStartTime(e.target.value)}
+                              disabled={isPending}
+                              className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-stone-500 dark:text-stone-400 block mb-0.5">Closing Time</span>
+                            <input
+                              type="time"
+                              required
+                              value={editEndTime}
+                              onChange={(e) => setEditEndTime(e.target.value)}
+                              disabled={isPending}
+                              className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
                       <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Official Website</label>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Official Website (Optional)</label>
                         <input
                           type="url"
                           value={editWebsite}
                           onChange={(e) => setEditWebsite(e.target.value)}
                           placeholder="https://yourbrand.com"
                           disabled={isPending}
-                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                         />
                       </div>
                       <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Social Media Handle</label>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Social Media Handle (Optional)</label>
                         <input
                           type="text"
                           value={editSocialHandle}
                           onChange={(e) => setEditSocialHandle(e.target.value)}
                           placeholder="@yourbrand"
                           disabled={isPending}
-                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                         />
                       </div>
                     </div>
@@ -1261,13 +1633,45 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             {st.name?.substring(0, 1) || 'S'}
                           </div>
                           <div>
-                            <div className="font-bold text-stone-900 dark:text-stone-100 text-sm">{st.name}</div>
+                            <div className="font-bold text-stone-900 dark:text-stone-100 text-sm flex items-center space-x-2">
+                              <span>{st.name}</span>
+                              {st.position && (
+                                <span className="text-[10px] bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 px-1.5 py-0.5 rounded-md font-medium">
+                                  {st.position}
+                                </span>
+                              )}
+                            </div>
                             <div className="text-[11px] text-stone-500">{st.bio || 'Store Specialist'}</div>
+                            {st.baseSalary > 0 && (
+                              <div className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">
+                                Base: ₱{Number(st.baseSalary).toLocaleString()} /mo • Comm: {st.commissionRate || 0}%
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2.5 py-1 rounded-full">
-                          Active &amp; Bookable
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingStaffMember(st);
+                              setEditStaffPosition(st.position || 'Specialist');
+                              setEditStaffEmploymentType(st.employmentType || 'Full-Time');
+                              setEditStaffBaseSalary(String(st.baseSalary || '25000'));
+                              setEditStaffCommissionRate(String(st.commissionRate || '10'));
+                              setEditStaffHireDate(st.hireDate ? st.hireDate.substring(0, 10) : '');
+                              setEditStaffEmail(st.email || '');
+                              setEditStaffPhone(st.phone || '');
+                              setEditStaffEmergency(st.emergencyContact || '');
+                            }}
+                            className="px-2.5 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 font-semibold hover:border-amber-500 hover:text-amber-600 transition flex items-center space-x-1"
+                          >
+                            <Sliders className="w-3 h-3" />
+                            <span>Manage HR</span>
+                          </button>
+                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2.5 py-1 rounded-full">
+                            Active
+                          </span>
+                        </div>
                       </div>
                     ))
                   )}
@@ -1471,6 +1875,326 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   </div>
                 </div>
               </form>
+            )}
+
+            {/* Sub-Tab: HRIS & Payroll Records */}
+            {setupSubTab === 'hris' && (
+              <div className="space-y-6 animate-in fade-in">
+                {/* HRIS Overview Header & Action */}
+                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+                      <Wallet className="w-4 h-4 text-amber-500" />
+                      <span>HRIS Staff Compensation &amp; Payroll Management</span>
+                    </h2>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      Record employee base salaries, commission tiers, and manage payroll disbursements.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (storeStaff.length > 0) {
+                        setPayrollStaffId(storeStaff[0].id);
+                        setBasePay(String(storeStaff[0].baseSalary || 25000));
+                        setCommissionPay('0');
+                        setBonuses('0');
+                        setDeductions('0');
+                      }
+                      const today = new Date();
+                      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+                      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+                      setPayPeriodStart(firstDay);
+                      setPayPeriodEnd(lastDay);
+                      setShowPayrollModal(true);
+                    }}
+                    className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow self-start sm:self-auto"
+                  >
+                    <DollarSign className="w-4 h-4" />
+                    <span>Record Salary Payment</span>
+                  </button>
+                </div>
+
+                {/* Staff Roster & Compensation Table */}
+                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+                      Employee HR Directory &amp; Salary Structure
+                    </h3>
+                    <span className="text-[11px] text-stone-500 font-medium">
+                      {storeStaff.length} Employees Registered
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-stone-100 dark:border-stone-800 text-stone-400 text-[11px]">
+                          <th className="py-2.5 font-semibold">Employee</th>
+                          <th className="py-2.5 font-semibold">Position &amp; Type</th>
+                          <th className="py-2.5 font-semibold">Monthly Base</th>
+                          <th className="py-2.5 font-semibold">Commission</th>
+                          <th className="py-2.5 font-semibold">Contact Info</th>
+                          <th className="py-2.5 font-semibold text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                        {storeStaff.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-8 text-center text-stone-400">
+                              No employees found. Add staff in the Staff Specialists tab first.
+                            </td>
+                          </tr>
+                        ) : (
+                          storeStaff.map((staff) => (
+                            <tr key={staff.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/40 transition">
+                              <td className="py-3 pr-3">
+                                <div className="font-bold text-stone-900 dark:text-stone-100">{staff.name}</div>
+                                <div className="text-[11px] text-stone-500">{staff.bio || 'Store Specialist'}</div>
+                              </td>
+                              <td className="py-3 pr-3">
+                                <div className="font-semibold text-stone-800 dark:text-stone-200">{staff.position || 'Specialist'}</div>
+                                <span className="inline-block mt-0.5 text-[10px] bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 px-2 py-0.5 rounded-full">
+                                  {staff.employmentType || 'Full-Time'}
+                                </span>
+                              </td>
+                              <td className="py-3 pr-3 font-semibold text-stone-900 dark:text-stone-100">
+                                ₱{Number(staff.baseSalary || 0).toLocaleString()}
+                              </td>
+                              <td className="py-3 pr-3 font-semibold text-amber-700 dark:text-amber-400">
+                                {staff.commissionRate || 0}% per booking
+                              </td>
+                              <td className="py-3 pr-3 text-stone-500 text-[11px]">
+                                <div>{staff.email || 'No email registered'}</div>
+                                <div>{staff.phone || 'No phone'}</div>
+                              </td>
+                              <td className="py-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingStaffMember(staff);
+                                    setEditStaffPosition(staff.position || 'Specialist');
+                                    setEditStaffEmploymentType(staff.employmentType || 'Full-Time');
+                                    setEditStaffBaseSalary(String(staff.baseSalary || '25000'));
+                                    setEditStaffCommissionRate(String(staff.commissionRate || '10'));
+                                    setEditStaffHireDate(staff.hireDate ? staff.hireDate.substring(0, 10) : '');
+                                    setEditStaffEmail(staff.email || '');
+                                    setEditStaffPhone(staff.phone || '');
+                                    setEditStaffEmergency(staff.emergencyContact || '');
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 hover:border-amber-400 text-stone-700 dark:text-stone-300 font-semibold text-xs hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+                                >
+                                  Edit HR Info
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Payroll Ledger */}
+                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 flex items-center space-x-1.5">
+                      <Receipt className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Payroll Disbursement Ledger</span>
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={fetchPayroll}
+                      className="text-[11px] text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 flex items-center space-x-1"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Refresh</span>
+                    </button>
+                  </div>
+
+                  {loadingPayroll ? (
+                    <div className="py-12 text-center text-stone-400 text-xs">Loading payroll ledger...</div>
+                  ) : payrollRecords.length === 0 ? (
+                    <div className="py-12 text-center text-stone-400 text-xs">
+                      No payroll disbursements recorded yet. Click "Record Salary Payment" above to create one.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-stone-100 dark:border-stone-800 text-stone-400 text-[11px]">
+                            <th className="py-2.5 font-semibold">Staff Member</th>
+                            <th className="py-2.5 font-semibold">Pay Period</th>
+                            <th className="py-2.5 font-semibold">Base Pay</th>
+                            <th className="py-2.5 font-semibold">Commission</th>
+                            <th className="py-2.5 font-semibold">Net Pay</th>
+                            <th className="py-2.5 font-semibold">Status</th>
+                            <th className="py-2.5 font-semibold">Disbursed At</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                          {payrollRecords.map((rec) => (
+                            <tr key={rec.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/40 transition">
+                              <td className="py-3 font-bold text-stone-900 dark:text-stone-100">
+                                {rec.staffName || 'Staff Member'}
+                              </td>
+                              <td className="py-3 text-stone-600 dark:text-stone-400 text-[11px]">
+                                {rec.payPeriodStart} to {rec.payPeriodEnd}
+                              </td>
+                              <td className="py-3 font-semibold text-stone-800 dark:text-stone-200">
+                                ₱{Number(rec.basePay).toLocaleString()}
+                              </td>
+                              <td className="py-3 font-semibold text-amber-700 dark:text-amber-400">
+                                ₱{Number(rec.commissionPay).toLocaleString()}
+                              </td>
+                              <td className="py-3 font-bold text-emerald-700 dark:text-emerald-400">
+                                ₱{Number(rec.netPay).toLocaleString()}
+                              </td>
+                              <td className="py-3">
+                                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                                  {rec.paymentStatus}
+                                </span>
+                              </td>
+                              <td className="py-3 text-stone-500 text-[11px]">
+                                {new Date(rec.createdAt).toLocaleDateString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Sub-Tab: Admin Account & Security Settings */}
+            {setupSubTab === 'account' && (
+              <div className="max-w-2xl animate-in fade-in">
+                <form onSubmit={handleUpdateAccount} className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-6">
+                  <div className="border-b border-stone-100 dark:border-stone-800 pb-3 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+                        <User className="w-4 h-4 text-amber-500" />
+                        <span>Admin Account &amp; Credentials</span>
+                      </h2>
+                      <p className="text-[11px] text-stone-500">Update your store manager login credentials, contact info, and security password.</p>
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+                      {storedUser?.role || 'Admin'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-4 text-xs">
+                    <div>
+                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Full Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={accountName}
+                        onChange={(e) => setAccountName(e.target.value)}
+                        placeholder="Store Manager Name"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Email Address</label>
+                        <input
+                          type="email"
+                          required
+                          value={accountEmail}
+                          onChange={(e) => setAccountEmail(e.target.value)}
+                          placeholder="admin@appointmo.demo"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Phone Number</label>
+                        <input
+                          type="text"
+                          value={accountPhone}
+                          onChange={(e) => setAccountPhone(e.target.value)}
+                          placeholder="+63 917 123 4567"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-stone-100 dark:border-stone-800 space-y-4">
+                      <div className="flex items-center space-x-2 text-stone-800 dark:text-stone-200 font-bold text-xs">
+                        <Lock className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Change Account Password (Leave blank to keep unchanged)</span>
+                      </div>
+
+                      <div>
+                        <label className="block text-stone-500 dark:text-stone-400 mb-1">Current Password (Required only if changing password)</label>
+                        <div className="relative">
+                          <input
+                            type={showCurrentPass ? "text" : "password"}
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            placeholder="Enter your current password"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 pr-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowCurrentPass(!showCurrentPass)}
+                            className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+                          >
+                            {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-stone-500 dark:text-stone-400 mb-1">New Password</label>
+                          <div className="relative">
+                            <input
+                              type={showNewPass ? "text" : "password"}
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              placeholder="Minimum 6 characters"
+                              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 pr-10"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowNewPass(!showNewPass)}
+                              className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+                            >
+                              {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-stone-500 dark:text-stone-400 mb-1">Confirm New Password</label>
+                          <input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="Repeat new password"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-stone-100 dark:border-stone-800 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={updatingAccount}
+                      className="px-6 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-bold hover:bg-stone-800 dark:hover:bg-amber-300 transition flex items-center space-x-2 shadow disabled:opacity-50"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>{updatingAccount ? 'Updating Account...' : 'Save Account Settings'}</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
             )}
           </div>
         ) : (
@@ -2156,7 +2880,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Price (₱ PHP)</label>
                   <input
@@ -2169,27 +2893,74 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Duration (Mins)</label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="45"
-                    value={newServiceDuration}
-                    onChange={(e) => setNewServiceDuration(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                  />
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Duration</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <select
+                        value={newServiceDurationHours}
+                        onChange={(e) => setNewServiceDurationHours(e.target.value)}
+                        className="w-full px-2 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
+                      >
+                        <option value="0">0 hrs</option>
+                        <option value="1">1 hr</option>
+                        <option value="2">2 hrs</option>
+                        <option value="3">3 hrs</option>
+                        <option value="4">4 hrs</option>
+                      </select>
+                    </div>
+                    <div>
+                      <select
+                        value={newServiceDurationMinutes}
+                        onChange={(e) => setNewServiceDurationMinutes(e.target.value)}
+                        className="w-full px-2 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
+                      >
+                        <option value="15">15 mins</option>
+                        <option value="30">30 mins</option>
+                        <option value="45">45 mins</option>
+                        <option value="60">60 mins</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Category</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Facial &amp; Skin Care"
-                  value={newServiceCategory}
-                  onChange={(e) => setNewServiceCategory(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300">Category</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsNewCustomCategory(!isNewCustomCategory);
+                      setNewCustomCategoryInput('');
+                    }}
+                    className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 underline"
+                  >
+                    {isNewCustomCategory ? 'Choose Existing' : '+ Add New Category'}
+                  </button>
+                </div>
+                {isNewCustomCategory ? (
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    placeholder="e.g. Nails & Pedicure"
+                    value={newCustomCategoryInput}
+                    onChange={(e) => setNewCustomCategoryInput(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  />
+                ) : (
+                  <select
+                    value={newServiceCategory}
+                    onChange={(e) => setNewServiceCategory(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  >
+                    {categoryOptions.map((cat, i) => (
+                      <option key={i} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
@@ -2217,6 +2988,304 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   className="flex-1 py-2.5 rounded-xl font-bold bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow"
                 >
                   {addingService ? 'Saving...' : 'Add Service'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT STAFF HRIS PROFILE */}
+      {editingStaffMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
+              <div className="flex items-center space-x-2">
+                <Users className="w-5 h-5 text-amber-500" />
+                <div>
+                  <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                    HR Profile: {editingStaffMember.name}
+                  </h3>
+                  <p className="text-[11px] text-stone-500">Configure position, salary tier, and emergency contacts</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingStaffMember(null)}
+                className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveStaffHris} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Position / Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={editStaffPosition}
+                    onChange={(e) => setEditStaffPosition(e.target.value)}
+                    placeholder="e.g. Senior Aesthetician"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Employment Type</label>
+                  <select
+                    value={editStaffEmploymentType}
+                    onChange={(e) => setEditStaffEmploymentType(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                  >
+                    <option value="Full-Time">Full-Time</option>
+                    <option value="Part-Time">Part-Time</option>
+                    <option value="Contractor / Consultant">Contractor / Consultant</option>
+                    <option value="Probationary">Probationary</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Monthly Base Pay (₱)</label>
+                  <input
+                    type="number"
+                    value={editStaffBaseSalary}
+                    onChange={(e) => setEditStaffBaseSalary(e.target.value)}
+                    placeholder="25000"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Commission Rate (%)</label>
+                  <input
+                    type="number"
+                    value={editStaffCommissionRate}
+                    onChange={(e) => setEditStaffCommissionRate(e.target.value)}
+                    placeholder="10"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Hire / Start Date</label>
+                <input
+                  type="date"
+                  value={editStaffHireDate}
+                  onChange={(e) => setEditStaffHireDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Staff Work Email</label>
+                  <input
+                    type="email"
+                    value={editStaffEmail}
+                    onChange={(e) => setEditStaffEmail(e.target.value)}
+                    placeholder="staff@store.com"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Phone Number</label>
+                  <input
+                    type="text"
+                    value={editStaffPhone}
+                    onChange={(e) => setEditStaffPhone(e.target.value)}
+                    placeholder="+63 917 000 0000"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Emergency Contact Info</label>
+                <input
+                  type="text"
+                  value={editStaffEmergency}
+                  onChange={(e) => setEditStaffEmergency(e.target.value)}
+                  placeholder="e.g. Juan Santos (Spouse) - 0918-123-4567"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex space-x-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingStaffMember(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingStaffHris}
+                  className="flex-1 py-2.5 rounded-xl font-bold bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow"
+                >
+                  {savingStaffHris ? 'Saving...' : 'Save HR Info'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: RECORD SALARY PAYMENT */}
+      {showPayrollModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-lg w-full shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
+              <div className="flex items-center space-x-2">
+                <Wallet className="w-5 h-5 text-amber-500" />
+                <div>
+                  <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">Record Salary &amp; Payroll</h3>
+                  <p className="text-[11px] text-stone-500">Generate a compensation payslip entry for staff member</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPayrollModal(false)}
+                className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRecordPayroll} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Select Employee</label>
+                <select
+                  required
+                  value={payrollStaffId}
+                  onChange={(e) => {
+                    const sid = e.target.value;
+                    setPayrollStaffId(sid);
+                    const st = storeStaff.find(s => s.id === sid);
+                    if (st) {
+                      setBasePay(String(st.baseSalary || 25000));
+                    }
+                  }}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                >
+                  <option value="">Choose Staff Member</option>
+                  {storeStaff.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.position || 'Specialist'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Pay Period Start</label>
+                  <input
+                    type="date"
+                    required
+                    value={payPeriodStart}
+                    onChange={(e) => setPayPeriodStart(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Pay Period End</label>
+                  <input
+                    type="date"
+                    required
+                    value={payPeriodEnd}
+                    onChange={(e) => setPayPeriodEnd(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Base Pay (₱)</label>
+                  <input
+                    type="number"
+                    value={basePay}
+                    onChange={(e) => setBasePay(e.target.value)}
+                    placeholder="25000"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Commission Pay (₱)</label>
+                  <input
+                    type="number"
+                    value={commissionPay}
+                    onChange={(e) => setCommissionPay(e.target.value)}
+                    placeholder="0"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Bonuses / Incentives (₱)</label>
+                  <input
+                    type="number"
+                    value={bonuses}
+                    onChange={(e) => setBonuses(e.target.value)}
+                    placeholder="0"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Deductions / Tax (₱)</label>
+                  <input
+                    type="number"
+                    value={deductions}
+                    onChange={(e) => setDeductions(e.target.value)}
+                    placeholder="0"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Notes / Payslip Memo</label>
+                <input
+                  type="text"
+                  value={payrollNotes}
+                  onChange={(e) => setPayrollNotes(e.target.value)}
+                  placeholder="e.g. Regular monthly payroll disbursement"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                />
+              </div>
+
+              <div className="p-3 bg-stone-100 dark:bg-stone-800/80 rounded-xl flex justify-between items-center text-xs">
+                <span className="font-semibold text-stone-600 dark:text-stone-400">Estimated Net Pay:</span>
+                <span className="font-bold text-sm text-emerald-700 dark:text-emerald-400">
+                  ₱{(
+                    (Number(basePay) || 0) +
+                    (Number(commissionPay) || 0) +
+                    (Number(bonuses) || 0) -
+                    (Number(deductions) || 0)
+                  ).toLocaleString()}
+                </span>
+              </div>
+
+              <div className="flex space-x-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPayrollModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={recordingPayroll}
+                  className="flex-1 py-2.5 rounded-xl font-bold bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow"
+                >
+                  {recordingPayroll ? 'Recording...' : 'Disburse & Record'}
                 </button>
               </div>
             </form>

@@ -952,7 +952,15 @@ router.get('/settings', async (req: Request, res: Response) => {
     `, [businessId]);
     const branchesRes = await query('SELECT id, name, address, city, phone, location_description AS "locationDescription" FROM branches WHERE business_id = $1 AND is_active = true', [businessId]);
     const servicesRes = await query('SELECT id, name, description, duration_minutes AS "durationMinutes", price, category FROM services WHERE business_id = $1 ORDER BY price ASC', [businessId]);
-    const staffRes = await query('SELECT id, name, bio FROM staff_profiles WHERE business_id = $1', [businessId]);
+    const staffRes = await query(`
+      SELECT id, name, bio, position, employment_type AS "employmentType",
+             base_salary AS "baseSalary", commission_rate AS "commissionRate",
+             hire_date AS "hireDate", email, phone, emergency_contact AS "emergencyContact",
+             status
+      FROM staff_profiles
+      WHERE business_id = $1
+      ORDER BY name ASC
+    `, [businessId]);
     const hoursRes = await query(`
       SELECT sp.name AS "staffName", swh.day_of_week AS "dayOfWeek", swh.start_time AS "startTime", swh.end_time AS "endTime", swh.is_working AS "isWorking"
       FROM staff_working_hours swh
@@ -1067,18 +1075,39 @@ router.put('/settings', async (req: Request, res: Response) => {
   }
 });
 
-// 13. Create or Add Staff Specialist
+// 13. Create or Add Staff Specialist with HRIS & Compensation details
 router.post('/staff', async (req: Request, res: Response) => {
   try {
     const businessId = await getDemoBusinessId(req, false);
-    const { name, bio, serviceIds } = req.body;
+    const { 
+      name, bio, position, employmentType, baseSalary, commissionRate, 
+      hireDate, email, phone, emergencyContact, serviceIds 
+    } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Staff name is required' });
     }
 
     const spRes = await query(
-      `INSERT INTO staff_profiles (business_id, name, bio) VALUES ($1, $2, $3) RETURNING id, name, bio`,
-      [businessId, name.trim(), bio?.trim() || 'Store specialist']
+      `INSERT INTO staff_profiles (
+        business_id, name, bio, position, employment_type, base_salary, commission_rate,
+        hire_date, email, phone, emergency_contact, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active') 
+      RETURNING id, name, bio, position, employment_type AS "employmentType",
+                base_salary AS "baseSalary", commission_rate AS "commissionRate",
+                hire_date AS "hireDate", email, phone, emergency_contact AS "emergencyContact", status`,
+      [
+        businessId, 
+        name.trim(), 
+        bio?.trim() || 'Store specialist',
+        position?.trim() || 'Specialist',
+        employmentType?.trim() || 'Full-Time',
+        Number(baseSalary) || 0,
+        Number(commissionRate) || 0,
+        hireDate || new Date().toISOString().split('T')[0],
+        email?.trim() || null,
+        phone?.trim() || null,
+        emergencyContact?.trim() || null
+      ]
     );
     const newStaff = spRes.rows[0];
 
@@ -1101,6 +1130,120 @@ router.post('/staff', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('Create staff error:', err);
     res.status(500).json({ error: 'Failed to create staff: ' + err.message });
+  }
+});
+
+// 13b. Update Staff Specialist HRIS & Compensation details
+router.put('/staff/:id', async (req: Request, res: Response) => {
+  try {
+    const businessId = await getDemoBusinessId(req, false);
+    const { id } = req.params;
+    const { 
+      name, bio, position, employmentType, baseSalary, commissionRate, 
+      hireDate, email, phone, emergencyContact, status 
+    } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Staff name is required' });
+    }
+
+    const spRes = await query(
+      `UPDATE staff_profiles 
+       SET name = $1, bio = $2, position = $3, employment_type = $4,
+           base_salary = $5, commission_rate = $6, hire_date = $7,
+           email = $8, phone = $9, emergency_contact = $10, status = $11, updated_at = NOW()
+       WHERE id = $12 AND business_id = $13
+       RETURNING id, name, bio, position, employment_type AS "employmentType",
+                 base_salary AS "baseSalary", commission_rate AS "commissionRate",
+                 hire_date AS "hireDate", email, phone, emergency_contact AS "emergencyContact", status`,
+      [
+        name.trim(),
+        bio?.trim() || 'Store specialist',
+        position?.trim() || 'Specialist',
+        employmentType?.trim() || 'Full-Time',
+        Number(baseSalary) || 0,
+        Number(commissionRate) || 0,
+        hireDate || new Date().toISOString().split('T')[0],
+        email?.trim() || null,
+        phone?.trim() || null,
+        emergencyContact?.trim() || null,
+        status || 'active',
+        id,
+        businessId
+      ]
+    );
+
+    if (spRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Staff profile not found' });
+    }
+
+    res.json({ message: 'Staff specialist updated', staff: spRes.rows[0] });
+  } catch (err: any) {
+    console.error('Update staff error:', err);
+    res.status(500).json({ error: 'Failed to update staff: ' + err.message });
+  }
+});
+
+// 13c. HRIS Payroll Records: Get and Record Staff Compensation / Payslip
+router.get('/payroll', async (req: Request, res: Response) => {
+  try {
+    const businessId = await getDemoBusinessId(req);
+    const payrollRes = await query(`
+      SELECT pr.id, pr.staff_id AS "staffId", sp.name AS "staffName", sp.position,
+             pr.pay_period_start AS "payPeriodStart", pr.pay_period_end AS "payPeriodEnd",
+             pr.base_pay AS "basePay", pr.commission_pay AS "commissionPay",
+             pr.bonuses, pr.deductions, pr.net_salary AS "netSalary",
+             pr.payment_status AS "paymentStatus", pr.payment_date AS "paymentDate",
+             pr.notes, pr.created_at AS "createdAt"
+      FROM payroll_records pr
+      JOIN staff_profiles sp ON pr.staff_id = sp.id
+      WHERE pr.business_id = $1
+      ORDER BY pr.pay_period_end DESC, pr.created_at DESC
+    `, [businessId]);
+
+    res.json({ payroll: payrollRes.rows });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to fetch payroll records: ' + err.message });
+  }
+});
+
+router.post('/payroll', async (req: Request, res: Response) => {
+  try {
+    const businessId = await getDemoBusinessId(req, false);
+    const { 
+      staffId, payPeriodStart, payPeriodEnd, basePay, commissionPay, 
+      bonuses, deductions, paymentStatus, notes 
+    } = req.body;
+
+    if (!staffId || !payPeriodStart || !payPeriodEnd) {
+      return res.status(400).json({ error: 'Staff, pay period start and end dates are required' });
+    }
+
+    const bPay = Number(basePay) || 0;
+    const cPay = Number(commissionPay) || 0;
+    const bBonus = Number(bonuses) || 0;
+    const dDeduct = Number(deductions) || 0;
+    const netSalary = Math.max(0, (bPay + cPay + bBonus) - dDeduct);
+
+    const prRes = await query(`
+      INSERT INTO payroll_records (
+        business_id, staff_id, pay_period_start, pay_period_end,
+        base_pay, commission_pay, bonuses, deductions, net_salary,
+        payment_status, notes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING id, staff_id AS "staffId", pay_period_start AS "payPeriodStart",
+                pay_period_end AS "payPeriodEnd", base_pay AS "basePay",
+                commission_pay AS "commissionPay", bonuses, deductions, net_salary AS "netSalary",
+                payment_status AS "paymentStatus", payment_date AS "paymentDate", notes, created_at AS "createdAt"
+    `, [
+      businessId, staffId, payPeriodStart, payPeriodEnd,
+      bPay, cPay, bBonus, dDeduct, netSalary,
+      paymentStatus || 'paid', notes?.trim() || null
+    ]);
+
+    res.status(201).json({ message: 'Payroll recorded successfully', record: prRes.rows[0] });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to record payroll: ' + err.message });
   }
 });
 
