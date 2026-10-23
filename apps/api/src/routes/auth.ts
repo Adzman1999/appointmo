@@ -16,7 +16,7 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     const emailNorm = email.toLowerCase().trim();
-    const userRes = await query('SELECT id, business_id, email, password_hash, role, name, COALESCE(status, \'approved\') as status FROM users WHERE email = $1', [emailNorm]);
+    const userRes = await query('SELECT id, business_id, email, phone, password_hash, role, name, COALESCE(status, \'approved\') as status FROM users WHERE email = $1', [emailNorm]);
 
     if (userRes.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid email or password' });
@@ -81,6 +81,7 @@ router.post('/login', async (req: Request, res: Response) => {
         id: user.id,
         email: user.email,
         name: user.name,
+        phone: user.phone || null,
         role: user.role,
         status: user.status,
         businessId: user.business_id,

@@ -505,7 +505,7 @@ export const ManageBookingPage: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-[11px] text-stone-600 dark:text-stone-300 font-medium">
-                  {customer?.email || 'customer@appointmo.demo'} • {customer?.phone || '+63 905 242 2821'}
+                  {customer?.email || ''}{customer?.phone ? ` • ${customer.phone}` : ''}
                 </p>
               </div>
             </div>
@@ -612,6 +612,8 @@ export const ManageBookingPage: React.FC = () => {
             </button>
             <button
               onClick={() => {
+                localStorage.removeItem('appointmo_token');
+                localStorage.removeItem('appointmo_user');
                 localStorage.removeItem('appointmo_auth');
                 navigate('/admin/login');
               }}

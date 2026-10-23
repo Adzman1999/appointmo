@@ -162,9 +162,14 @@ router.get('/customer-portal', async (req: Request, res: Response) => {
           }
         }
       }
+
+      // If specific email was requested and not found anywhere, don't fall back to a random demo customer!
+      if (!targetCustId) {
+        return res.status(404).json({ error: 'Customer account not found for this email' });
+      }
     }
 
-    // If still no target customer, pick default demo customer with active upcoming bookings
+    // Only if NEITHER customerId nor email was provided, fallback to demo customer
     if (!targetCustId) {
       const pickCust = await query(`
         SELECT c.id FROM customers c
