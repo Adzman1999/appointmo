@@ -5,7 +5,7 @@ import {
   Search, Filter, Clock, ArrowRight, Sparkles, Building2, 
   Check, X, AlertTriangle, Shield, Bell, ChevronRight, UserCheck, 
   RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store, MapPin, Lightbulb, TrendingUp, LogOut,
-  Settings, Image, Scissors, Briefcase, Power, Save, Globe, Share2, Mail, Phone, Sliders, ShieldCheck,
+  Settings, Image, Scissors, Briefcase, Power, Save, Globe, Share2, Mail, Phone, Sliders, ShieldCheck, ShieldAlert,
   User, Lock, Eye, EyeOff, Receipt, Wallet, Award, FileSpreadsheet
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
@@ -1943,8 +1943,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 text-[11px] text-stone-600 dark:text-stone-400">
-                      💡 <strong>Pro Tip:</strong> Keeping your contact and social channels up to date helps clients verify your brand credentials before making their bookings.
+                    <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 text-[11px] text-stone-600 dark:text-stone-400 flex items-start space-x-2">
+                      <Sparkles className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                      <span><strong>Pro Tip:</strong> Keeping your contact and social channels up to date helps clients verify your brand credentials before making their bookings.</span>
                     </div>
                   </div>
                 </div>
@@ -3326,9 +3327,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              <div className="bg-stone-50 dark:bg-stone-800/60 p-3.5 rounded-2xl border border-stone-200 dark:border-stone-700 text-xs text-stone-700 dark:text-stone-300 font-medium">
-                <span className="font-semibold text-stone-900 dark:text-stone-100">💡 Instant Launch: </span>
-                Click <strong>"Use This Idea"</strong> on any suggestion below to pre-populate the Business Setup Studio on the home page and launch an independent appointment page.
+              <div className="bg-stone-50 dark:bg-stone-800/60 p-3.5 rounded-2xl border border-stone-200 dark:border-stone-700 text-xs text-stone-700 dark:text-stone-300 font-medium flex items-start space-x-2">
+                <Sparkles className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold text-stone-900 dark:text-stone-100">Instant Launch: </span>
+                  Click <strong>"Use This Idea"</strong> on any suggestion below to pre-populate the Business Setup Studio on the home page and launch an independent appointment page.
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3781,7 +3785,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
               <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-stone-900 dark:text-stone-100 text-xs flex items-center space-x-1.5">
-                    <span>🚨 Emergency Contact Details</span>
+                    <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
+                    <span>Emergency Contact Details</span>
                   </span>
                   <span className="text-[10px] text-stone-400">(Optional for HR records)</span>
                 </div>

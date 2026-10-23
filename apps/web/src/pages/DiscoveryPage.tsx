@@ -410,7 +410,12 @@ export const DiscoveryPage: React.FC = () => {
                   <div className="space-y-1.5 text-xs text-stone-600 dark:text-stone-400">
                     <div className="font-semibold text-stone-900 dark:text-stone-100">Pricing &amp; Booking Rules:</div>
                     <div>• Services from <strong>₱{selectedBranch.biz.minPrice}</strong> to ₱{selectedBranch.biz.maxPrice}</div>
-                    <div>• Verified synthetic reviews: <strong>★ {selectedBranch.biz.rating}</strong> ({selectedBranch.biz.reviewCount})</div>
+                    <div className="flex items-center space-x-1.5">
+                      <span>• Verified synthetic reviews:</span>
+                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                      <strong>{selectedBranch.biz.rating}</strong>
+                      <span>({selectedBranch.biz.reviewCount})</span>
+                    </div>
                     <div>• Zero registration required for instant booking.</div>
                   </div>
 

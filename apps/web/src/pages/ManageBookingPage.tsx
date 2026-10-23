@@ -1120,7 +1120,7 @@ export const ManageBookingPage: React.FC = () => {
 
               <button
                 type="submit"
-                disabled={lookupLoading}
+                disabled={lookupLoading || !lookupRef.trim()}
                 className="w-full bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-semibold py-3 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition text-xs shadow disabled:opacity-50"
               >
                 {lookupLoading ? 'Locating...' : 'Open Appointment'}

@@ -107,7 +107,7 @@ export const SetupPasswordPage: React.FC = () => {
 
             <button
               type="submit"
-              disabled={loading || !password || !confirmPassword || !token}
+              disabled={loading || !password || password.length < 8 || password !== confirmPassword || !token}
               className="w-full bg-stone-900 text-white font-semibold py-3.5 rounded-xl hover:bg-stone-800 transition text-xs shadow disabled:opacity-50 flex items-center justify-center space-x-2"
             >
               <span>{loading ? 'Setting up...' : 'Save Password & Enter Demo'}</span>

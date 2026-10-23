@@ -64,7 +64,7 @@ export const RedeemInvitePage: React.FC = () => {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !token.trim()}
             className="w-full bg-stone-900 text-white font-medium py-3 rounded-xl hover:bg-stone-800 transition flex items-center justify-center space-x-2 text-sm shadow-sm disabled:opacity-50"
           >
             <span>{loading ? 'Validating...' : 'Enter Interactive Demo'}</span>

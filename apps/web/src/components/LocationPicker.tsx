@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
-import { Search, MapPin, Loader2, Navigation, Crosshair, Maximize2, Check, Plus, Minus, Layers, ExternalLink } from 'lucide-react';
+import { Search, MapPin, Loader2, Navigation, Crosshair, Maximize2, Check, Plus, Minus, Layers, ExternalLink, Sparkles } from 'lucide-react';
 
 interface LocationPickerProps {
   initialLat?: number;
@@ -641,8 +641,9 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
               </span>
             </div>
           </div>
-          <p className="text-[10px] text-stone-500 dark:text-stone-400 italic">
-            💡 Swipe or drag anywhere to position the pin directly on your store entrance.
+          <p className="text-[10px] text-stone-500 dark:text-stone-400 italic flex items-center space-x-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span>Swipe or drag anywhere to position the pin directly on your store entrance.</span>
           </p>
         </>
       )}
