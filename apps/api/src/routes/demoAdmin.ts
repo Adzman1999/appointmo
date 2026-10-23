@@ -1005,66 +1005,67 @@ router.put('/settings', async (req: Request, res: Response) => {
 
     if (name !== undefined) {
       fields.push(`name = $${idx++}`);
-      values.push(name.trim());
+      values.push(name ? String(name).trim() : '');
     }
     if (description !== undefined) {
       fields.push(`description = $${idx++}`);
-      values.push(description.trim());
+      values.push(description ? String(description).trim() : '');
     }
     if (logoUrl !== undefined) {
       fields.push(`logo_url = $${idx++}`);
-      values.push(logoUrl ? logoUrl.trim() : null);
+      values.push(logoUrl ? String(logoUrl).trim() : null);
     }
     if (phone !== undefined) {
       fields.push(`phone = $${idx++}`);
-      values.push(phone.trim());
+      values.push(phone ? String(phone).trim() : null);
     }
     if (email !== undefined) {
       fields.push(`email = $${idx++}`);
-      values.push(email.trim());
+      values.push(email ? String(email).trim() : null);
     }
     if (address !== undefined) {
       fields.push(`address = $${idx++}`);
-      values.push(address.trim());
+      values.push(address ? String(address).trim() : null);
     }
     if (city !== undefined) {
       fields.push(`city = $${idx++}`);
-      values.push(city.trim());
+      values.push(city ? String(city).trim() : 'Quezon City');
     }
     if (country !== undefined) {
       fields.push(`country = $${idx++}`);
-      values.push(country.trim());
+      values.push(country ? String(country).trim() : 'Philippines');
     }
     if (stateProvince !== undefined) {
       fields.push(`state_province = $${idx++}`);
-      values.push(stateProvince.trim());
+      values.push(stateProvince ? String(stateProvince).trim() : null);
     }
     if (postalCode !== undefined) {
       fields.push(`postal_code = $${idx++}`);
-      values.push(postalCode.trim());
+      values.push(postalCode ? String(postalCode).trim() : null);
     }
     if (openingHours !== undefined) {
       fields.push(`opening_hours = $${idx++}`);
-      values.push(openingHours.trim());
+      values.push(openingHours ? String(openingHours).trim() : '9:00 AM - 6:00 PM');
     }
     if (weeklySchedule !== undefined) {
       fields.push(`weekly_schedule = $${idx++}`);
-      values.push(JSON.stringify(weeklySchedule));
+      values.push(weeklySchedule ? JSON.stringify(weeklySchedule) : null);
     }
     if (currency !== undefined) {
       fields.push(`currency = $${idx++}`);
-      values.push(currency.trim());
+      values.push(currency ? String(currency).trim() : 'PHP');
     }
     if (timezone !== undefined) {
       fields.push(`timezone = $${idx++}`);
-      values.push(timezone.trim());
+      values.push(timezone ? String(timezone).trim() : 'Asia/Manila');
     }
     if (website !== undefined) {
       fields.push(`website = $${idx++}`);
-      values.push(website ? website.trim() : null);
+      values.push(website ? String(website).trim() : null);
     }
     if (instagram !== undefined || socialHandle !== undefined) {
-      const handle = (socialHandle || instagram)?.trim() || null;
+      const rawHandle = socialHandle !== undefined ? socialHandle : instagram;
+      const handle = rawHandle ? String(rawHandle).trim() : null;
       fields.push(`instagram = $${idx++}`);
       values.push(handle);
       fields.push(`social_handle = $${idx++}`);
@@ -1072,7 +1073,7 @@ router.put('/settings', async (req: Request, res: Response) => {
     }
     if (tagline !== undefined) {
       fields.push(`tagline = $${idx++}`);
-      values.push(tagline ? tagline.trim() : null);
+      values.push(tagline ? String(tagline).trim() : null);
     }
     if (status !== undefined) {
       fields.push(`status = $${idx++}`);
@@ -1080,7 +1081,7 @@ router.put('/settings', async (req: Request, res: Response) => {
     }
     if (bookingPolicies !== undefined) {
       fields.push(`booking_policies = $${idx++}`);
-      values.push(JSON.stringify(bookingPolicies));
+      values.push(bookingPolicies ? JSON.stringify(bookingPolicies) : null);
     }
 
     if (fields.length === 0) {
