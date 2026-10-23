@@ -233,7 +233,26 @@ export const ManageBookingPage: React.FC = () => {
   };
 
   useEffect(() => {
-    // Check if recent booking in localStorage has customer info
+    // 1. Prioritize ?email= from query parameters (e.g. from login redirect)
+    const urlEmail = searchParams.get('email');
+    if (urlEmail) {
+      loadCustomerPortal(undefined, urlEmail.trim());
+      return;
+    }
+
+    // 2. Check logged-in user in localStorage
+    const storedUserRaw = localStorage.getItem('appointmo_user');
+    if (storedUserRaw) {
+      try {
+        const u = JSON.parse(storedUserRaw);
+        if (u.email && u.role === 'customer') {
+          loadCustomerPortal(undefined, u.email.trim());
+          return;
+        }
+      } catch (_) {}
+    }
+
+    // 3. Check if recent booking in localStorage has customer info
     const stored = localStorage.getItem('appointmo_latest_booking');
     let emailFallback: string | undefined;
     if (stored) {
@@ -244,13 +263,14 @@ export const ManageBookingPage: React.FC = () => {
     }
 
     loadCustomerPortal(undefined, emailFallback);
-  }, []);
+  }, [searchParams]);
 
-  // Poll for updates every 6 seconds to capture admin approvals / status updates in real-time
+  // Poll for updates every 4 seconds to capture admin approvals / status updates / new appointments in real-time
   useEffect(() => {
-    if (!customer?.id) return;
+    if (!customer?.id && !customer?.email) return;
     const interval = setInterval(() => {
-      apiFetch<any>(`/demo/admin/customer-portal?customerId=${customer.id}`)
+      const q = customer.id ? `?customerId=${customer.id}` : `?email=${encodeURIComponent(customer.email)}`;
+      apiFetch<any>(`/demo/admin/customer-portal${q}`)
         .then((res) => {
           setAppointments(res.appointments || []);
           setUpcoming(res.upcoming || []);
@@ -269,10 +289,10 @@ export const ManageBookingPage: React.FC = () => {
           }
         })
         .catch(() => {});
-    }, 6000);
+    }, 4000);
 
     return () => clearInterval(interval);
-  }, [customer?.id, selectedAppt?.id]);
+  }, [customer?.id, customer?.email, selectedAppt?.id]);
 
   // Load available slots when Reschedule section opens or date changes
   useEffect(() => {

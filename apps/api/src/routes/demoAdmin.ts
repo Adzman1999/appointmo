@@ -137,9 +137,30 @@ router.get('/customer-portal', async (req: Request, res: Response) => {
     let targetCustId = customerId as string | undefined;
 
     if (!targetCustId && email) {
-      const custRes = await query("SELECT id FROM customers WHERE LOWER(email) = LOWER($1) ORDER BY created_at DESC LIMIT 1", [String(email).trim()]);
+      const cleanEmail = String(email).trim().toLowerCase();
+      const custRes = await query("SELECT id FROM customers WHERE LOWER(email) = $1 ORDER BY created_at DESC LIMIT 1", [cleanEmail]);
       if (custRes.rows.length > 0) {
         targetCustId = custRes.rows[0].id;
+      } else {
+        // If user exists in users table with role 'customer', automatically ensure a customer profile row exists
+        const userRes = await query("SELECT id, name, email, phone, business_id FROM users WHERE LOWER(email) = $1 LIMIT 1", [cleanEmail]);
+        if (userRes.rows.length > 0) {
+          const u = userRes.rows[0];
+          // Find canonical business id
+          const defaultBiz = await query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio' LIMIT 1");
+          const bizId = u.business_id || defaultBiz.rows[0]?.id;
+          if (bizId) {
+            const insCust = await query(`
+              INSERT INTO customers (business_id, name, email, phone)
+              VALUES ($1, $2, $3, $4)
+              ON CONFLICT (business_id, email) DO UPDATE SET name = $2, phone = $4
+              RETURNING id
+            `, [bizId, u.name || 'Valued Customer', cleanEmail, u.phone || '+63 900 000 0000']);
+            if (insCust.rows.length > 0) {
+              targetCustId = insCust.rows[0].id;
+            }
+          }
+        }
       }
     }
 
