@@ -61,7 +61,7 @@ export const AdminLoginPage: React.FC = () => {
         if (res.user.role === 'platform_admin' || res.user.role === 'owner') {
           navigate('/superadmin');
         } else if (res.user.role === 'customer') {
-          navigate(`/manage?email=${encodeURIComponent(res.user.email)}`);
+          navigate('/customer/portal');
         } else {
           // Store / Business Admin
           const targetSlug = res.user.businessSlug || 'lumiere-beauty-studio';
@@ -116,7 +116,7 @@ export const AdminLoginPage: React.FC = () => {
         if (res.token && res.user) {
           localStorage.setItem('appointmo_token', res.token);
           localStorage.setItem('appointmo_user', JSON.stringify(res.user));
-          navigate(`/manage?email=${encodeURIComponent(res.user.email)}`);
+          navigate('/customer/portal');
           return;
         }
 

@@ -6,6 +6,7 @@ import { DiscoveryPage } from './pages/DiscoveryPage';
 import { QuickBookingPage } from './pages/QuickBookingPage';
 import { ConciergePage } from './pages/ConciergePage';
 import { ManageBookingPage } from './pages/ManageBookingPage';
+import { CustomerPortalPage } from './pages/CustomerPortalPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { OwnerDashboardPage } from './pages/OwnerDashboardPage';
 import { SetupPasswordPage } from './pages/SetupPasswordPage';
@@ -43,7 +44,8 @@ export const App: React.FC = () => {
         <Route path="/admin/dashboard" element={<DemoAdminDashboardPage />} />
 
         {/* 4. Customer Secure Booking Lookup & Management */}
-        <Route path="/manage" element={<ManageBookingPage />} />
+        <Route path="/customer/portal" element={<CustomerPortalPage />} />
+        <Route path="/manage" element={<CustomerPortalPage />} />
 
         {/* 5. Production Authentication (Hidden from public links, but functional) */}
         <Route path="/admin/login" element={<AdminLoginPage />} />

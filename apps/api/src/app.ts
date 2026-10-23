@@ -12,6 +12,7 @@ import ownerRoutes from './routes/owner';
 import accessRoutes from './routes/access';
 import demoAdminRoutes from './routes/demoAdmin';
 import discoveryRoutes from './routes/discovery';
+import customerRoutes from './routes/customer';
 import { runMigrations } from './db/migrate';
 
 // Automatically ensure database schema is up-to-date on cold-start (non-blocking)
@@ -42,6 +43,7 @@ export const createApp = () => {
   });
 
   // API Routes
+  app.use('/api/customer', customerRoutes);
   app.use('/api/demo/admin', demoAdminRoutes);
   app.use('/api/owner', ownerRoutes);
   app.use('/api/access', accessRoutes);
