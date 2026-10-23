@@ -72,7 +72,7 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
           value={displayNational}
           onChange={handleInputChange}
           placeholder={placeholder || (country.code === 'PH' ? '905 242 2821' : `e.g. ${nationalLength} digits`)}
-          className="w-full px-3 py-2 bg-transparent text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs font-mono focus:outline-none"
+          className="w-full min-w-0 px-3 py-2 bg-transparent text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs font-mono focus:outline-none"
         />
 
         {/* Digits counter helper */}
