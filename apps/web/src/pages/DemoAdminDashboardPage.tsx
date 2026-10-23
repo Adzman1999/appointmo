@@ -153,6 +153,29 @@ export const DemoAdminDashboardPage: React.FC = () => {
     return true;
   };
 
+  // Helper to format 24-hr time range to 12-hr AM/PM string
+  const formatTimeRange = (start: string, end: string) => {
+    const formatSingle = (timeStr: string) => {
+      if (!timeStr) return '';
+      const [hours, mins] = timeStr.split(':').map(Number);
+      if (isNaN(hours)) return timeStr;
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const adjHours = hours % 12 || 12;
+      const adjMins = mins ? String(mins).padStart(2, '0') : '00';
+      return `${adjHours}:${adjMins} ${period}`;
+    };
+    return `${formatSingle(start || '09:00')} - ${formatSingle(end || '18:00')}`;
+  };
+
+  // Synchronize store weekly schedule operating hours to match Section 5 (Daily Operating Hours)
+  const syncWeeklyScheduleWithStoreHours = (newStart: string, newEnd: string) => {
+    setWeeklySchedule(prev => prev.map(slot => ({
+      ...slot,
+      startTime: newStart,
+      endTime: newEnd,
+    })));
+  };
+
   // Suggested Booking Configurations
   const [requireApproval, setRequireApproval] = useState(false);
   const [minLeadHours, setMinLeadHours] = useState(2);
@@ -718,19 +741,6 @@ export const DemoAdminDashboardPage: React.FC = () => {
       });
       return;
     }
-    // Format 24-hr time string (e.g. "09:00", "18:00") into friendly display e.g. "9:00 AM - 6:00 PM"
-    const formatTimeRange = (start: string, end: string) => {
-      const formatSingle = (timeStr: string) => {
-        if (!timeStr) return '';
-        const [hours, mins] = timeStr.split(':').map(Number);
-        if (isNaN(hours)) return timeStr;
-        const period = hours >= 12 ? 'PM' : 'AM';
-        const adjHours = hours % 12 || 12;
-        const adjMins = mins ? String(mins).padStart(2, '0') : '00';
-        return `${adjHours}:${adjMins} ${period}`;
-      };
-      return `${formatSingle(start || '09:00')} - ${formatSingle(end || '18:00')}`;
-    };
 
     if (!validateTimeRange(editStartTime, editEndTime)) {
       toast.error('Invalid Time Range', {
@@ -1709,10 +1719,15 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
                     {/* Section 5: Daily Operating Hours */}
                     <div className="bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
-                      <div className="flex items-center space-x-2">
-                        <Clock className="w-4 h-4 text-stone-700 dark:text-stone-300" />
-                        <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
-                          5. Daily Operating Hours
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Clock className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+                          <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                            5. Daily Operating Hours
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-900/40">
+                          Auto-syncs to Weekly Schedule
                         </span>
                       </div>
 
@@ -1726,10 +1741,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             required
                             value={editStartTime}
                             onChange={(e) => {
+                              const newStart = e.target.value;
                               setIsSettingsDirty(true);
                               setIsTimeModified(true);
-                              setEditStartTime(e.target.value);
-                              validateTimeRange(e.target.value, editEndTime);
+                              setEditStartTime(newStart);
+                              validateTimeRange(newStart, editEndTime);
+                              syncWeeklyScheduleWithStoreHours(newStart, editEndTime);
                             }}
                             disabled={isPending}
                             className={`w-full px-3 py-2.5 rounded-xl border ${
@@ -1746,10 +1763,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             required
                             value={editEndTime}
                             onChange={(e) => {
+                              const newEnd = e.target.value;
                               setIsSettingsDirty(true);
                               setIsTimeModified(true);
-                              setEditEndTime(e.target.value);
-                              validateTimeRange(editStartTime, e.target.value);
+                              setEditEndTime(newEnd);
+                              validateTimeRange(editStartTime, newEnd);
+                              syncWeeklyScheduleWithStoreHours(editStartTime, newEnd);
                             }}
                             disabled={isPending}
                             className={`w-full px-3 py-2.5 rounded-xl border ${
@@ -2051,10 +2070,36 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       <p className="text-[11px] text-stone-500 mt-0.5">
                         Customize working days (e.g. Weekdays only, or select operating days) and daily hours.
                       </p>
+                      <div className="mt-1.5 flex items-center space-x-2 text-[11px]">
+                        <span className="text-stone-500">Store Hours (Section 5):</span>
+                        <span className="font-mono font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-200/60 dark:border-amber-900/40">
+                          {formatTimeRange(editStartTime, editEndTime)}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Quick Preset Buttons */}
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => {
+                          setIsSettingsDirty(true);
+                          setWeeklySchedule(prev => prev.map(item => ({
+                            ...item,
+                            startTime: editStartTime,
+                            endTime: editEndTime,
+                          })));
+                          toast.success('Hours Synced', {
+                            description: `Applied ${formatTimeRange(editStartTime, editEndTime)} to all days in schedule.`
+                          });
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700/80 bg-amber-50 dark:bg-amber-950/40 text-[11px] font-semibold text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition flex items-center space-x-1"
+                        title="Sync all days to Section 5 Daily Operating Hours"
+                      >
+                        <Clock className="w-3 h-3" />
+                        <span>Sync Store Hours</span>
+                      </button>
                       <button
                         type="button"
                         disabled={isPending}
@@ -2062,9 +2107,11 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           setIsSettingsDirty(true);
                           setWeeklySchedule(prev => prev.map((item, idx) => ({
                             ...item,
+                            startTime: editStartTime,
+                            endTime: editEndTime,
                             isWorking: idx < 5, // Mon-Fri
                           })));
-                          toast.info('Schedule Preset', { description: 'Applied Weekdays Only (Monday to Friday).' });
+                          toast.info('Schedule Preset', { description: `Applied Weekdays Only (${formatTimeRange(editStartTime, editEndTime)}).` });
                         }}
                         className="px-2.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-[11px] font-semibold text-stone-700 dark:text-stone-300 hover:border-amber-400 hover:text-amber-600 transition"
                       >
@@ -2077,9 +2124,11 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           setIsSettingsDirty(true);
                           setWeeklySchedule(prev => prev.map(item => ({
                             ...item,
+                            startTime: editStartTime,
+                            endTime: editEndTime,
                             isWorking: true, // All 7 days
                           })));
-                          toast.info('Schedule Preset', { description: 'Applied Full Week (All 7 Days Open).' });
+                          toast.info('Schedule Preset', { description: `Applied Full Week (${formatTimeRange(editStartTime, editEndTime)}).` });
                         }}
                         className="px-2.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-[11px] font-semibold text-stone-700 dark:text-stone-300 hover:border-amber-400 hover:text-amber-600 transition"
                       >
