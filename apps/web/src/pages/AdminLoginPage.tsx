@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Lock, ArrowRight, Store, UserCheck, Shield, Sparkles, Building2, Phone, Mail, CheckCircle2, ChevronRight, Eye, EyeOff, ShieldAlert } from 'lucide-react';
+import { Lock, ArrowRight, Store, UserCheck, Shield, Sparkles, Building2, Phone, Mail, CheckCircle2, ChevronRight, Eye, EyeOff, ShieldAlert, Globe } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { LocationPicker } from '../components/LocationPicker';
+import { SUPPORTED_COUNTRIES, getCountryByName, normalizePhoneNumber } from '../lib/countryConfig';
+import { CountryPhoneInput } from '../components/CountryPhoneInput';
 
 export const AdminLoginPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -19,6 +21,7 @@ export const AdminLoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState('Philippines');
   const [phone, setPhone] = useState('');
 
   const [loading, setLoading] = useState(false);
@@ -63,13 +66,16 @@ export const AdminLoginPage: React.FC = () => {
         }
       } else {
         // Customer Sign Up: After sign up, prompt user and transition to sign in (no approval required)
+        const countryCfg = getCountryByName(selectedCountry);
+        const normalizedPhone = phone.trim() ? normalizePhoneNumber(phone, countryCfg.code) : '';
         const res: any = await apiFetch('/auth/register', {
           method: 'POST',
           body: JSON.stringify({
             name: name.trim(),
             email: email.trim(),
             password,
-            phone: phone.trim(),
+            phone: normalizedPhone,
+            country: selectedCountry,
           }),
         });
 
@@ -170,9 +176,9 @@ export const AdminLoginPage: React.FC = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* If Sign Up: ask for Name and Phone */}
+            {/* If Sign Up: ask for Name, Country, and Phone */}
             {authMode === 'signup' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
                     Your Full Name <span className="text-rose-500">*</span>
@@ -187,18 +193,43 @@ export const AdminLoginPage: React.FC = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Contact Phone <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="+63 905 242 2821"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                      Country <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={selectedCountry}
+                      onChange={(e) => {
+                        setSelectedCountry(e.target.value);
+                        setPhone(''); // reset phone when switching countries for clean format
+                      }}
+                      className="w-full px-3 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                    >
+                      {SUPPORTED_COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.name}>
+                          {c.emojiFlag ? `${c.emojiFlag} ` : ''}{c.name} ({c.dialCode})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
+                        Mobile Phone <span className="text-rose-500">*</span>
+                      </label>
+                      <span className="text-[10px] text-stone-400">
+                        Max {getCountryByName(selectedCountry).nationalPhoneLength} digits
+                      </span>
+                    </div>
+                    <CountryPhoneInput
+                      countryNameOrCode={selectedCountry}
+                      value={phone}
+                      onChange={(val) => setPhone(val)}
+                      required
+                    />
+                  </div>
                 </div>
               </div>
             )}
