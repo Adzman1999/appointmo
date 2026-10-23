@@ -11,6 +11,7 @@ import { apiFetch } from '../lib/api';
 import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { DemoTopNav } from '../components/DemoTopNav';
+import { Pagination } from '../components/Pagination';
 import { toast } from 'sonner';
 
 export const DemoAdminDashboardPage: React.FC = () => {
@@ -87,6 +88,21 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [selectedNotif, setSelectedNotif] = useState<any | null>(null);
+
+  // Pagination states
+  const APPTS_PER_PAGE = 10;
+  const [apptPage, setApptPage] = useState(1);
+
+  const SERVICES_PER_PAGE = 6;
+  const [servicePage, setServicePage] = useState(1);
+
+  const STAFF_PER_PAGE = 5;
+  const [staffPage, setStaffPage] = useState(1);
+
+  useEffect(() => {
+    setApptPage(1);
+  }, [statusFilter, search, activeSlug]);
 
   // Details & History Modal State
   const [selectedApptDetails, setSelectedApptDetails] = useState<any | null>(null);
@@ -417,18 +433,15 @@ export const DemoAdminDashboardPage: React.FC = () => {
     }
   };
 
-  // Mark notification read
-  const handleMarkNotifRead = async (id: string, apptId?: string) => {
-    // Optimistic UI update
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+  // View notification full info
+  const handleViewNotification = async (notif: any) => {
+    setSelectedNotif(notif);
+    setIsNotifOpen(false);
+    setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, isRead: true } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
     try {
-      await apiFetch(`/demo/admin/notifications/${id}/read`, { method: 'PATCH' });
+      await apiFetch(`/demo/admin/notifications/${notif.id}/read`, { method: 'PATCH' });
       fetchNotifications();
-      if (apptId) {
-        handleOpenDetails(apptId);
-        setIsNotifOpen(false);
-      }
     } catch (err) {
       console.error(err);
     }
@@ -556,7 +569,14 @@ export const DemoAdminDashboardPage: React.FC = () => {
     }
   };
 
+  const totalApptPages = Math.ceil(appointments.length / APPTS_PER_PAGE);
+  const paginatedAppointments = appointments.slice((apptPage - 1) * APPTS_PER_PAGE, apptPage * APPTS_PER_PAGE);
 
+  const totalServicePages = Math.ceil(storeServices.length / SERVICES_PER_PAGE);
+  const paginatedServices = storeServices.slice((servicePage - 1) * SERVICES_PER_PAGE, servicePage * SERVICES_PER_PAGE);
+
+  const totalStaffPages = Math.ceil(storeStaff.length / STAFF_PER_PAGE);
+  const paginatedStaff = storeStaff.slice((staffPage - 1) * STAFF_PER_PAGE, staffPage * STAFF_PER_PAGE);
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20 transition-colors">
@@ -676,7 +696,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       notifications.map((n) => (
                         <div
                           key={n.id}
-                          onClick={() => handleMarkNotifRead(n.id, n.appointmentId)}
+                          onClick={() => handleViewNotification(n)}
                           className={`p-3.5 hover:bg-stone-50 dark:hover:bg-stone-800/60 cursor-pointer transition ${
                             !n.isRead ? 'bg-amber-50/40 dark:bg-amber-950/30 font-semibold' : ''
                           }`}
@@ -690,9 +710,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           <p className="text-[11px] text-stone-600 dark:text-stone-300 font-normal mt-0.5 line-clamp-2 leading-relaxed">
                             {n.message}
                           </p>
-                          <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-1">
-                            {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} •{' '}
-                            {new Date(n.createdAt).toLocaleDateString()}
+                          <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-1 flex items-center justify-between">
+                            <span>
+                              {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} •{' '}
+                              {new Date(n.createdAt).toLocaleDateString()}
+                            </span>
+                            <span className="text-amber-600 dark:text-amber-400 font-medium text-[10px]">View info &rarr;</span>
                           </div>
                         </div>
                       ))
@@ -1009,7 +1032,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     {storeServices.length === 0 ? (
                       <div className="py-6 text-center text-stone-400">No services created yet.</div>
                     ) : (
-                      storeServices.map((svc) => (
+                      paginatedServices.map((svc) => (
                         <div key={svc.id} className="py-3 flex items-center justify-between">
                           <div>
                             <div className="font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
@@ -1032,6 +1055,15 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       ))
                     )}
                   </div>
+
+                  <Pagination
+                    currentPage={servicePage}
+                    totalPages={totalServicePages}
+                    totalItems={storeServices.length}
+                    itemsPerPage={SERVICES_PER_PAGE}
+                    onPageChange={setServicePage}
+                    itemName="services"
+                  />
                 </div>
               </div>
 
@@ -1070,7 +1102,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     {storeStaff.length === 0 ? (
                       <div className="py-6 text-center text-stone-400">No staff specialists listed.</div>
                     ) : (
-                      storeStaff.map((st) => (
+                      paginatedStaff.map((st) => (
                         <div key={st.id} className="p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 flex items-center justify-between">
                           <div className="flex items-center space-x-2.5">
                             <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 flex items-center justify-center font-bold text-xs">
@@ -1088,6 +1120,15 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       ))
                     )}
                   </div>
+
+                  <Pagination
+                    currentPage={staffPage}
+                    totalPages={totalStaffPages}
+                    totalItems={storeStaff.length}
+                    itemsPerPage={STAFF_PER_PAGE}
+                    onPageChange={setStaffPage}
+                    itemName="specialists"
+                  />
                 </div>
 
                 {/* Appointment Slots & Working Schedule */}
@@ -1241,7 +1282,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  appointments.map((appt) => (
+                  paginatedAppointments.map((appt) => (
                     <tr key={appt.id} className="hover:bg-stone-50/80 dark:hover:bg-stone-800/50 transition">
                       <td className="px-5 py-3.5 font-mono font-bold text-stone-900 dark:text-stone-100">
                         <button
@@ -1380,6 +1421,16 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 )}
               </tbody>
             </table>
+          </div>
+          <div className="p-4 bg-stone-50/50 dark:bg-stone-900 border-t border-stone-100 dark:border-stone-800">
+            <Pagination
+              currentPage={apptPage}
+              totalPages={totalApptPages}
+              totalItems={appointments.length}
+              itemsPerPage={APPTS_PER_PAGE}
+              onPageChange={setApptPage}
+              itemName="appointments"
+            />
           </div>
         </div>
           </>
@@ -1867,6 +1918,92 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* NOTIFICATION FULL INFO MODAL */}
+      {selectedNotif && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-7 max-w-lg w-full shadow-2xl relative">
+            <div className="flex items-start justify-between pb-4 border-b border-stone-100 dark:border-stone-800">
+              <div className="pr-4">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  Notification Details
+                </span>
+                <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100 mt-0.5">
+                  {selectedNotif.title}
+                </h3>
+                <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                  {new Date(selectedNotif.createdAt).toLocaleString(undefined, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short'
+                  })}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedNotif(null)}
+                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="py-5 space-y-4">
+              <div className="bg-stone-50 dark:bg-stone-800/60 p-4 rounded-2xl border border-stone-100 dark:border-stone-800">
+                <p className="text-sm text-stone-700 dark:text-stone-200 leading-relaxed whitespace-pre-wrap">
+                  {selectedNotif.message}
+                </p>
+              </div>
+
+              {(selectedNotif.bookingReference || selectedNotif.serviceName) && (
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  {selectedNotif.bookingReference && (
+                    <div className="p-3 rounded-xl bg-stone-100 dark:bg-stone-800/80">
+                      <span className="text-[10px] uppercase font-bold text-stone-500 dark:text-stone-400 block mb-0.5">
+                        Booking Ref
+                      </span>
+                      <span className="font-mono font-bold text-stone-900 dark:text-stone-100">
+                        {selectedNotif.bookingReference}
+                      </span>
+                    </div>
+                  )}
+                  {selectedNotif.serviceName && (
+                    <div className="p-3 rounded-xl bg-stone-100 dark:bg-stone-800/80">
+                      <span className="text-[10px] uppercase font-bold text-stone-500 dark:text-stone-400 block mb-0.5">
+                        Service
+                      </span>
+                      <span className="font-medium text-stone-900 dark:text-stone-100 truncate block">
+                        {selectedNotif.serviceName}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-stone-100 dark:border-stone-800 flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setSelectedNotif(null)}
+                className="px-4 py-2 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-semibold text-xs hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+              >
+                Close
+              </button>
+              {selectedNotif.appointmentId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const apptId = selectedNotif.appointmentId!;
+                    setSelectedNotif(null);
+                    handleOpenDetails(apptId);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow"
+                >
+                  View Appointment Details
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

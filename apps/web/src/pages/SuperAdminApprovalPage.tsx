@@ -9,6 +9,7 @@ import {
 import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { Pagination } from '../components/Pagination';
 import { toast } from 'sonner';
 
 interface RecentCredentials {
@@ -90,6 +91,22 @@ export const SuperAdminApprovalPage: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const [selectedNotif, setSelectedNotif] = useState<any | null>(null);
+
+  // Pagination states
+  const STORES_PER_PAGE = 6;
+  const [storePage, setStorePage] = useState(1);
+
+  const CUSTOMERS_PER_PAGE = 8;
+  const [customerPage, setCustomerPage] = useState(1);
+
+  useEffect(() => {
+    setStorePage(1);
+  }, [storeFilter]);
+
+  useEffect(() => {
+    setCustomerPage(1);
+  }, [customerFilter, customerSearch]);
 
   // Action states
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
@@ -187,17 +204,15 @@ export const SuperAdminApprovalPage: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // When clicking a notification item: remove item from UI immediately, mark read, and close dropdown
-  const handleClickNotification = async (id: string) => {
-    // 1. Optimistically remove notification content from list and decrement unread count
-    setNotifications(prev => prev.filter(n => n.id !== id));
+  // When clicking a notification item: close dropdown, mark read, and open full details modal
+  const handleClickNotification = async (notif: any) => {
+    setSelectedNotif(notif);
+    setIsNotifOpen(false);
+    setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, isRead: true } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
 
-    // 2. Automatically close the notification dropdown
-    setIsNotifOpen(false);
-
     try {
-      await apiFetch(`/owner/notifications/${id}/read`, { method: 'PATCH' });
+      await apiFetch(`/owner/notifications/${notif.id}/read`, { method: 'PATCH' });
     } catch (err) {
       console.error('Error marking notification as read:', err);
     }
@@ -356,6 +371,12 @@ export const SuperAdminApprovalPage: React.FC = () => {
   const pendingStoresCount = stores.filter(s => s.user_status === 'pending').length;
   const suspendedCustomersCount = customers.filter(c => c.status === 'suspended' || c.status === 'revoked' || c.status === 'disabled').length;
 
+  const totalStorePages = Math.ceil(filteredStores.length / STORES_PER_PAGE);
+  const paginatedStores = filteredStores.slice((storePage - 1) * STORES_PER_PAGE, storePage * STORES_PER_PAGE);
+
+  const totalCustomerPages = Math.ceil(filteredCustomers.length / CUSTOMERS_PER_PAGE);
+  const paginatedCustomers = filteredCustomers.slice((customerPage - 1) * CUSTOMERS_PER_PAGE, customerPage * CUSTOMERS_PER_PAGE);
+
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors pb-20">
       {/* Super Admin Top Header */}
@@ -421,12 +442,16 @@ export const SuperAdminApprovalPage: React.FC = () => {
                       notifications.map((n) => (
                         <div
                           key={n.id}
-                          onClick={() => handleClickNotification(n.id)}
-                          className="p-3.5 hover:bg-stone-50 dark:hover:bg-stone-800/60 cursor-pointer transition bg-amber-50/20 dark:bg-amber-950/20"
+                          onClick={() => handleClickNotification(n)}
+                          className={`p-3.5 hover:bg-stone-50 dark:hover:bg-stone-800/60 cursor-pointer transition ${
+                            !n.isRead ? 'bg-amber-50/30 dark:bg-amber-950/20' : ''
+                          }`}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <span className="text-stone-900 dark:text-stone-100 text-xs font-bold">{n.title}</span>
-                            <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 mt-1"></span>
+                            {!n.isRead && (
+                              <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 mt-1"></span>
+                            )}
                           </div>
                           <p className="text-[11px] text-stone-600 dark:text-stone-300 font-normal mt-0.5 line-clamp-2 leading-relaxed">
                             {n.message}
@@ -436,7 +461,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
                               {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} •{' '}
                               {new Date(n.createdAt).toLocaleDateString()}
                             </span>
-                            <span className="text-amber-600 dark:text-amber-400 font-medium text-[10px]">Click to dismiss &rarr;</span>
+                            <span className="text-amber-600 dark:text-amber-400 font-medium text-[10px]">View info &rarr;</span>
                           </div>
                         </div>
                       ))
@@ -583,10 +608,11 @@ export const SuperAdminApprovalPage: React.FC = () => {
                 <p className="text-xs text-stone-500">There are currently no store registration submissions matching this filter.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4">
-                {filteredStores.map((item) => {
-                  const isExpanded = expandedStoreId === item.user_id;
-                  const grantedTimestamp = item.recent_credentials?.grantedAt;
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  {paginatedStores.map((item) => {
+                    const isExpanded = expandedStoreId === item.user_id;
+                    const grantedTimestamp = item.recent_credentials?.grantedAt;
 
                   return (
                     <div
@@ -832,7 +858,19 @@ export const SuperAdminApprovalPage: React.FC = () => {
                   );
                 })}
               </div>
-            )}
+
+              <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-4 shadow-sm">
+                <Pagination
+                  currentPage={storePage}
+                  totalPages={totalStorePages}
+                  totalItems={filteredStores.length}
+                  itemsPerPage={STORES_PER_PAGE}
+                  onPageChange={setStorePage}
+                  itemName="store registrations"
+                />
+              </div>
+            </div>
+          )}
           </div>
         )}
 
@@ -898,7 +936,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-                      {filteredCustomers.map((cust) => {
+                      {paginatedCustomers.map((cust) => {
                         const isSuspended = cust.status === 'suspended';
                         const isDisabled = cust.status === 'disabled';
                         const isRevoked = cust.status === 'revoked';
@@ -998,6 +1036,17 @@ export const SuperAdminApprovalPage: React.FC = () => {
                       })}
                     </tbody>
                   </table>
+                </div>
+
+                <div className="p-4 bg-stone-50/50 dark:bg-stone-900 border-t border-stone-100 dark:border-stone-800">
+                  <Pagination
+                    currentPage={customerPage}
+                    totalPages={totalCustomerPages}
+                    totalItems={filteredCustomers.length}
+                    itemsPerPage={CUSTOMERS_PER_PAGE}
+                    onPageChange={setCustomerPage}
+                    itemName="customer accounts"
+                  />
                 </div>
               </div>
             )}
@@ -1246,6 +1295,64 @@ export const SuperAdminApprovalPage: React.FC = () => {
                 }`}
               >
                 <span>{confirmModalConfig.confirmText}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Full Info Modal */}
+      {selectedNotif && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-7 max-w-lg w-full shadow-2xl space-y-5 animate-in zoom-in-95">
+            <div className="flex items-start justify-between gap-3 border-b border-stone-100 dark:border-stone-800 pb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center shrink-0 shadow-sm">
+                  <Bell className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm sm:text-base">
+                    {selectedNotif.title}
+                  </h3>
+                  <div className="flex items-center space-x-2 text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+                    <Clock className="w-3.5 h-3.5 text-stone-400" />
+                    <span>
+                      {new Date(selectedNotif.createdAt).toLocaleString([], {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedNotif(null)}
+                className="p-1.5 rounded-full text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/70 dark:border-stone-700 text-stone-800 dark:text-stone-200 leading-relaxed font-normal whitespace-pre-line">
+                {selectedNotif.message}
+              </div>
+
+              {selectedNotif.type && (
+                <div className="flex items-center justify-between text-[11px] px-3.5 py-2.5 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400">
+                  <span>Category:</span>
+                  <span className="font-mono uppercase font-bold text-stone-800 dark:text-stone-200">{selectedNotif.type}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setSelectedNotif(null)}
+                className="px-5 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-bold hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow"
+              >
+                Close
               </button>
             </div>
           </div>
