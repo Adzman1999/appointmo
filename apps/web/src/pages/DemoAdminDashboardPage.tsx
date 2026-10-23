@@ -62,25 +62,21 @@ export const DemoAdminDashboardPage: React.FC = () => {
     'Health & Fitness',
   ];
 
+  const defaultPhConfig = getCountryByName('Philippines');
   const [editCountry, setEditCountry] = useState('Philippines');
   const [editCurrency, setEditCurrency] = useState('PHP');
   const [editTimezone, setEditTimezone] = useState('Asia/Manila');
-  const [editStateProvince, setEditStateProvince] = useState('');
+  const [editStateProvince, setEditStateProvince] = useState(defaultPhConfig.defaultState || 'Metro Manila');
   const [editPostalCode, setEditPostalCode] = useState('');
 
-  const [editCity, setEditCity] = useState('Quezon City');
+  const [editCity, setEditCity] = useState(defaultPhConfig.defaultCity || 'Quezon City');
   const [isCustomCity, setIsCustomCity] = useState(false);
   const [customCityInput, setCustomCityInput] = useState('');
-  const [cityOptions, setCityOptions] = useState<string[]>([
+  const [cityOptions, setCityOptions] = useState<string[]>(defaultPhConfig.cities || [
     'Quezon City',
     'Makati',
     'Taguig / BGC',
     'Pasig / Ortigas',
-    'San Juan / Greenhills',
-    'Mandaluyong',
-    'Manila',
-    'Alabang / Muntinlupa',
-    'Pasay',
   ]);
 
   const [editDescription, setEditDescription] = useState('');
@@ -116,12 +112,27 @@ export const DemoAdminDashboardPage: React.FC = () => {
     const cfg = getCountryByName(cName);
     setEditCurrency(cfg.currency);
     setEditTimezone(cfg.defaultTimezone);
+
+    // Sync province/state to country default if configured
+    if (cfg.defaultState) {
+      setEditStateProvince(cfg.defaultState);
+    }
+
+    // Sync phone dial code prefix
     if (!editPhone || editPhone.startsWith('+')) {
       setEditPhone(`${cfg.dialCode} `);
     }
-    if (cfg.defaultCity && !cityOptions.includes(cfg.defaultCity)) {
-      setCityOptions(prev => [...prev, cfg.defaultCity!]);
+
+    // Smart sync cities list to this country
+    if (cfg.cities && cfg.cities.length > 0) {
+      setCityOptions(cfg.cities);
+      setEditCity(cfg.defaultCity || cfg.cities[0]);
+      setIsCustomCity(false);
+      setCustomCityInput('');
+    } else if (cfg.defaultCity) {
+      setCityOptions([cfg.defaultCity]);
       setEditCity(cfg.defaultCity);
+      setIsCustomCity(false);
     }
   };
 
@@ -372,12 +383,23 @@ export const DemoAdminDashboardPage: React.FC = () => {
         setEditPhone(sRes.business.phone || '');
         setEditEmail(sRes.business.email || '');
         setEditAddress(sRes.business.address || '');
-        setEditCountry(sRes.business.country || 'Philippines');
-        setEditCurrency(sRes.business.currency || 'PHP');
-        setEditTimezone(sRes.business.timezone || 'Asia/Manila');
-        setEditStateProvince(sRes.business.stateProvince || '');
+        const bCountry = sRes.business.country || 'Philippines';
+        setEditCountry(bCountry);
+        const bCountryCfg = getCountryByName(bCountry);
+        setEditCurrency(sRes.business.currency || bCountryCfg.currency);
+        setEditTimezone(sRes.business.timezone || bCountryCfg.defaultTimezone);
+        setEditStateProvince(sRes.business.stateProvince || bCountryCfg.defaultState || '');
         setEditPostalCode(sRes.business.postalCode || '');
-        setEditCity(sRes.business.city || 'Quezon City');
+
+        // Populate city options corresponding to the country
+        const availableCities = bCountryCfg.cities || [bCountryCfg.defaultCity || 'Quezon City'];
+        const bCity = sRes.business.city || bCountryCfg.defaultCity || 'Quezon City';
+        if (!availableCities.includes(bCity)) {
+          setCityOptions([...availableCities, bCity]);
+        } else {
+          setCityOptions(availableCities);
+        }
+        setEditCity(bCity);
         setEditOpeningHours(sRes.business.openingHours || '9:00 AM - 6:00 PM');
         setEditWebsite(sRes.business.website || '');
         setEditSocialHandle(sRes.business.socialHandle || '');

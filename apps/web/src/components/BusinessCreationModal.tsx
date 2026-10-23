@@ -49,24 +49,20 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
   const [showPassword, setShowPassword] = useState(false);
 
   // Store Location & Contact Details
+  const defaultCountryCfg = getCountryByName('Philippines');
   const [selectedCountry, setSelectedCountry] = useState('Philippines');
   const [selectedCurrency, setSelectedCurrency] = useState('PHP');
   const [selectedTimezone, setSelectedTimezone] = useState('Asia/Manila');
-  const [createStateProvince, setCreateStateProvince] = useState('');
+  const [createStateProvince, setCreateStateProvince] = useState(defaultCountryCfg.defaultState || 'Metro Manila');
   const [createPostalCode, setCreatePostalCode] = useState('');
 
-  const [cityOptions, setCityOptions] = useState<string[]>([
+  const [cityOptions, setCityOptions] = useState<string[]>(defaultCountryCfg.cities || [
     'Quezon City',
     'Makati',
     'Taguig / BGC',
     'Pasig / Ortigas',
-    'San Juan / Greenhills',
-    'Mandaluyong',
-    'Manila',
-    'Alabang / Muntinlupa',
-    'Pasay',
   ]);
-  const [createCity, setCreateCity] = useState(initialData?.city || 'Quezon City');
+  const [createCity, setCreateCity] = useState(initialData?.city || defaultCountryCfg.defaultCity || 'Quezon City');
   const [isCustomCity, setIsCustomCity] = useState(false);
   const [customCityInput, setCustomCityInput] = useState('');
   const [createAddress, setCreateAddress] = useState('');
@@ -80,18 +76,33 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
   const [createWebsite, setCreateWebsite] = useState('');
   const [createSocialHandle, setCreateSocialHandle] = useState('');
 
-  // Handle Country selection change: automatically update currency, timezone, dial code
+  // Handle Country selection change: automatically update currency, timezone, dial code, cities list, and state
   const handleCountryChange = (countryName: string) => {
     setSelectedCountry(countryName);
     const cfg = getCountryByName(countryName);
     setSelectedCurrency(cfg.currency);
     setSelectedTimezone(cfg.defaultTimezone);
+
+    // Sync state/province if empty or previously at default
+    if (cfg.defaultState) {
+      setCreateStateProvince(cfg.defaultState);
+    }
+
+    // Sync phone dial code
     if (!createPhone || createPhone.startsWith('+')) {
       setCreatePhone(`${cfg.dialCode} `);
     }
-    if (cfg.defaultCity && !cityOptions.includes(cfg.defaultCity)) {
-      setCityOptions(prev => [...prev, cfg.defaultCity!]);
+
+    // Smart sync cities list to this country
+    if (cfg.cities && cfg.cities.length > 0) {
+      setCityOptions(cfg.cities);
+      setCreateCity(cfg.defaultCity || cfg.cities[0]);
+      setIsCustomCity(false);
+      setCustomCityInput('');
+    } else if (cfg.defaultCity) {
+      setCityOptions([cfg.defaultCity]);
       setCreateCity(cfg.defaultCity);
+      setIsCustomCity(false);
     }
   };
 
