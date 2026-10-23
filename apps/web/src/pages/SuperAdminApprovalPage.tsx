@@ -77,6 +77,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
   // Stores state
   const [stores, setStores] = useState<StoreApprovalItem[]>([]);
   const [loadingStores, setLoadingStores] = useState(true);
+  const [storeSearch, setStoreSearch] = useState('');
   const [storeFilter, setStoreFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [expandedStoreId, setExpandedStoreId] = useState<string | null>(null);
 
@@ -102,7 +103,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
 
   useEffect(() => {
     setStorePage(1);
-  }, [storeFilter]);
+  }, [storeFilter, storeSearch]);
 
   useEffect(() => {
     setCustomerPage(1);
@@ -208,11 +209,15 @@ export const SuperAdminApprovalPage: React.FC = () => {
   const handleClickNotification = async (notif: any) => {
     setSelectedNotif(notif);
     setIsNotifOpen(false);
+    // Mark as read in state
     setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, isRead: true } : n));
-    setUnreadCount(prev => Math.max(0, prev - 1));
+    if (!notif.isRead) {
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    }
 
     try {
       await apiFetch(`/owner/notifications/${notif.id}/read`, { method: 'PATCH' });
+      fetchNotifications();
     } catch (err) {
       console.error('Error marking notification as read:', err);
     }
@@ -355,8 +360,16 @@ export const SuperAdminApprovalPage: React.FC = () => {
 
   // Filters
   const filteredStores = stores.filter(s => {
-    if (storeFilter === 'all') return true;
-    return s.user_status === storeFilter;
+    const matchesFilter = storeFilter === 'all' || s.user_status === storeFilter;
+    const q = storeSearch.trim().toLowerCase();
+    const matchesSearch = !q ||
+      (s.store_name && s.store_name.toLowerCase().includes(q)) ||
+      (s.store_slug && s.store_slug.toLowerCase().includes(q)) ||
+      (s.admin_name && s.admin_name.toLowerCase().includes(q)) ||
+      (s.admin_email && s.admin_email.toLowerCase().includes(q)) ||
+      (s.city && s.city.toLowerCase().includes(q)) ||
+      (s.category && s.category.toLowerCase().includes(q));
+    return matchesFilter && matchesSearch;
   });
 
   const filteredCustomers = customers.filter(c => {
@@ -567,14 +580,14 @@ export const SuperAdminApprovalPage: React.FC = () => {
         {/* TAB 1: STORES & FULL PROFILES */}
         {activeTab === 'stores' && (
           <div className="space-y-4">
-            {/* Filter Tabs for Stores */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
+            {/* Filter Tabs and Search Bar for Stores */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center space-x-2 overflow-x-auto pb-1 sm:pb-0">
                 {(['all', 'pending', 'approved', 'rejected'] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setStoreFilter(tab)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold capitalize transition ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold capitalize whitespace-nowrap transition ${
                       storeFilter === tab
                         ? 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 shadow-sm'
                         : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800'
@@ -590,9 +603,31 @@ export const SuperAdminApprovalPage: React.FC = () => {
                 ))}
               </div>
 
-              <span className="text-xs text-stone-500">
-                Showing {filteredStores.length} {filteredStores.length === 1 ? 'store' : 'stores'}
-              </span>
+              {/* Search Stores Input */}
+              <div className="flex items-center space-x-3 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-72">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                  <input
+                    type="text"
+                    value={storeSearch}
+                    onChange={(e) => setStoreSearch(e.target.value)}
+                    placeholder="Search stores, email, slug, city..."
+                    className="w-full pl-8 pr-8 py-1.5 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder-stone-400 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition"
+                  />
+                  {storeSearch && (
+                    <button
+                      onClick={() => setStoreSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-xs"
+                      title="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <span className="text-xs text-stone-500 whitespace-nowrap hidden md:inline">
+                  {filteredStores.length} {filteredStores.length === 1 ? 'store' : 'stores'}
+                </span>
+              </div>
             </div>
 
             {/* Stores List */}

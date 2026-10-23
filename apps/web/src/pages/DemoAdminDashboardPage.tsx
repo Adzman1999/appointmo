@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Calendar, Users, DollarSign, CheckCircle2, 
   Search, Filter, Clock, ArrowRight, Sparkles, Building2, 
   Check, X, AlertTriangle, Shield, Bell, ChevronRight, UserCheck, 
   RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store, MapPin, Lightbulb, TrendingUp, LogOut,
-  Settings, Image, Scissors, Briefcase, Power, Save
+  Settings, Image, Scissors, Briefcase, Power, Save, Globe, Share2, Mail, Phone, Sliders, ShieldCheck
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { BusinessLogo } from '../components/BusinessLogo';
@@ -20,6 +20,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   // Active Admin View Tab: 'appointments' or 'setup'
   const [activeTab, setActiveTab] = useState<'appointments' | 'setup'>('appointments');
+  // Store Setup Sub-Navigation Menu
+  const [setupSubTab, setSetupSubTab] = useState<'profile' | 'services' | 'staff' | 'schedule' | 'policies'>('profile');
 
   const [businesses, setBusinesses] = useState<any[]>([]);
   // Resolve active store slug from URL or user context, default to lumiere-beauty-studio
@@ -56,6 +58,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [editWebsite, setEditWebsite] = useState('');
   const [editSocialHandle, setEditSocialHandle] = useState('');
   const [editStatus, setEditStatus] = useState<'approved' | 'closed' | 'pending'>('approved');
+  // Suggested Booking Configurations
+  const [requireApproval, setRequireApproval] = useState(false);
+  const [minLeadHours, setMinLeadHours] = useState(2);
+  const [maxAdvanceDays, setMaxAdvanceDays] = useState(60);
+  const [slotInterval, setSlotInterval] = useState(45);
+  const [autoReminderEmail, setAutoReminderEmail] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
 
   // Pending State Calculation
@@ -88,7 +96,24 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
   const [selectedNotif, setSelectedNotif] = useState<any | null>(null);
+
+  // Click outside to close notifications dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setIsNotifOpen(false);
+      }
+    };
+
+    if (isNotifOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isNotifOpen]);
 
   // Pagination states
   const APPTS_PER_PAGE = 10;
@@ -231,6 +256,17 @@ export const DemoAdminDashboardPage: React.FC = () => {
         setEditWebsite(sRes.business.website || '');
         setEditSocialHandle(sRes.business.socialHandle || '');
         setEditStatus(sRes.business.status || 'approved');
+
+        if (sRes.business.bookingPolicies) {
+          const bp = typeof sRes.business.bookingPolicies === 'string'
+            ? JSON.parse(sRes.business.bookingPolicies)
+            : sRes.business.bookingPolicies;
+          if (bp.requireApproval !== undefined) setRequireApproval(bp.requireApproval);
+          if (bp.minLeadHours !== undefined) setMinLeadHours(bp.minLeadHours);
+          if (bp.maxAdvanceDays !== undefined) setMaxAdvanceDays(bp.maxAdvanceDays);
+          if (bp.slotInterval !== undefined) setSlotInterval(bp.slotInterval);
+          if (bp.autoReminderEmail !== undefined) setAutoReminderEmail(bp.autoReminderEmail);
+        }
       }
     } catch (err: any) {
       console.error(err);
@@ -438,7 +474,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
     setSelectedNotif(notif);
     setIsNotifOpen(false);
     setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, isRead: true } : n));
-    setUnreadCount(prev => Math.max(0, prev - 1));
+    if (!notif.isRead) {
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    }
     try {
       await apiFetch(`/demo/admin/notifications/${notif.id}/read`, { method: 'PATCH' });
       fetchNotifications();
@@ -486,11 +524,18 @@ export const DemoAdminDashboardPage: React.FC = () => {
           website: editWebsite.trim() || null,
           socialHandle: editSocialHandle.trim() || null,
           status: editStatus,
+          bookingPolicies: {
+            requireApproval,
+            minLeadHours: Number(minLeadHours) || 2,
+            maxAdvanceDays: Number(maxAdvanceDays) || 60,
+            slotInterval: Number(slotInterval) || 45,
+            autoReminderEmail,
+          },
         }),
       });
 
       toast.success('Store Settings Saved', {
-        description: 'Store logo, details, operational status, and contact info updated.',
+        description: 'Store profile, configurations, and operational parameters updated successfully.',
       });
       if (res.business) {
         setCurrentBusiness(res.business);
@@ -653,7 +698,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
             <ThemeToggle />
 
             {/* Notification Bell with Badge */}
-            <div className="relative">
+            <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setIsNotifOpen(!isNotifOpen)}
                 className="relative p-2 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
@@ -800,7 +845,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   <span>Store Setup &amp; Settings</span>
                 </h1>
                 <p className="text-xs text-stone-600 dark:text-stone-300 mt-0.5 font-medium">
-                  Customize your store logo, branding description, staff specialists, appointment slots, and operational status.
+                  Organize your store branding, services catalog, team specialists, availability schedule, and automated booking configurations.
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -816,332 +861,442 @@ export const DemoAdminDashboardPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column: Brand Identity, Logo & Status */}
-              <div className="lg:col-span-2 space-y-6">
-                <form onSubmit={handleSaveStoreSettings} className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-5">
-                  <div className="border-b border-stone-100 dark:border-stone-800 pb-3 flex items-center justify-between">
-                    <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
-                      <Store className="w-4 h-4 text-amber-500" />
-                      <span>Store Profile &amp; Branding</span>
-                    </h2>
-                    <span className="text-[11px] text-stone-500 font-mono">Slug: {activeSlug}</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div>
-                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store / Business Name</label>
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        required
-                        disabled={isPending}
-                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Tagline / Catchphrase</label>
-                      <input
-                        type="text"
-                        value={editTagline}
-                        onChange={(e) => setEditTagline(e.target.value)}
-                        placeholder="e.g. Premium Aesthetic Treatments"
-                        disabled={isPending}
-                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="text-xs">
-                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Description &amp; About</label>
-                    <textarea
-                      rows={3}
-                      value={editDescription}
-                      onChange={(e) => setEditDescription(e.target.value)}
-                      placeholder="Describe what services you offer, your studio vibe, and what clients can expect..."
-                      disabled={isPending}
-                      className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                    />
-                  </div>
-
-                  {/* Logo URL with Live Preview */}
-                  <div className="p-4 rounded-2xl bg-stone-100/80 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 text-xs space-y-2.5 transition-colors">
-                    <label className="block font-semibold text-stone-800 dark:text-stone-200">Store Logo URL</label>
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 rounded-xl bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
-                        {editLogoUrl ? (
-                          <img src={editLogoUrl} alt="Store Logo" className="w-full h-full object-cover" />
-                        ) : (
-                          <Image className="w-5 h-5 text-stone-400 dark:text-stone-500" />
-                        )}
-                      </div>
-                      <input
-                        type="url"
-                        value={editLogoUrl}
-                        onChange={(e) => setEditLogoUrl(e.target.value)}
-                        placeholder="https://example.com/logo.png"
-                        disabled={isPending}
-                        className={`flex-1 px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                      />
-                    </div>
-                    <p className="text-[11px] text-stone-600 dark:text-stone-400 font-medium">
-                      Provide an image link to replace the default lettermark logo.
-                    </p>
-                  </div>
-
-                  {/* Contact & Hours */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div>
-                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Phone</label>
-                      <input
-                        type="text"
-                        value={editPhone}
-                        onChange={(e) => setEditPhone(e.target.value)}
-                        disabled={isPending}
-                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Email</label>
-                      <input
-                        type="email"
-                        value={editEmail}
-                        onChange={(e) => setEditEmail(e.target.value)}
-                        disabled={isPending}
-                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Operating Hours / Slots</label>
-                      <input
-                        type="text"
-                        value={editOpeningHours}
-                        onChange={(e) => setEditOpeningHours(e.target.value)}
-                        placeholder="e.g. 9:00 AM - 6:00 PM (Mon-Sat)"
-                        disabled={isPending}
-                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">City / Region</label>
-                      <input
-                        type="text"
-                        value={editCity}
-                        onChange={(e) => setEditCity(e.target.value)}
-                        disabled={isPending}
-                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Full Studio Address</label>
-                      <input
-                        type="text"
-                        value={editAddress}
-                        onChange={(e) => setEditAddress(e.target.value)}
-                        disabled={isPending}
-                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Store Operational Status Radio / Toggle */}
-                  <div className="pt-2 border-t border-stone-100 dark:border-stone-800">
-                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-2 text-xs">
-                      Manage Store Operational Status
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        disabled={isPending}
-                        onClick={() => setEditStatus('approved')}
-                        className={`p-3 rounded-2xl border text-left text-xs transition ${
-                          editStatus === 'approved'
-                            ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200'
-                            : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300'
-                        } ${isPending ? 'opacity-60 cursor-not-allowed' : ''}`}
-                      >
-                        <div className="flex items-center space-x-1.5 font-bold">
-                          <Power className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Open for Bookings</span>
-                        </div>
-                        <p className="text-[11px] mt-1 text-stone-500">Clients can view calendar and book appointments.</p>
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={isPending}
-                        onClick={() => setEditStatus('closed')}
-                        className={`p-3 rounded-2xl border text-left text-xs transition ${
-                          editStatus === 'closed'
-                            ? 'border-rose-500 bg-rose-50/60 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200'
-                            : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300'
-                        } ${isPending ? 'opacity-60 cursor-not-allowed' : ''}`}
-                      >
-                        <div className="flex items-center space-x-1.5 font-bold">
-                          <XCircle className="w-3.5 h-3.5 text-rose-600" />
-                          <span>Temporarily Closed</span>
-                        </div>
-                        <p className="text-[11px] mt-1 text-stone-500">Halt new appointments while preserving existing bookings.</p>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 flex justify-end">
-                    <button
-                      type="submit"
-                      disabled={savingSettings || isPending}
-                      className="px-5 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-bold hover:bg-stone-800 dark:hover:bg-amber-300 transition flex items-center space-x-2 shadow disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Save className="w-3.5 h-3.5" />
-                      <span>{isPending ? 'Locked (Pending Review)' : savingSettings ? 'Saving Changes...' : 'Save Store Profile'}</span>
-                    </button>
-                  </div>
-                </form>
-
-                {/* Service Menu & Pricing UI */}
-                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
-                    <div>
-                      <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
-                        <Scissors className="w-4 h-4 text-amber-500" />
-                        <span>Services &amp; Pricing Menu</span>
-                      </h2>
-                      <p className="text-[11px] text-stone-500">Active services bookable by customers.</p>
-                    </div>
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => {
-                        if (isPending) {
-                          toast.warning('Action Blocked', {
-                            description: 'Adding services is locked while your store is pending review.'
-                          });
-                          return;
-                        }
-                        setShowAddServiceModal(true);
-                      }}
-                      className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>Add Service</span>
-                    </button>
-                  </div>
-
-                  <div className="divide-y divide-stone-100 dark:divide-stone-800 text-xs">
-                    {storeServices.length === 0 ? (
-                      <div className="py-6 text-center text-stone-400">No services created yet.</div>
-                    ) : (
-                      paginatedServices.map((svc) => (
-                        <div key={svc.id} className="py-3 flex items-center justify-between">
-                          <div>
-                            <div className="font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
-                              <span>{svc.name}</span>
-                              <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
-                                {svc.category}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-stone-500 mt-0.5">{svc.description}</p>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-bold text-stone-900 dark:text-stone-100 text-sm">
-                              ₱{Number(svc.price).toLocaleString()}
-                            </div>
-                            <div className="text-[10px] text-stone-500 font-medium">
-                              {svc.durationMinutes} mins
-                            </div>
-                          </div>
-                        </div>
-                      ))
+            {/* Clean Modular Sub-Navigation Menu */}
+            <div className="flex items-center space-x-2 border-b border-stone-200 dark:border-stone-800 pb-3 overflow-x-auto">
+              {[
+                { id: 'profile', label: 'Store Profile & Branding', icon: Store, count: null },
+                { id: 'services', label: 'Services & Pricing', icon: Scissors, count: storeServices.length },
+                { id: 'staff', label: 'Staff Specialists', icon: Users, count: storeStaff.length },
+                { id: 'schedule', label: 'Schedule & Hours', icon: Clock, count: null },
+                { id: 'policies', label: 'Suggested Config & Policies', icon: Sliders, count: 'New' },
+              ].map((tab) => {
+                const IconComponent = tab.icon;
+                const isSelected = setupSubTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setSetupSubTab(tab.id as any)}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
+                      isSelected
+                        ? 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 shadow-md'
+                        : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800'
+                    }`}
+                  >
+                    <IconComponent className="w-3.5 h-3.5" />
+                    <span>{tab.label}</span>
+                    {tab.count !== null && (
+                      <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
+                        isSelected 
+                          ? 'bg-white/20 dark:bg-stone-950/20 text-white dark:text-stone-950'
+                          : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
+                      }`}>
+                        {tab.count}
+                      </span>
                     )}
-                  </div>
+                  </button>
+                );
+              })}
+            </div>
 
-                  <Pagination
-                    currentPage={servicePage}
-                    totalPages={totalServicePages}
-                    totalItems={storeServices.length}
-                    itemsPerPage={SERVICES_PER_PAGE}
-                    onPageChange={setServicePage}
-                    itemName="services"
-                  />
+            {/* Setup Views by Sub-Tab */}
+            {setupSubTab === 'profile' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in">
+                {/* Brand Identity & Contact */}
+                <div className="lg:col-span-2 space-y-6">
+                  <form onSubmit={handleSaveStoreSettings} className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-5">
+                    <div className="border-b border-stone-100 dark:border-stone-800 pb-3 flex items-center justify-between">
+                      <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+                        <Store className="w-4 h-4 text-amber-500" />
+                        <span>Store Profile &amp; Branding Details</span>
+                      </h2>
+                      <span className="text-[11px] text-stone-500 font-mono">Slug: {activeSlug}</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store / Business Name</label>
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          required
+                          disabled={isPending}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Tagline / Catchphrase</label>
+                        <input
+                          type="text"
+                          value={editTagline}
+                          onChange={(e) => setEditTagline(e.target.value)}
+                          placeholder="e.g. Premium Aesthetic Treatments"
+                          disabled={isPending}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="text-xs">
+                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Description &amp; About</label>
+                      <textarea
+                        rows={3}
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        placeholder="Describe what services you offer, your studio vibe, and what clients can expect..."
+                        disabled={isPending}
+                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                      />
+                    </div>
+
+                    {/* Logo URL with Live Preview */}
+                    <div className="p-4 rounded-2xl bg-stone-100/80 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 text-xs space-y-2.5 transition-colors">
+                      <label className="block font-semibold text-stone-800 dark:text-stone-200">Store Logo URL</label>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 rounded-xl bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                          {editLogoUrl ? (
+                            <img src={editLogoUrl} alt="Store Logo" className="w-full h-full object-cover" />
+                          ) : (
+                            <Image className="w-5 h-5 text-stone-400 dark:text-stone-500" />
+                          )}
+                        </div>
+                        <input
+                          type="url"
+                          value={editLogoUrl}
+                          onChange={(e) => setEditLogoUrl(e.target.value)}
+                          placeholder="https://example.com/logo.png"
+                          disabled={isPending}
+                          className={`flex-1 px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                        />
+                      </div>
+                      <p className="text-[11px] text-stone-600 dark:text-stone-400 font-medium">
+                        Provide an image link to replace the default lettermark logo.
+                      </p>
+                    </div>
+
+                    {/* Contact & Location Details */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Phone</label>
+                        <input
+                          type="text"
+                          value={editPhone}
+                          onChange={(e) => setEditPhone(e.target.value)}
+                          disabled={isPending}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Email</label>
+                        <input
+                          type="email"
+                          value={editEmail}
+                          onChange={(e) => setEditEmail(e.target.value)}
+                          disabled={isPending}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">City / Region</label>
+                        <input
+                          type="text"
+                          value={editCity}
+                          onChange={(e) => setEditCity(e.target.value)}
+                          disabled={isPending}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Operating Hours / Schedule</label>
+                        <input
+                          type="text"
+                          value={editOpeningHours}
+                          onChange={(e) => setEditOpeningHours(e.target.value)}
+                          placeholder="e.g. 9:00 AM - 6:00 PM (Mon-Sat)"
+                          disabled={isPending}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Full Studio Address</label>
+                        <input
+                          type="text"
+                          value={editAddress}
+                          onChange={(e) => setEditAddress(e.target.value)}
+                          disabled={isPending}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Official Website</label>
+                        <input
+                          type="url"
+                          value={editWebsite}
+                          onChange={(e) => setEditWebsite(e.target.value)}
+                          placeholder="https://yourbrand.com"
+                          disabled={isPending}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Social Media Handle</label>
+                        <input
+                          type="text"
+                          value={editSocialHandle}
+                          onChange={(e) => setEditSocialHandle(e.target.value)}
+                          placeholder="@yourbrand"
+                          disabled={isPending}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Operational Status Switcher */}
+                    <div className="pt-2 border-t border-stone-100 dark:border-stone-800">
+                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-2 text-xs">
+                        Store Operational Status
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => setEditStatus('approved')}
+                          className={`p-3 rounded-2xl border text-left text-xs transition ${
+                            editStatus === 'approved'
+                              ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200'
+                              : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300'
+                          } ${isPending ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        >
+                          <div className="flex items-center space-x-1.5 font-bold">
+                            <Power className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Open for Bookings</span>
+                          </div>
+                          <p className="text-[11px] mt-1 text-stone-500">Clients can view calendar and book appointments.</p>
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => setEditStatus('closed')}
+                          className={`p-3 rounded-2xl border text-left text-xs transition ${
+                            editStatus === 'closed'
+                              ? 'border-rose-500 bg-rose-50/60 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200'
+                              : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300'
+                          } ${isPending ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        >
+                          <div className="flex items-center space-x-1.5 font-bold">
+                            <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                            <span>Temporarily Closed</span>
+                          </div>
+                          <p className="text-[11px] mt-1 text-stone-500">Halt new appointments while preserving existing bookings.</p>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={savingSettings || isPending}
+                        className="px-5 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-bold hover:bg-stone-800 dark:hover:bg-amber-300 transition flex items-center space-x-2 shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        <span>{isPending ? 'Locked (Pending Review)' : savingSettings ? 'Saving Changes...' : 'Save Store Profile'}</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Right Side Overview Card */}
+                <div className="space-y-4">
+                  <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4 text-xs">
+                    <div className="flex items-center space-x-3 pb-3 border-b border-stone-100 dark:border-stone-800">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 flex items-center justify-center font-bold text-lg">
+                        {editName ? editName.charAt(0) : 'S'}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">{editName || 'Store Name'}</h3>
+                        <p className="text-[11px] text-stone-500">{editTagline || 'Store Tagline'}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 text-stone-700 dark:text-stone-300">
+                      <div className="flex justify-between py-1 border-b border-stone-100 dark:border-stone-800">
+                        <span className="text-stone-500">Live URL Slug:</span>
+                        <span className="font-mono font-bold text-stone-900 dark:text-stone-100">/{activeSlug}</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-stone-100 dark:border-stone-800">
+                        <span className="text-stone-500">Category:</span>
+                        <span className="font-semibold text-stone-900 dark:text-stone-100">{currentBusiness?.category || 'Beauty & Wellness'}</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-stone-100 dark:border-stone-800">
+                        <span className="text-stone-500">Phone:</span>
+                        <span className="font-semibold text-stone-900 dark:text-stone-100">{editPhone || '—'}</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-stone-100 dark:border-stone-800">
+                        <span className="text-stone-500">Email:</span>
+                        <span className="font-semibold text-stone-900 dark:text-stone-100">{editEmail || '—'}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-stone-500">Location:</span>
+                        <span className="font-semibold text-stone-900 dark:text-stone-100">{editCity || 'Quezon City'}</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 text-[11px] text-stone-600 dark:text-stone-400">
+                      💡 <strong>Pro Tip:</strong> Keeping your contact and social channels up to date helps clients verify your brand credentials before making their bookings.
+                    </div>
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* Right Column: Staff Specialists & Appointment Slots / Working Hours */}
-              <div className="space-y-6">
-                {/* Staff Specialists Management */}
-                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
-                    <div>
-                      <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
-                        <Users className="w-4 h-4 text-amber-500" />
-                        <span>Staff Specialists</span>
-                      </h2>
-                      <p className="text-[11px] text-stone-500">Manage practitioners assigned to bookings.</p>
-                    </div>
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => {
-                        if (isPending) {
-                          toast.warning('Action Blocked', {
-                            description: 'Adding staff is locked while your store is pending review.'
-                          });
-                          return;
-                        }
-                        setShowAddStaffModal(true);
-                      }}
-                      className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>Add Staff</span>
-                    </button>
+            {/* Sub-Tab 2: Services & Pricing Menu */}
+            {setupSubTab === 'services' && (
+              <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4 animate-in fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800 gap-3">
+                  <div>
+                    <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+                      <Scissors className="w-4 h-4 text-amber-500" />
+                      <span>Services &amp; Pricing Menu</span>
+                    </h2>
+                    <p className="text-[11px] text-stone-500">Manage client-bookable service offerings, durations, and session prices.</p>
                   </div>
-
-                  <div className="space-y-2.5 text-xs">
-                    {storeStaff.length === 0 ? (
-                      <div className="py-6 text-center text-stone-400">No staff specialists listed.</div>
-                    ) : (
-                      paginatedStaff.map((st) => (
-                        <div key={st.id} className="p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 flex items-center justify-between">
-                          <div className="flex items-center space-x-2.5">
-                            <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 flex items-center justify-center font-bold text-xs">
-                              {st.name?.substring(0, 1) || 'S'}
-                            </div>
-                            <div>
-                              <div className="font-bold text-stone-900 dark:text-stone-100">{st.name}</div>
-                              <div className="text-[10px] text-stone-500">{st.bio || 'Store Specialist'}</div>
-                            </div>
-                          </div>
-                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-full">
-                            Active
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  <Pagination
-                    currentPage={staffPage}
-                    totalPages={totalStaffPages}
-                    totalItems={storeStaff.length}
-                    itemsPerPage={STAFF_PER_PAGE}
-                    onPageChange={setStaffPage}
-                    itemName="specialists"
-                  />
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => {
+                      if (isPending) {
+                        toast.warning('Action Blocked', {
+                          description: 'Adding services is locked while your store is pending review.'
+                        });
+                        return;
+                      }
+                      setShowAddServiceModal(true);
+                    }}
+                    className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow disabled:opacity-50 disabled:cursor-not-allowed self-start sm:self-auto"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add New Service</span>
+                  </button>
                 </div>
 
-                {/* Appointment Slots & Working Schedule */}
-                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4 text-xs">
+                <div className="divide-y divide-stone-100 dark:divide-stone-800 text-xs">
+                  {storeServices.length === 0 ? (
+                    <div className="py-12 text-center text-stone-400">No services configured yet. Click "Add New Service" above.</div>
+                  ) : (
+                    paginatedServices.map((svc) => (
+                      <div key={svc.id} className="py-3.5 flex items-center justify-between hover:bg-stone-50/50 dark:hover:bg-stone-800/40 px-2 rounded-xl transition">
+                        <div>
+                          <div className="font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+                            <span>{svc.name}</span>
+                            <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
+                              {svc.category}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-stone-500 mt-0.5">{svc.description}</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                            ₱{Number(svc.price).toLocaleString()}
+                          </div>
+                          <div className="text-[10px] text-stone-500 font-medium">
+                            {svc.durationMinutes} mins session
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <Pagination
+                  currentPage={servicePage}
+                  totalPages={totalServicePages}
+                  totalItems={storeServices.length}
+                  itemsPerPage={SERVICES_PER_PAGE}
+                  onPageChange={setServicePage}
+                  itemName="services"
+                />
+              </div>
+            )}
+
+            {/* Sub-Tab 3: Staff Specialists */}
+            {setupSubTab === 'staff' && (
+              <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4 animate-in fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800 gap-3">
+                  <div>
+                    <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+                      <Users className="w-4 h-4 text-amber-500" />
+                      <span>Staff Specialists &amp; Team Members</span>
+                    </h2>
+                    <p className="text-[11px] text-stone-500">Specialists available to service clients and take bookings.</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => {
+                      if (isPending) {
+                        toast.warning('Action Blocked', {
+                          description: 'Adding staff is locked while your store is pending review.'
+                        });
+                        return;
+                      }
+                      setShowAddStaffModal(true);
+                    }}
+                    className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow disabled:opacity-50 disabled:cursor-not-allowed self-start sm:self-auto"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Specialist</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  {storeStaff.length === 0 ? (
+                    <div className="col-span-2 py-12 text-center text-stone-400">No staff members listed yet.</div>
+                  ) : (
+                    paginatedStaff.map((st) => (
+                      <div key={st.id} className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 flex items-center justify-center font-bold text-sm">
+                            {st.name?.substring(0, 1) || 'S'}
+                          </div>
+                          <div>
+                            <div className="font-bold text-stone-900 dark:text-stone-100 text-sm">{st.name}</div>
+                            <div className="text-[11px] text-stone-500">{st.bio || 'Store Specialist'}</div>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2.5 py-1 rounded-full">
+                          Active &amp; Bookable
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <Pagination
+                  currentPage={staffPage}
+                  totalPages={totalStaffPages}
+                  totalItems={storeStaff.length}
+                  itemsPerPage={STAFF_PER_PAGE}
+                  onPageChange={setStaffPage}
+                  itemName="specialists"
+                />
+              </div>
+            )}
+
+            {/* Sub-Tab 4: Appointment Slots & Working Hours */}
+            {setupSubTab === 'schedule' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in">
+                <div className="lg:col-span-2 bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4 text-xs">
                   <div className="pb-3 border-b border-stone-100 dark:border-stone-800">
                     <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
                       <Clock className="w-4 h-4 text-amber-500" />
-                      <span>Appointment Slots &amp; Hours</span>
+                      <span>Weekly Working Schedule &amp; Slots</span>
                     </h2>
-                    <p className="text-[11px] text-stone-500">Weekly schedule slots configured for booking.</p>
+                    <p className="text-[11px] text-stone-500">Clients will select appointment time slots based on this calendar schedule.</p>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {[
                       { day: 'Monday', time: '9:00 AM - 6:00 PM', status: 'Available' },
                       { day: 'Tuesday', time: '9:00 AM - 6:00 PM', status: 'Available' },
@@ -1151,12 +1306,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       { day: 'Saturday', time: '9:00 AM - 6:00 PM', status: 'Available' },
                       { day: 'Sunday', time: 'Rest Day / Closed', status: 'Closed' },
                     ].map((slot, idx) => (
-                      <div key={idx} className="flex justify-between items-center py-1.5 border-b border-stone-100 dark:border-stone-800">
+                      <div key={idx} className="flex justify-between items-center py-2 border-b border-stone-100 dark:border-stone-800">
                         <span className="font-semibold text-stone-700 dark:text-stone-300">{slot.day}</span>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-stone-500 font-mono text-[11px]">{slot.time}</span>
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                            slot.status === 'Available' ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
+                        <div className="flex items-center space-x-3">
+                          <span className="text-stone-600 dark:text-stone-400 font-mono text-[11px]">{slot.time}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            slot.status === 'Available' ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
                           }`}>
                             {slot.status}
                           </span>
@@ -1164,12 +1319,159 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       </div>
                     ))}
                   </div>
-                  <p className="text-[11px] text-stone-500 pt-2 italic">
-                    Appointment slots are automatically spaced in 45-minute increments based on active service duration.
-                  </p>
+
+                  <div className="pt-3 text-[11px] text-stone-500 space-y-1">
+                    <p>• Slots are dynamically spaced based on each service's duration.</p>
+                    <p>• Confirmed bookings automatically block out corresponding staff availability.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-3 text-xs">
+                    <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm flex items-center space-x-2">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      <span>Slot Allocation Settings</span>
+                    </h3>
+                    <p className="text-stone-600 dark:text-stone-400 text-[11px]">
+                      Default session intervals between bookable customer appointments:
+                    </p>
+                    <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 font-semibold text-amber-900 dark:text-amber-200">
+                      Standard slot increment: <strong>45 minutes</strong>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Sub-Tab 5: Suggested Config & Policies */}
+            {setupSubTab === 'policies' && (
+              <form onSubmit={handleSaveStoreSettings} className="space-y-6 animate-in fade-in">
+                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-6">
+                  <div className="border-b border-stone-100 dark:border-stone-800 pb-3 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+                        <Sliders className="w-4 h-4 text-amber-500" />
+                        <span>Suggested Store Booking &amp; Operational Configurations</span>
+                      </h2>
+                      <p className="text-[11px] text-stone-500">Fine-tune automated booking policies, advance lead times, and client confirmations.</p>
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+                      Recommended Preset
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    {/* Booking Mode */}
+                    <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-stone-900 dark:text-stone-100">Booking Confirmation Mode</label>
+                        <input
+                          type="checkbox"
+                          checked={requireApproval}
+                          onChange={(e) => setRequireApproval(e.target.checked)}
+                          disabled={isPending}
+                          className="w-4 h-4 text-amber-500 rounded border-stone-300"
+                        />
+                      </div>
+                      <p className="text-[11px] text-stone-500 leading-relaxed">
+                        {requireApproval 
+                          ? 'Manual Approval: Every client booking arrives as "pending" and requires admin confirmation.'
+                          : 'Instant Booking: Eligible appointments are auto-confirmed as soon as client selects a free slot.'}
+                      </p>
+                    </div>
+
+                    {/* Minimum Lead Time */}
+                    <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-2">
+                      <label className="font-bold text-stone-900 dark:text-stone-100 block">
+                        Minimum Lead Notice (Hours)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="72"
+                        value={minLeadHours}
+                        onChange={(e) => setMinLeadHours(Number(e.target.value))}
+                        disabled={isPending}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
+                      />
+                      <p className="text-[10px] text-stone-500">
+                        Prevents last-minute bookings. Clients must book at least {minLeadHours} hour(s) in advance.
+                      </p>
+                    </div>
+
+                    {/* Max Advance Booking Days */}
+                    <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-2">
+                      <label className="font-bold text-stone-900 dark:text-stone-100 block">
+                        Max Advance Booking Window (Days)
+                      </label>
+                      <input
+                        type="number"
+                        min="7"
+                        max="365"
+                        value={maxAdvanceDays}
+                        onChange={(e) => setMaxAdvanceDays(Number(e.target.value))}
+                        disabled={isPending}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
+                      />
+                      <p className="text-[10px] text-stone-500">
+                        Limits future calendar visibility up to {maxAdvanceDays} days ahead.
+                      </p>
+                    </div>
+
+                    {/* Slot Interval */}
+                    <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-2">
+                      <label className="font-bold text-stone-900 dark:text-stone-100 block">
+                        Time Slot Intervals (Minutes)
+                      </label>
+                      <select
+                        value={slotInterval}
+                        onChange={(e) => setSlotInterval(Number(e.target.value))}
+                        disabled={isPending}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
+                      >
+                        <option value={15}>15 Minutes</option>
+                        <option value={30}>30 Minutes</option>
+                        <option value={45}>45 Minutes (Recommended)</option>
+                        <option value={60}>60 Minutes</option>
+                      </select>
+                      <p className="text-[10px] text-stone-500">
+                        Grid spacing for customer slot pickers.
+                      </p>
+                    </div>
+
+                    {/* Automated Reminders */}
+                    <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-3 md:col-span-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="font-bold text-stone-900 dark:text-stone-100">Automated Notification &amp; Audit Log</label>
+                          <p className="text-[11px] text-stone-500">
+                            Dispatches real-time studio notifications and logs timestamped audit records for all booking status changes.
+                          </p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={autoReminderEmail}
+                          onChange={(e) => setAutoReminderEmail(e.target.checked)}
+                          disabled={isPending}
+                          className="w-4 h-4 text-amber-500 rounded border-stone-300"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-3 border-t border-stone-100 dark:border-stone-800">
+                    <button
+                      type="submit"
+                      disabled={savingSettings || isPending}
+                      className="px-6 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-bold hover:bg-stone-800 dark:hover:bg-amber-300 transition flex items-center space-x-2 shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>{isPending ? 'Locked (Pending Review)' : savingSettings ? 'Saving Configurations...' : 'Save Suggested Configurations'}</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
           </div>
         ) : (
           /* =========================================================================
