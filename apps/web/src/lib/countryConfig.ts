@@ -532,6 +532,52 @@ export const getCountryByName = (nameOrCode?: string): CountryConfig => {
   return match || SUPPORTED_COUNTRIES.find((c) => c.code === 'PH') || SUPPORTED_COUNTRIES[0];
 };
 
+// Country-specific valid starting digit rules for mobile subscriber numbers
+export interface CountryStartingDigitRule {
+  regex: RegExp;
+  label: string;
+  allowedStarts: string[];
+}
+
+export const COUNTRY_STARTING_RULES: Record<string, CountryStartingDigitRule> = {
+  PH: { regex: /^9/, label: 'Must start with 9 (e.g. 9XX XXX XXXX)', allowedStarts: ['9'] },
+  SG: { regex: /^[89]/, label: 'Must start with 8 or 9', allowedStarts: ['8', '9'] },
+  MY: { regex: /^1/, label: 'Must start with 1 (e.g. 1X XXX XXXX)', allowedStarts: ['1'] },
+  GB: { regex: /^7/, label: 'Must start with 7 (e.g. 7XXX XXXXXX)', allowedStarts: ['7'] },
+  AE: { regex: /^5/, label: 'Must start with 5 (e.g. 5X XXX XXXX)', allowedStarts: ['5'] },
+  SA: { regex: /^5/, label: 'Must start with 5 (e.g. 5X XXX XXXX)', allowedStarts: ['5'] },
+  QA: { regex: /^[3567]/, label: 'Must start with 3, 5, 6, or 7', allowedStarts: ['3', '5', '6', '7'] },
+  AU: { regex: /^4/, label: 'Must start with 4 (e.g. 4XX XXX XXX)', allowedStarts: ['4'] },
+  NZ: { regex: /^2/, label: 'Must start with 2 (e.g. 2XX XXX XXX)', allowedStarts: ['2'] },
+  US: { regex: /^[2-9]/, label: 'Must start with 2-9', allowedStarts: ['2', '3', '4', '5', '6', '7', '8', '9'] },
+  CA: { regex: /^[2-9]/, label: 'Must start with 2-9', allowedStarts: ['2', '3', '4', '5', '6', '7', '8', '9'] },
+  JP: { regex: /^[789]/, label: 'Must start with 7, 8, or 9 (e.g. 90-XXXX-XXXX)', allowedStarts: ['7', '8', '9'] },
+  ID: { regex: /^8/, label: 'Must start with 8 (e.g. 8XX-XXXX-XXXX)', allowedStarts: ['8'] },
+  TH: { regex: /^[689]/, label: 'Must start with 6, 8, or 9', allowedStarts: ['6', '8', '9'] },
+  VN: { regex: /^[35789]/, label: 'Must start with 3, 5, 7, 8, or 9', allowedStarts: ['3', '5', '7', '8', '9'] },
+  IN: { regex: /^[6-9]/, label: 'Must start with 6, 7, 8, or 9', allowedStarts: ['6', '7', '8', '9'] },
+};
+
+// Check if a given national phone number string starts with a valid digit for that country
+export const validateStartingDigit = (
+  nationalDigits: string,
+  countryCode: string
+): { isValid: boolean; warning?: string } => {
+  if (!nationalDigits) return { isValid: true };
+  const code = (countryCode || 'PH').toUpperCase();
+  const rule = COUNTRY_STARTING_RULES[code];
+  if (!rule) return { isValid: true };
+
+  const clean = nationalDigits.replace(/\D/g, '');
+  if (!clean) return { isValid: true };
+
+  const isValid = rule.regex.test(clean);
+  return {
+    isValid,
+    warning: isValid ? undefined : rule.label,
+  };
+};
+
 // Format phone number live as user types using libphonenumber-js with auto-country code and AsYouType
 export const formatPhoneNumberLive = (input: string, countryCode: string): string => {
   if (!input) return '';
