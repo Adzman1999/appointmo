@@ -427,7 +427,7 @@ export const ConciergePage: React.FC = () => {
       {/* Booking Details Modal */}
       {bookingRec && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-md w-full shadow-2xl">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-5 sm:p-7 max-w-lg w-full shadow-2xl">
             <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100 mb-1">Confirm Concierge Booking</h3>
             <p className="text-xs text-stone-500 dark:text-stone-400 mb-4">
               Enter your synthetic customer contact info to confirm this demo appointment.

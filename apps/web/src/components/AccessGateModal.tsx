@@ -108,7 +108,7 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-stone-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-2xl p-6 sm:p-8 overflow-hidden text-stone-900 dark:text-stone-100">
+      <div className="relative w-full max-w-lg bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-2xl p-5 sm:p-8 overflow-hidden text-stone-900 dark:text-stone-100">
         {/* Close Button */}
         <button
           onClick={onClose}

@@ -136,7 +136,7 @@ export const AdminLoginPage: React.FC = () => {
 
       {/* Main Auth Form Container */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 my-6">
-        <div className="w-full bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 shadow-xl transition-all duration-300 max-w-md">
+        <div className="w-full bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-5 sm:p-8 shadow-xl transition-all duration-300 max-w-lg">
           {/* Header & Mode Switcher */}
           <div className="mb-6 space-y-4">
             <div className="text-left">
@@ -215,10 +215,10 @@ export const AdminLoginPage: React.FC = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                      Country <span className="text-rose-500 font-bold">* (Required)</span>
+                      Country <span className="text-rose-500 font-bold">*</span>
                     </label>
                     <select
                       value={selectedCountry}
@@ -239,7 +239,7 @@ export const AdminLoginPage: React.FC = () => {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
-                        Mobile Phone <span className="text-rose-500 font-bold">* (Required)</span>
+                        Mobile Phone <span className="text-rose-500 font-bold">*</span>
                       </label>
                       <span className="text-[10px] text-stone-400">
                         Max {getCountryByName(selectedCountry).nationalPhoneLength} digits

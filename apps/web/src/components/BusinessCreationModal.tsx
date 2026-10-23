@@ -377,10 +377,10 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 }}
               />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                 <div>
                   <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Owner Email / Sign-In <span className="text-rose-500 font-bold">* (Required)</span>
+                    Owner Email / Sign-In <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <input
                     type="email"
@@ -393,7 +393,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 </div>
                 <div>
                   <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Admin Password <span className="text-rose-500 font-bold">* (Required)</span>
+                    Admin Password <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <div className="relative">
                     <input
@@ -552,10 +552,10 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 3. Country &amp; Currency Settings
               </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Country <span className="text-rose-500 font-bold">* (Required)</span>
+                  Country <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <select
                   value={selectedCountry}
@@ -692,7 +692,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block font-semibold text-stone-700 dark:text-stone-300">
@@ -725,7 +725,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
                   Social Media Handle <span className="text-stone-400 font-normal">(Optional)</span>
