@@ -527,11 +527,21 @@ export const getCountryByName = (nameOrCode?: string): CountryConfig => {
   return match || SUPPORTED_COUNTRIES.find((c) => c.code === 'PH') || SUPPORTED_COUNTRIES[0];
 };
 
-// Format phone number live as user types using libphonenumber-js AsYouType
+// Format phone number live as user types using libphonenumber-js with auto-country code and AsYouType
 export const formatPhoneNumberLive = (input: string, countryCode: string): string => {
+  if (!input) return '';
+  const code = (countryCode || 'PH').toUpperCase() as CountryCode;
+
   try {
-    const formatter = new AsYouType(countryCode.toUpperCase() as CountryCode);
-    return formatter.input(input);
+    const raw = input.trim();
+    // If user enters leading 0 or local digits (e.g. 09171234567 or 9171234567), format properly
+    const parsed = parsePhoneNumberFromString(raw, code);
+    if (parsed && parsed.isValid()) {
+      return parsed.formatInternational();
+    }
+
+    const formatter = new AsYouType(code);
+    return formatter.input(raw);
   } catch (e) {
     return input;
   }

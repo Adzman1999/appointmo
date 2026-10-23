@@ -90,6 +90,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [editEndTime, setEditEndTime] = useState('18:00');
   const [timeError, setTimeError] = useState<string | null>(null);
   const [isTimeModified, setIsTimeModified] = useState(false);
+  const [isSettingsDirty, setIsSettingsDirty] = useState(false);
   const [editOpeningHours, setEditOpeningHours] = useState('');
   const [editWebsite, setEditWebsite] = useState('');
   const [editSocialHandle, setEditSocialHandle] = useState('');
@@ -108,6 +109,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [weeklySchedule, setWeeklySchedule] = useState(defaultWeeklySchedule);
 
   const handleCountryChange = (cName: string) => {
+    setIsSettingsDirty(true);
     setEditCountry(cName);
     const cfg = getCountryByName(cName);
     setEditCurrency(cfg.currency);
@@ -371,47 +373,61 @@ export const DemoAdminDashboardPage: React.FC = () => {
       setStoreWorkingHours(sRes.workingHours || []);
 
       if (sRes.business) {
-        setEditName(sRes.business.name || '');
-        setEditTagline(sRes.business.tagline || '');
-        setEditCategory(sRes.business.category || 'Beauty & Wellness');
-        setEditDescription(sRes.business.description || '');
-        setEditLogoUrl(sRes.business.logoUrl || '');
-        setEditPhone(sRes.business.phone || '');
-        setEditEmail(sRes.business.email || '');
-        setEditAddress(sRes.business.address || '');
-        const bCountry = sRes.business.country || 'Philippines';
-        setEditCountry(bCountry);
-        const bCountryCfg = getCountryByName(bCountry);
-        setEditCurrency(sRes.business.currency || bCountryCfg.currency);
-        setEditTimezone(sRes.business.timezone || bCountryCfg.defaultTimezone);
-        setEditStateProvince(sRes.business.stateProvince || bCountryCfg.defaultState || '');
-        setEditPostalCode(sRes.business.postalCode || '');
+        // Protect user-edited form state from being clobbered by background polling
+        if (!isSettingsDirty) {
+          setEditName(sRes.business.name || '');
+          setEditTagline(sRes.business.tagline || '');
+          setEditCategory(sRes.business.category || 'Beauty & Wellness');
+          setEditDescription(sRes.business.description || '');
+          setEditLogoUrl(sRes.business.logoUrl || '');
+          setEditPhone(sRes.business.phone || '');
+          setEditEmail(sRes.business.email || '');
+          setEditAddress(sRes.business.address || '');
+          const bCountry = sRes.business.country || 'Philippines';
+          setEditCountry(bCountry);
+          const bCountryCfg = getCountryByName(bCountry);
+          setEditCurrency(sRes.business.currency || bCountryCfg.currency);
+          setEditTimezone(sRes.business.timezone || bCountryCfg.defaultTimezone);
+          setEditStateProvince(sRes.business.stateProvince || bCountryCfg.defaultState || '');
+          setEditPostalCode(sRes.business.postalCode || '');
 
-        // Populate city options corresponding to the country
-        const availableCities = bCountryCfg.cities || [bCountryCfg.defaultCity || 'Quezon City'];
-        const bCity = sRes.business.city || bCountryCfg.defaultCity || 'Quezon City';
-        if (!availableCities.includes(bCity)) {
-          setCityOptions([...availableCities, bCity]);
-        } else {
-          setCityOptions(availableCities);
-        }
-        setEditCity(bCity);
-        setEditOpeningHours(sRes.business.openingHours || '9:00 AM - 6:00 PM');
-        setEditWebsite(sRes.business.website || '');
-        setEditSocialHandle(sRes.business.socialHandle || '');
-        setEditStatus(sRes.business.status || 'approved');
+          // Populate city options corresponding to the country
+          const availableCities = bCountryCfg.cities || [bCountryCfg.defaultCity || 'Quezon City'];
+          const bCity = sRes.business.city || bCountryCfg.defaultCity || 'Quezon City';
+          if (!availableCities.includes(bCity)) {
+            setCityOptions([...availableCities, bCity]);
+          } else {
+            setCityOptions(availableCities);
+          }
+          setEditCity(bCity);
+          setEditOpeningHours(sRes.business.openingHours || '9:00 AM - 6:00 PM');
+          setEditWebsite(sRes.business.website || '');
+          setEditSocialHandle(sRes.business.socialHandle || '');
+          setEditStatus(sRes.business.status || 'approved');
 
-        if (sRes.business.weeklySchedule) {
-          const ws = typeof sRes.business.weeklySchedule === 'string'
-            ? JSON.parse(sRes.business.weeklySchedule)
-            : sRes.business.weeklySchedule;
-          if (Array.isArray(ws) && ws.length === 7) {
-            setWeeklySchedule(ws);
+          if (sRes.business.weeklySchedule) {
+            const ws = typeof sRes.business.weeklySchedule === 'string'
+              ? JSON.parse(sRes.business.weeklySchedule)
+              : sRes.business.weeklySchedule;
+            if (Array.isArray(ws) && ws.length === 7) {
+              setWeeklySchedule(ws);
+            }
+          }
+
+          if (sRes.business.bookingPolicies) {
+            const bp = typeof sRes.business.bookingPolicies === 'string'
+              ? JSON.parse(sRes.business.bookingPolicies)
+              : sRes.business.bookingPolicies;
+            if (bp.requireApproval !== undefined) setRequireApproval(bp.requireApproval);
+            if (bp.minLeadHours !== undefined) setMinLeadHours(bp.minLeadHours);
+            if (bp.maxAdvanceDays !== undefined) setMaxAdvanceDays(bp.maxAdvanceDays);
+            if (bp.slotInterval !== undefined) setSlotInterval(bp.slotInterval);
+            if (bp.autoReminderEmail !== undefined) setAutoReminderEmail(bp.autoReminderEmail);
           }
         }
 
         // Only overwrite start/end time from server if the user hasn't modified it locally
-        if (!isTimeModified && sRes.business.openingHours) {
+        if (!isTimeModified && !isSettingsDirty && sRes.business.openingHours) {
           const parts = sRes.business.openingHours.split('-').map((s: string) => s.trim());
           if (parts.length === 2) {
             const parseTo24 = (t: string) => {
@@ -429,17 +445,6 @@ export const DemoAdminDashboardPage: React.FC = () => {
             setEditStartTime(parseTo24(parts[0]));
             setEditEndTime(parseTo24(parts[1]));
           }
-        }
-
-        if (sRes.business.bookingPolicies) {
-          const bp = typeof sRes.business.bookingPolicies === 'string'
-            ? JSON.parse(sRes.business.bookingPolicies)
-            : sRes.business.bookingPolicies;
-          if (bp.requireApproval !== undefined) setRequireApproval(bp.requireApproval);
-          if (bp.minLeadHours !== undefined) setMinLeadHours(bp.minLeadHours);
-          if (bp.maxAdvanceDays !== undefined) setMaxAdvanceDays(bp.maxAdvanceDays);
-          if (bp.slotInterval !== undefined) setSlotInterval(bp.slotInterval);
-          if (bp.autoReminderEmail !== undefined) setAutoReminderEmail(bp.autoReminderEmail);
         }
       }
     } catch (err: any) {
@@ -750,6 +755,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
         description: 'Store profile, configurations, and operational parameters updated successfully.',
       });
       setIsTimeModified(false);
+      setIsSettingsDirty(false);
       if (res.business) {
         setCurrentBusiness(res.business);
       }
@@ -1292,7 +1298,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           <input
                             type="text"
                             value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
+                            onChange={(e) => {
+                              setIsSettingsDirty(true);
+                              setEditName(e.target.value);
+                            }}
                             placeholder="e.g. Atelier Skin Clinic"
                             required
                             disabled={isPending}
@@ -1306,7 +1315,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           <input
                             type="text"
                             value={editTagline}
-                            onChange={(e) => setEditTagline(e.target.value)}
+                            onChange={(e) => {
+                              setIsSettingsDirty(true);
+                              setEditTagline(e.target.value);
+                            }}
                             placeholder="e.g. Your Premier Sanctuary for Holistic Wellness & Style"
                             disabled={isPending}
                             className={`w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
@@ -1323,6 +1335,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => {
+                              setIsSettingsDirty(true);
                               setIsCustomCategory(!isCustomCategory);
                               setCustomCategoryInput('');
                             }}
@@ -1338,14 +1351,20 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             autoFocus
                             placeholder="e.g. Photography Studio"
                             value={customCategoryInput}
-                            onChange={(e) => setCustomCategoryInput(e.target.value)}
+                            onChange={(e) => {
+                              setIsSettingsDirty(true);
+                              setCustomCategoryInput(e.target.value);
+                            }}
                             disabled={isPending}
                             className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                           />
                         ) : (
                           <select
                             value={editCategory}
-                            onChange={(e) => setEditCategory(e.target.value)}
+                            onChange={(e) => {
+                              setIsSettingsDirty(true);
+                              setEditCategory(e.target.value);
+                            }}
                             disabled={isPending}
                             className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                           >
@@ -1366,7 +1385,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <textarea
                           rows={3}
                           value={editDescription}
-                          onChange={(e) => setEditDescription(e.target.value)}
+                          onChange={(e) => {
+                            setIsSettingsDirty(true);
+                            setEditDescription(e.target.value);
+                          }}
                           placeholder="Briefly describe what services, atmosphere, or specialties your store provides..."
                           disabled={isPending}
                           className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
@@ -1389,7 +1411,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           <input
                             type="url"
                             value={editLogoUrl}
-                            onChange={(e) => setEditLogoUrl(e.target.value)}
+                            onChange={(e) => {
+                              setIsSettingsDirty(true);
+                              setEditLogoUrl(e.target.value);
+                            }}
                             placeholder="e.g. https://images.unsplash.com/... or image link"
                             disabled={isPending}
                             className={`flex-1 px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
@@ -1451,21 +1476,22 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* City / Primary Location */}
+                      {/* City Selection (Strictly cities based on Country) */}
                       <div className="text-xs">
                         <div className="flex items-center justify-between mb-1">
                           <label className="block font-semibold text-stone-700 dark:text-stone-300">
-                            City / Location <span className="text-rose-500 font-bold">* (Required)</span>
+                            City <span className="text-rose-500 font-bold">* (Required)</span>
                           </label>
                           <button
                             type="button"
                             onClick={() => {
+                              setIsSettingsDirty(true);
                               setIsCustomCity(!isCustomCity);
                               setCustomCityInput('');
                             }}
                             className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 underline"
                           >
-                            {isCustomCity ? 'Choose List' : '+ Add Custom City'}
+                            {isCustomCity ? 'Choose City List' : '+ Add Custom City'}
                           </button>
                         </div>
                         {isCustomCity ? (
@@ -1473,16 +1499,22 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             type="text"
                             required
                             autoFocus
-                            placeholder="e.g. Cebu IT Park, Davao City"
+                            placeholder="e.g. Cebu City, Davao City"
                             value={customCityInput}
-                            onChange={(e) => setCustomCityInput(e.target.value)}
+                            onChange={(e) => {
+                              setIsSettingsDirty(true);
+                              setCustomCityInput(e.target.value);
+                            }}
                             disabled={isPending}
                             className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                           />
                         ) : (
                           <select
                             value={editCity}
-                            onChange={(e) => setEditCity(e.target.value)}
+                            onChange={(e) => {
+                              setIsSettingsDirty(true);
+                              setEditCity(e.target.value);
+                            }}
                             disabled={isPending}
                             className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                           >
@@ -1504,7 +1536,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             type="text"
                             placeholder="e.g. Metro Manila, Cebu, California"
                             value={editStateProvince}
-                            onChange={(e) => setEditStateProvince(e.target.value)}
+                            onChange={(e) => {
+                              setIsSettingsDirty(true);
+                              setEditStateProvince(e.target.value);
+                            }}
                             disabled={isPending}
                             className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                           />
@@ -1517,7 +1552,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             type="text"
                             placeholder="e.g. 1100, 6000, 90210"
                             value={editPostalCode}
-                            onChange={(e) => setEditPostalCode(e.target.value)}
+                            onChange={(e) => {
+                              setIsSettingsDirty(true);
+                              setEditPostalCode(e.target.value);
+                            }}
                             disabled={isPending}
                             className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                           />
@@ -1531,7 +1569,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <input
                           type="text"
                           value={editAddress}
-                          onChange={(e) => setEditAddress(e.target.value)}
+                          onChange={(e) => {
+                            setIsSettingsDirty(true);
+                            setEditAddress(e.target.value);
+                          }}
                           placeholder="e.g. Level 2, Grand Promenade Mall, 88 Commercial Ave"
                           disabled={isPending}
                           className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
@@ -1566,6 +1607,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             placeholder={getCountryByName(editCountry).phonePlaceholder || '+63 917 123 4567'}
                             maxLength={getCountryByName(editCountry).maxPhoneLength}
                             onChange={(e) => {
+                              setIsSettingsDirty(true);
                               const countryCfg = getCountryByName(editCountry);
                               const formatted = formatPhoneNumberLive(e.target.value, countryCfg.code);
                               setEditPhone(formatted.slice(0, countryCfg.maxPhoneLength));
@@ -1581,7 +1623,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           <input
                             type="email"
                             value={editEmail}
-                            onChange={(e) => setEditEmail(e.target.value)}
+                            onChange={(e) => {
+                              setIsSettingsDirty(true);
+                              setEditEmail(e.target.value);
+                            }}
                             placeholder="contact@yourstore.demo"
                             disabled={isPending}
                             className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
@@ -1595,7 +1640,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           <input
                             type="url"
                             value={editWebsite}
-                            onChange={(e) => setEditWebsite(e.target.value)}
+                            onChange={(e) => {
+                              setIsSettingsDirty(true);
+                              setEditWebsite(e.target.value);
+                            }}
                             placeholder="https://yourbrand.com"
                             disabled={isPending}
                             className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
@@ -1608,7 +1656,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           <input
                             type="text"
                             value={editSocialHandle}
-                            onChange={(e) => setEditSocialHandle(e.target.value)}
+                            onChange={(e) => {
+                              setIsSettingsDirty(true);
+                              setEditSocialHandle(e.target.value);
+                            }}
                             placeholder="@yourbrand"
                             disabled={isPending}
                             className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
@@ -1636,6 +1687,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             required
                             value={editStartTime}
                             onChange={(e) => {
+                              setIsSettingsDirty(true);
                               setIsTimeModified(true);
                               setEditStartTime(e.target.value);
                               validateTimeRange(e.target.value, editEndTime);
