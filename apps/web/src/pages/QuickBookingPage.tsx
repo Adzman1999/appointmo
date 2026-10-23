@@ -82,9 +82,29 @@ export const QuickBookingPage: React.FC = () => {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [completedBooking, setCompletedBooking] = useState<any | null>(null);
 
-  // Auto-fill customer details from active demo user or previous booking session
+  // Auto-fill customer details from logged-in customer account or previous booking session
   useEffect(() => {
-    // 1. Try fetching current demo customer portal profile
+    // 1. Check logged-in user in localStorage first
+    const storedUserRaw = localStorage.getItem('appointmo_user');
+    if (storedUserRaw) {
+      try {
+        const u = JSON.parse(storedUserRaw);
+        if (u.name && !customerFirstName) {
+          const parsed = parseFormalName(u.name);
+          setCustomerFirstName(parsed.firstName);
+          setCustomerMiddleName(parsed.middleName || '');
+          setCustomerLastName(parsed.lastName);
+        }
+        if (u.email && !customerEmail) setCustomerEmail(u.email);
+        if (u.phone && !customerPhone) setCustomerPhone(u.phone);
+        if (u.email) {
+          // If we loaded from authenticated account, we can return early
+          return;
+        }
+      } catch (_) {}
+    }
+
+    // 2. Try fetching current demo customer portal profile
     apiFetch<any>('/demo/admin/customer-portal')
       .then(res => {
         if (res?.customer) {
@@ -99,7 +119,7 @@ export const QuickBookingPage: React.FC = () => {
         }
       })
       .catch(() => {
-        // 2. Fallback to localStorage if available
+        // 3. Fallback to latest booking stored in localStorage
         const stored = localStorage.getItem('appointmo_latest_booking');
         if (stored) {
           try {

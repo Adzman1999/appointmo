@@ -40,6 +40,22 @@ export const ConciergePage: React.FC = () => {
   const [bookingError, setBookingError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Auto-fill from logged-in customer account
+    const storedUserRaw = localStorage.getItem('appointmo_user');
+    if (storedUserRaw) {
+      try {
+        const u = JSON.parse(storedUserRaw);
+        if (u.name && !customerFirstName) {
+          const parsed = parseFormalName(u.name);
+          setCustomerFirstName(parsed.firstName);
+          setCustomerMiddleName(parsed.middleName || '');
+          setCustomerLastName(parsed.lastName);
+        }
+        if (u.email && !customerEmail) setCustomerEmail(u.email);
+        if (u.phone && !customerPhone) setCustomerPhone(u.phone);
+      } catch (_) {}
+    }
+
     apiFetch('/demo/admin/businesses')
       .then((res: any) => setBusinesses(res.businesses || []))
       .catch((err) => console.error(err));
