@@ -246,8 +246,9 @@ describe('Full Appointment Workflow, Sorting, Rescheduling & Two-Way Notificatio
 
     const afterRes = await request(app).get('/api/demo/admin/notifications');
     expect(afterRes.body.unreadCount).toBe(initialUnread - 1);
+    // Notification once marked read is auto-removed from unread list
     const updated = afterRes.body.notifications.find((n: any) => n.id === targetNotifId);
-    expect(updated.isRead).toBe(true);
+    expect(updated).toBeUndefined();
 
     // Mark all as read
     await request(app).post('/api/demo/admin/notifications/mark-all-read');

@@ -309,6 +309,11 @@ export const runMigrations = async () => {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS status_reason TEXT;
 
     -- HRIS & Staff Compensation & Payroll Extensions
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'Philippines';
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS state_province VARCHAR(100);
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS postal_code VARCHAR(20);
+    ALTER TABLE businesses ADD COLUMN IF NOT EXISTS weekly_schedule JSONB;
+
     ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS position VARCHAR(100) DEFAULT 'Specialist';
     ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS employment_type VARCHAR(50) DEFAULT 'Full-Time'; -- Full-Time, Part-Time, Contractor
     ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS base_salary NUMERIC(10, 2) DEFAULT 0.00;

@@ -5,7 +5,15 @@ import { Search, MapPin, Loader2, Navigation, Crosshair, Maximize2, Check, Plus,
 interface LocationPickerProps {
   initialLat?: number;
   initialLng?: number;
-  onLocationSelect: (loc: { lat: number; lng: number; address?: string; city?: string }) => void;
+  onLocationSelect: (loc: { 
+    lat: number; 
+    lng: number; 
+    address?: string; 
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+  }) => void;
 }
 
 // Reliable, high-performance map styles
@@ -52,7 +60,10 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       if (res.ok) {
         const data = await res.json();
         const addr = data.address || {};
-        const city = addr.city || addr.town || addr.municipality || addr.state_district || 'Metro Manila';
+        const city = addr.city || addr.town || addr.municipality || addr.state_district || addr.suburb || 'Metro Manila';
+        const state = addr.state || addr.region || addr.province || '';
+        const country = addr.country || 'Philippines';
+        const postalCode = addr.postcode || '';
         const fullAddr = data.display_name?.split(',').slice(0, 3).join(', ') || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
         
         setCurrentAddress(fullAddr);
@@ -61,6 +72,9 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
           lng,
           address: fullAddr,
           city,
+          state,
+          country,
+          postalCode,
         });
       }
     } catch (_) {

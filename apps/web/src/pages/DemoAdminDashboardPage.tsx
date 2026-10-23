@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
-  Calendar, Users, DollarSign, CheckCircle2, 
+  Calendar, Users, Coins, CheckCircle2, 
   Search, Filter, Clock, ArrowRight, Sparkles, Building2, 
   Check, X, AlertTriangle, Shield, Bell, ChevronRight, UserCheck, 
   RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store, MapPin, Lightbulb, TrendingUp, LogOut,
@@ -13,6 +13,8 @@ import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { DemoTopNav } from '../components/DemoTopNav';
 import { Pagination } from '../components/Pagination';
+import { LocationPicker } from '../components/LocationPicker';
+import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol } from '../lib/countryConfig';
 import { toast } from 'sonner';
 
 export const DemoAdminDashboardPage: React.FC = () => {
@@ -61,10 +63,16 @@ export const DemoAdminDashboardPage: React.FC = () => {
     'Health & Fitness',
   ];
 
+  const [editCountry, setEditCountry] = useState('Philippines');
+  const [editCurrency, setEditCurrency] = useState('PHP');
+  const [editTimezone, setEditTimezone] = useState('Asia/Manila');
+  const [editStateProvince, setEditStateProvince] = useState('');
+  const [editPostalCode, setEditPostalCode] = useState('');
+
   const [editCity, setEditCity] = useState('Quezon City');
   const [isCustomCity, setIsCustomCity] = useState(false);
   const [customCityInput, setCustomCityInput] = useState('');
-  const cityOptions = [
+  const [cityOptions, setCityOptions] = useState<string[]>([
     'Quezon City',
     'Makati',
     'Taguig / BGC',
@@ -74,19 +82,62 @@ export const DemoAdminDashboardPage: React.FC = () => {
     'Manila',
     'Alabang / Muntinlupa',
     'Pasay',
-  ];
+  ]);
 
   const [editDescription, setEditDescription] = useState('');
   const [editLogoUrl, setEditLogoUrl] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editAddress, setEditAddress] = useState('');
+  const [editLatitude, setEditLatitude] = useState<number | undefined>(undefined);
+  const [editLongitude, setEditLongitude] = useState<number | undefined>(undefined);
   const [editStartTime, setEditStartTime] = useState('09:00');
   const [editEndTime, setEditEndTime] = useState('18:00');
+  const [timeError, setTimeError] = useState<string | null>(null);
+  const [isTimeModified, setIsTimeModified] = useState(false);
   const [editOpeningHours, setEditOpeningHours] = useState('');
   const [editWebsite, setEditWebsite] = useState('');
   const [editSocialHandle, setEditSocialHandle] = useState('');
   const [editStatus, setEditStatus] = useState<'approved' | 'closed' | 'pending'>('approved');
+
+  // Weekly Schedule State (Mon-Sun)
+  const defaultWeeklySchedule = [
+    { day: 'Monday', isWorking: true, startTime: '09:00', endTime: '18:00' },
+    { day: 'Tuesday', isWorking: true, startTime: '09:00', endTime: '18:00' },
+    { day: 'Wednesday', isWorking: true, startTime: '09:00', endTime: '18:00' },
+    { day: 'Thursday', isWorking: true, startTime: '09:00', endTime: '18:00' },
+    { day: 'Friday', isWorking: true, startTime: '09:00', endTime: '18:00' },
+    { day: 'Saturday', isWorking: true, startTime: '09:00', endTime: '18:00' },
+    { day: 'Sunday', isWorking: false, startTime: '09:00', endTime: '18:00' },
+  ];
+  const [weeklySchedule, setWeeklySchedule] = useState(defaultWeeklySchedule);
+
+  const handleCountryChange = (cName: string) => {
+    setEditCountry(cName);
+    const cfg = getCountryByName(cName);
+    setEditCurrency(cfg.currency);
+    setEditTimezone(cfg.defaultTimezone);
+    if (!editPhone || editPhone.startsWith('+')) {
+      setEditPhone(`${cfg.dialCode} `);
+    }
+    if (cfg.defaultCity && !cityOptions.includes(cfg.defaultCity)) {
+      setCityOptions(prev => [...prev, cfg.defaultCity!]);
+      setEditCity(cfg.defaultCity);
+    }
+  };
+
+  const validateTimeRange = (start: string, end: string) => {
+    if (!start || !end) {
+      setTimeError(null);
+      return true;
+    }
+    if (start >= end) {
+      setTimeError('Invalid time range: Opening time must be earlier than closing time.');
+      return false;
+    }
+    setTimeError(null);
+    return true;
+  };
 
   // Suggested Booking Configurations
   const [requireApproval, setRequireApproval] = useState(false);
@@ -322,14 +373,28 @@ export const DemoAdminDashboardPage: React.FC = () => {
         setEditPhone(sRes.business.phone || '');
         setEditEmail(sRes.business.email || '');
         setEditAddress(sRes.business.address || '');
+        setEditCountry(sRes.business.country || 'Philippines');
+        setEditCurrency(sRes.business.currency || 'PHP');
+        setEditTimezone(sRes.business.timezone || 'Asia/Manila');
+        setEditStateProvince(sRes.business.stateProvince || '');
+        setEditPostalCode(sRes.business.postalCode || '');
         setEditCity(sRes.business.city || 'Quezon City');
         setEditOpeningHours(sRes.business.openingHours || '9:00 AM - 6:00 PM');
         setEditWebsite(sRes.business.website || '');
         setEditSocialHandle(sRes.business.socialHandle || '');
         setEditStatus(sRes.business.status || 'approved');
 
-        // Parse opening hours into start and end time if possible (e.g. "9:00 AM - 6:00 PM")
-        if (sRes.business.openingHours) {
+        if (sRes.business.weeklySchedule) {
+          const ws = typeof sRes.business.weeklySchedule === 'string'
+            ? JSON.parse(sRes.business.weeklySchedule)
+            : sRes.business.weeklySchedule;
+          if (Array.isArray(ws) && ws.length === 7) {
+            setWeeklySchedule(ws);
+          }
+        }
+
+        // Only overwrite start/end time from server if the user hasn't modified it locally
+        if (!isTimeModified && sRes.business.openingHours) {
           const parts = sRes.business.openingHours.split('-').map((s: string) => s.trim());
           if (parts.length === 2) {
             const parseTo24 = (t: string) => {
@@ -619,6 +684,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
       return `${formatSingle(start || '09:00')} - ${formatSingle(end || '18:00')}`;
     };
 
+    if (!validateTimeRange(editStartTime, editEndTime)) {
+      toast.error('Invalid Time Range', {
+        description: 'Opening time must be earlier than closing time.'
+      });
+      return;
+    }
+
     const finalCategory = isCustomCategory ? customCategoryInput.trim() : editCategory.trim();
     const finalCity = isCustomCity ? customCityInput.trim() : editCity.trim();
     const formattedHours = formatTimeRange(editStartTime, editEndTime);
@@ -632,12 +704,18 @@ export const DemoAdminDashboardPage: React.FC = () => {
           tagline: editTagline.trim(),
           category: finalCategory || 'Beauty & Wellness',
           description: editDescription.trim(),
+          currency: editCurrency,
+          timezone: editTimezone,
           logoUrl: editLogoUrl.trim() || null,
           phone: editPhone.trim(),
           email: editEmail.trim(),
           address: editAddress.trim(),
           city: finalCity || 'Quezon City',
+          country: editCountry,
+          stateProvince: editStateProvince.trim() || null,
+          postalCode: editPostalCode.trim() || null,
           openingHours: formattedHours,
+          weeklySchedule,
           website: editWebsite.trim() || null,
           socialHandle: editSocialHandle.trim() || null,
           status: editStatus,
@@ -654,6 +732,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       toast.success('Store Settings Saved', {
         description: 'Store profile, configurations, and operational parameters updated successfully.',
       });
+      setIsTimeModified(false);
       if (res.business) {
         setCurrentBusiness(res.business);
       }
@@ -1205,6 +1284,39 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* Country & Currency Selection */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                          Country
+                        </label>
+                        <select
+                          value={editCountry}
+                          onChange={(e) => handleCountryChange(e.target.value)}
+                          disabled={isPending}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                        >
+                          {SUPPORTED_COUNTRIES.map((c) => (
+                            <option key={c.code} value={c.name}>
+                              {c.name} ({c.dialCode})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                          Store Currency
+                        </label>
+                        <input
+                          type="text"
+                          readOnly
+                          value={`${editCurrency} (${getCurrencySymbol(editCurrency).trim()})`}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/80 text-stone-700 dark:text-stone-300 text-xs font-semibold"
+                        />
+                      </div>
+                    </div>
+
                     {/* Category and City Selection Matching Launch Modal */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       {/* Category Selection */}
@@ -1355,9 +1467,78 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                         />
                       </div>
+                      {/* Interactive Real-Time Map Placement */}
+                      <div className="sm:col-span-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300">
+                            Store Location &amp; Interactive Map Pin
+                          </label>
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Real-time Address &amp; Delivery Geocoding</span>
+                        </div>
+                        <LocationPicker
+                          initialLat={editLatitude || 14.5547}
+                          initialLng={editLongitude || 121.0244}
+                          onLocationSelect={(loc) => {
+                            setEditLatitude(loc.lat);
+                            setEditLongitude(loc.lng);
+                            if (loc.address) {
+                              setEditAddress(loc.address);
+                            }
+                            if (loc.country) {
+                              setEditCountry(loc.country);
+                              const cfg = getCountryByName(loc.country);
+                              setEditCurrency(cfg.currency);
+                              setEditTimezone(cfg.defaultTimezone);
+                              if (!editPhone || editPhone.startsWith('+')) {
+                                setEditPhone(`${cfg.dialCode} `);
+                              }
+                            }
+                            if (loc.state) {
+                              setEditStateProvince(loc.state);
+                            }
+                            if (loc.postalCode) {
+                              setEditPostalCode(loc.postalCode);
+                            }
+                            if (loc.city && !cityOptions.includes(loc.city)) {
+                              setCityOptions(prev => [...prev, loc.city!]);
+                              setEditCity(loc.city);
+                            } else if (loc.city) {
+                              setEditCity(loc.city);
+                            }
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                          Province / State
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Metro Manila, California"
+                          value={editStateProvince}
+                          onChange={(e) => setEditStateProvince(e.target.value)}
+                          disabled={isPending}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                          Postal / ZIP Code
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 1100, 90210"
+                          value={editPostalCode}
+                          onChange={(e) => setEditPostalCode(e.target.value)}
+                          disabled={isPending}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                        />
+                      </div>
+
                       <div className="sm:col-span-2">
                         <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                          Street Address / Unit / Mall Level
+                          Street Address / Unit / Mall Level (Auto-filled from map or enter manually)
                         </label>
                         <input
                           type="text"
@@ -1381,9 +1562,15 @@ export const DemoAdminDashboardPage: React.FC = () => {
                               type="time"
                               required
                               value={editStartTime}
-                              onChange={(e) => setEditStartTime(e.target.value)}
+                              onChange={(e) => {
+                                setIsTimeModified(true);
+                                setEditStartTime(e.target.value);
+                                validateTimeRange(e.target.value, editEndTime);
+                              }}
                               disabled={isPending}
-                              className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                              className={`w-full px-3 py-2 rounded-xl border ${
+                                timeError ? 'border-rose-400 dark:border-rose-600 bg-rose-50/30' : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800'
+                              } text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                             />
                           </div>
                           <div>
@@ -1392,12 +1579,24 @@ export const DemoAdminDashboardPage: React.FC = () => {
                               type="time"
                               required
                               value={editEndTime}
-                              onChange={(e) => setEditEndTime(e.target.value)}
+                              onChange={(e) => {
+                                setIsTimeModified(true);
+                                setEditEndTime(e.target.value);
+                                validateTimeRange(editStartTime, e.target.value);
+                              }}
                               disabled={isPending}
-                              className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                              className={`w-full px-3 py-2 rounded-xl border ${
+                                timeError ? 'border-rose-400 dark:border-rose-600 bg-rose-50/30' : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800'
+                              } text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                             />
                           </div>
                         </div>
+                        {timeError && (
+                          <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 mt-1 flex items-center space-x-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{timeError}</span>
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -1570,7 +1769,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         </div>
                         <div className="text-right">
                           <div className="font-bold text-stone-900 dark:text-stone-100 text-sm">
-                            ₱{Number(svc.price).toLocaleString()}
+                            {getCurrencySymbol(editCurrency)}{Number(svc.price).toLocaleString()}
                           </div>
                           <div className="text-[10px] text-stone-500 font-medium">
                             {svc.durationMinutes} mins session
@@ -1644,7 +1843,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             <div className="text-[11px] text-stone-500">{st.bio || 'Store Specialist'}</div>
                             {st.baseSalary > 0 && (
                               <div className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">
-                                Base: ₱{Number(st.baseSalary).toLocaleString()} /mo • Comm: {st.commissionRate || 0}%
+                                Base: {getCurrencySymbol(editCurrency)}{Number(st.baseSalary).toLocaleString()} /mo • Comm: {st.commissionRate || 0}%
                               </div>
                             )}
                           </div>
@@ -1691,40 +1890,132 @@ export const DemoAdminDashboardPage: React.FC = () => {
             {/* Sub-Tab 4: Appointment Slots & Working Hours */}
             {setupSubTab === 'schedule' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in">
-                <div className="lg:col-span-2 bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4 text-xs">
-                  <div className="pb-3 border-b border-stone-100 dark:border-stone-800">
-                    <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
-                      <Clock className="w-4 h-4 text-amber-500" />
-                      <span>Weekly Working Schedule &amp; Slots</span>
-                    </h2>
-                    <p className="text-[11px] text-stone-500">Clients will select appointment time slots based on this calendar schedule.</p>
+                <div className="lg:col-span-2 bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-5 text-xs">
+                  <div className="pb-3 border-b border-stone-100 dark:border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+                        <Clock className="w-4 h-4 text-amber-500" />
+                        <span>Store Weekly Schedule &amp; Service Availability</span>
+                      </h2>
+                      <p className="text-[11px] text-stone-500 mt-0.5">
+                        Customize working days (e.g. Weekdays only, or select operating days) and daily hours.
+                      </p>
+                    </div>
+
+                    {/* Quick Preset Buttons */}
+                    <div className="flex items-center space-x-2">
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => {
+                          setWeeklySchedule(prev => prev.map((item, idx) => ({
+                            ...item,
+                            isWorking: idx < 5, // Mon-Fri
+                          })));
+                          toast.info('Schedule Preset', { description: 'Applied Weekdays Only (Monday to Friday).' });
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-[11px] font-semibold text-stone-700 dark:text-stone-300 hover:border-amber-400 hover:text-amber-600 transition"
+                      >
+                        Weekdays Only
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => {
+                          setWeeklySchedule(prev => prev.map(item => ({
+                            ...item,
+                            isWorking: true, // All 7 days
+                          })));
+                          toast.info('Schedule Preset', { description: 'Applied Full Week (All 7 Days Open).' });
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-[11px] font-semibold text-stone-700 dark:text-stone-300 hover:border-amber-400 hover:text-amber-600 transition"
+                      >
+                        All 7 Days
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="space-y-2.5">
-                    {[
-                      { day: 'Monday', time: '9:00 AM - 6:00 PM', status: 'Available' },
-                      { day: 'Tuesday', time: '9:00 AM - 6:00 PM', status: 'Available' },
-                      { day: 'Wednesday', time: '9:00 AM - 6:00 PM', status: 'Available' },
-                      { day: 'Thursday', time: '9:00 AM - 6:00 PM', status: 'Available' },
-                      { day: 'Friday', time: '9:00 AM - 6:00 PM', status: 'Available' },
-                      { day: 'Saturday', time: '9:00 AM - 6:00 PM', status: 'Available' },
-                      { day: 'Sunday', time: 'Rest Day / Closed', status: 'Closed' },
-                    ].map((slot, idx) => (
-                      <div key={idx} className="flex justify-between items-center py-2 border-b border-stone-100 dark:border-stone-800">
-                        <span className="font-semibold text-stone-700 dark:text-stone-300">{slot.day}</span>
+                  {/* Day by Day Configurator */}
+                  <div className="space-y-3">
+                    {weeklySchedule.map((slot, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`p-3.5 rounded-2xl border transition-all ${
+                          slot.isWorking 
+                            ? 'bg-white dark:bg-stone-800/80 border-stone-200 dark:border-stone-700' 
+                            : 'bg-stone-50 dark:bg-stone-900/60 border-stone-100 dark:border-stone-800/60 opacity-60'
+                        } flex flex-col sm:flex-row sm:items-center justify-between gap-3`}
+                      >
                         <div className="flex items-center space-x-3">
-                          <span className="text-stone-600 dark:text-stone-400 font-mono text-[11px]">{slot.time}</span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            slot.status === 'Available' ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
-                          }`}>
-                            {slot.status}
-                          </span>
+                          <input
+                            type="checkbox"
+                            checked={slot.isWorking}
+                            disabled={isPending}
+                            onChange={(e) => {
+                              const updated = [...weeklySchedule];
+                              updated[idx].isWorking = e.target.checked;
+                              setWeeklySchedule(updated);
+                            }}
+                            className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400 cursor-pointer"
+                          />
+                          <div>
+                            <span className="font-bold text-stone-900 dark:text-stone-100 text-xs block">
+                              {slot.day}
+                            </span>
+                            <span className="text-[10px] text-stone-500">
+                              {slot.isWorking ? 'Store Open & Bookable' : 'Closed / Off Day'}
+                            </span>
+                          </div>
                         </div>
+
+                        {slot.isWorking ? (
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="time"
+                              value={slot.startTime}
+                              disabled={isPending}
+                              onChange={(e) => {
+                                const updated = [...weeklySchedule];
+                                updated[idx].startTime = e.target.value;
+                                setWeeklySchedule(updated);
+                              }}
+                              className="px-2 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
+                            />
+                            <span className="text-stone-400">to</span>
+                            <input
+                              type="time"
+                              value={slot.endTime}
+                              disabled={isPending}
+                              onChange={(e) => {
+                                const updated = [...weeklySchedule];
+                                updated[idx].endTime = e.target.value;
+                                setWeeklySchedule(updated);
+                              }}
+                              className="px-2 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-[11px] font-semibold text-stone-400 dark:text-stone-500 py-1 px-3 bg-stone-100 dark:bg-stone-800 rounded-xl">
+                            Rest Day / Closed
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
 
-                  <div className="pt-3 text-[11px] text-stone-500 space-y-1">
+                  <div className="flex justify-end pt-3 border-t border-stone-100 dark:border-stone-800">
+                    <button
+                      type="button"
+                      disabled={savingSettings || isPending}
+                      onClick={handleSaveStoreSettings}
+                      className="px-5 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center space-x-1.5"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>{savingSettings ? 'Saving...' : 'Save Weekly Schedule'}</span>
+                    </button>
+                  </div>
+
+                  <div className="pt-2 text-[11px] text-stone-500 space-y-1">
                     <p>• Slots are dynamically spaced based on each service's duration.</p>
                     <p>• Confirmed bookings automatically block out corresponding staff availability.</p>
                   </div>
@@ -1740,7 +2031,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       Default session intervals between bookable customer appointments:
                     </p>
                     <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 font-semibold text-amber-900 dark:text-amber-200">
-                      Standard slot increment: <strong>45 minutes</strong>
+                      Standard slot increment: <strong>{slotInterval} minutes</strong>
                     </div>
                   </div>
                 </div>
@@ -1910,7 +2201,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     }}
                     className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow self-start sm:self-auto"
                   >
-                    <DollarSign className="w-4 h-4" />
+                    <Coins className="w-4 h-4 text-amber-500" />
                     <span>Record Salary Payment</span>
                   </button>
                 </div>
@@ -1959,7 +2250,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                                 </span>
                               </td>
                               <td className="py-3 pr-3 font-semibold text-stone-900 dark:text-stone-100">
-                                ₱{Number(staff.baseSalary || 0).toLocaleString()}
+                                {getCurrencySymbol(editCurrency)}{Number(staff.baseSalary || 0).toLocaleString()}
                               </td>
                               <td className="py-3 pr-3 font-semibold text-amber-700 dark:text-amber-400">
                                 {staff.commissionRate || 0}% per booking
@@ -2042,13 +2333,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
                                 {rec.payPeriodStart} to {rec.payPeriodEnd}
                               </td>
                               <td className="py-3 font-semibold text-stone-800 dark:text-stone-200">
-                                ₱{Number(rec.basePay).toLocaleString()}
+                                {getCurrencySymbol(editCurrency)}{Number(rec.basePay).toLocaleString()}
                               </td>
                               <td className="py-3 font-semibold text-amber-700 dark:text-amber-400">
-                                ₱{Number(rec.commissionPay).toLocaleString()}
+                                {getCurrencySymbol(editCurrency)}{Number(rec.commissionPay).toLocaleString()}
                               </td>
                               <td className="py-3 font-bold text-emerald-700 dark:text-emerald-400">
-                                ₱{Number(rec.netPay).toLocaleString()}
+                                {getCurrencySymbol(editCurrency)}{Number(rec.netPay).toLocaleString()}
                               </td>
                               <td className="py-3">
                                 <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
@@ -2234,8 +2525,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
           <div className="bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
             <div className="text-[11px] font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">Completed Revenue</div>
-            <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-2">
-              ₱{metrics ? Number(metrics.totalRevenue).toLocaleString() : '—'}
+            <div className="2xl font-bold text-stone-900 dark:text-stone-100 mt-2">
+              {getCurrencySymbol(editCurrency)}{metrics ? Number(metrics.totalRevenue).toLocaleString() : '—'}
             </div>
             <div className="text-[11px] text-stone-600 dark:text-stone-300 mt-1 font-medium">Synthetic studio earnings</div>
           </div>
@@ -2341,7 +2632,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <div className="text-stone-600 dark:text-stone-400">{new Date(appt.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                       </td>
                       <td className="px-5 py-3.5 font-bold text-stone-900 dark:text-stone-100">
-                        ₱{Number(appt.price).toLocaleString()}
+                        {getCurrencySymbol(appt.currency || editCurrency)}{Number(appt.price).toLocaleString()}
                       </td>
                       <td className="px-5 py-3.5">
                         <span
@@ -2502,7 +2793,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-stone-600 dark:text-stone-300 font-medium">Price:</span>
-                  <span className="font-bold text-stone-900 dark:text-stone-100">₱{Number(selectedApptDetails.price).toLocaleString()}</span>
+                  <span className="font-bold text-stone-900 dark:text-stone-100">
+                    {getCurrencySymbol(selectedApptDetails.currency || editCurrency)}{Number(selectedApptDetails.price).toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-stone-600 dark:text-stone-300 font-medium">Status:</span>
@@ -2882,7 +3175,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Price (₱ PHP)</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Price ({getCurrencySymbol(editCurrency).trim()} {editCurrency})
+                  </label>
                   <input
                     type="number"
                     required
@@ -3048,7 +3343,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Monthly Base Pay (₱)</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Monthly Base Pay ({getCurrencySymbol(editCurrency).trim()})
+                  </label>
                   <input
                     type="number"
                     value={editStaffBaseSalary}
@@ -3205,7 +3502,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Base Pay (₱)</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Base Pay ({getCurrencySymbol(editCurrency).trim()})
+                  </label>
                   <input
                     type="number"
                     value={basePay}
@@ -3215,7 +3514,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Commission Pay (₱)</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Commission Pay ({getCurrencySymbol(editCurrency).trim()})
+                  </label>
                   <input
                     type="number"
                     value={commissionPay}
@@ -3228,7 +3529,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Bonuses / Incentives (₱)</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Bonuses / Incentives ({getCurrencySymbol(editCurrency).trim()})
+                  </label>
                   <input
                     type="number"
                     value={bonuses}
@@ -3238,7 +3541,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Deductions / Tax (₱)</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Deductions / Tax ({getCurrencySymbol(editCurrency).trim()})
+                  </label>
                   <input
                     type="number"
                     value={deductions}
@@ -3263,7 +3568,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
               <div className="p-3 bg-stone-100 dark:bg-stone-800/80 rounded-xl flex justify-between items-center text-xs">
                 <span className="font-semibold text-stone-600 dark:text-stone-400">Estimated Net Pay:</span>
                 <span className="font-bold text-sm text-emerald-700 dark:text-emerald-400">
-                  ₱{(
+                  {getCurrencySymbol(editCurrency)}{(
                     (Number(basePay) || 0) +
                     (Number(commissionPay) || 0) +
                     (Number(bonuses) || 0) -

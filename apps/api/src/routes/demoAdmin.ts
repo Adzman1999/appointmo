@@ -246,7 +246,8 @@ router.post('/create-business', async (req: Request, res: Response) => {
   try {
     const { 
       name, category, description, currency, timezone, logoUrl, 
-      tagline, phone, email, address, city, openingHours, website, instagram, socialHandle,
+      tagline, phone, email, address, city, country, stateProvince, postalCode, openingHours, weeklySchedule,
+      website, instagram, socialHandle,
       latitude, longitude,
       ownerName, ownerEmail, ownerPassword
     } = req.body;
@@ -257,6 +258,7 @@ router.post('/create-business', async (req: Request, res: Response) => {
 
     const trimmedName = name.trim();
     const trimmedCategory = category.trim();
+    const finalCountry = country?.trim() || 'Philippines';
     const finalCity = city?.trim() || 'Quezon City';
     const finalPhone = phone?.trim() || '+63 2 8999 0001';
     const finalAddress = address?.trim() || `101 Commercial Ave, ${finalCity}`;
@@ -273,11 +275,12 @@ router.post('/create-business', async (req: Request, res: Response) => {
     const bRes = await client.query(`
       INSERT INTO businesses (
         name, slug, description, category, currency, timezone, logo_url,
-        tagline, phone, email, address, city, opening_hours, website, instagram, social_handle, status
+        tagline, phone, email, address, city, country, state_province, postal_code, opening_hours, weekly_schedule, website, instagram, social_handle, status
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'pending')
-      RETURNING id, name, slug, category, description, logo_url AS "logoUrl",
-                tagline, phone, email, address, city, opening_hours AS "openingHours",
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 'pending')
+      RETURNING id, name, slug, category, description, currency, timezone, logo_url AS "logoUrl",
+                tagline, phone, email, address, city, country, state_province AS "stateProvince", postal_code AS "postalCode",
+                opening_hours AS "openingHours", weekly_schedule AS "weeklySchedule",
                 website, instagram, social_handle AS "socialHandle", status
     `, [
       trimmedName, 
@@ -292,7 +295,11 @@ router.post('/create-business', async (req: Request, res: Response) => {
       finalOwnerEmail,
       finalAddress,
       finalCity,
+      finalCountry,
+      stateProvince?.trim() || null,
+      postalCode?.trim() || null,
       finalOpeningHours,
+      weeklySchedule ? JSON.stringify(weeklySchedule) : null,
       website?.trim() || null,
       finalSocMed,
       finalSocMed
@@ -945,8 +952,10 @@ router.get('/settings', async (req: Request, res: Response) => {
 
     const bizRes = await query(`
       SELECT id, name, slug, category, description, currency, timezone, logo_url AS "logoUrl",
-             phone, email, address, city, opening_hours AS "openingHours",
-             website, instagram, COALESCE(social_handle, instagram) AS "socialHandle", tagline, status
+             phone, email, address, city, country, state_province AS "stateProvince", postal_code AS "postalCode",
+             opening_hours AS "openingHours", weekly_schedule AS "weeklySchedule",
+             website, instagram, COALESCE(social_handle, instagram) AS "socialHandle", tagline, status,
+             booking_policies AS "bookingPolicies"
       FROM businesses
       WHERE id = $1
     `, [businessId]);
@@ -981,13 +990,13 @@ router.get('/settings', async (req: Request, res: Response) => {
   }
 });
 
-// 12. Update Business Profile & Setup (Logo, description, hours, phone, address, status, policies)
+// 12. Update Business Profile & Setup (Logo, description, hours, phone, address, status, policies, country, currency)
 router.put('/settings', async (req: Request, res: Response) => {
   try {
     const businessId = await getDemoBusinessId(req, false);
     const {
-      name, description, logoUrl, phone, email, address, city, openingHours,
-      website, instagram, socialHandle, tagline, status, bookingPolicies
+      name, description, logoUrl, phone, email, address, city, country, stateProvince, postalCode, openingHours, weeklySchedule,
+      website, instagram, socialHandle, tagline, status, bookingPolicies, currency, timezone
     } = req.body;
 
     const fields: string[] = [];
@@ -1022,9 +1031,33 @@ router.put('/settings', async (req: Request, res: Response) => {
       fields.push(`city = $${idx++}`);
       values.push(city.trim());
     }
+    if (country !== undefined) {
+      fields.push(`country = $${idx++}`);
+      values.push(country.trim());
+    }
+    if (stateProvince !== undefined) {
+      fields.push(`state_province = $${idx++}`);
+      values.push(stateProvince.trim());
+    }
+    if (postalCode !== undefined) {
+      fields.push(`postal_code = $${idx++}`);
+      values.push(postalCode.trim());
+    }
     if (openingHours !== undefined) {
       fields.push(`opening_hours = $${idx++}`);
       values.push(openingHours.trim());
+    }
+    if (weeklySchedule !== undefined) {
+      fields.push(`weekly_schedule = $${idx++}`);
+      values.push(JSON.stringify(weeklySchedule));
+    }
+    if (currency !== undefined) {
+      fields.push(`currency = $${idx++}`);
+      values.push(currency.trim());
+    }
+    if (timezone !== undefined) {
+      fields.push(`timezone = $${idx++}`);
+      values.push(timezone.trim());
     }
     if (website !== undefined) {
       fields.push(`website = $${idx++}`);
@@ -1062,7 +1095,8 @@ router.put('/settings', async (req: Request, res: Response) => {
       SET ${fields.join(', ')}
       WHERE id = $${idx}
       RETURNING id, name, slug, category, description, currency, timezone, logo_url AS "logoUrl",
-                phone, email, address, city, opening_hours AS "openingHours",
+                phone, email, address, city, country, state_province AS "stateProvince", postal_code AS "postalCode",
+                opening_hours AS "openingHours", weekly_schedule AS "weeklySchedule",
                 website, instagram, COALESCE(social_handle, instagram) AS "socialHandle", tagline, status,
                 booking_policies AS "bookingPolicies"
     `;

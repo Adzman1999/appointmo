@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Tag, Sparkles, CheckCircle2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { LocationPicker } from './LocationPicker';
+import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol } from '../lib/countryConfig';
 
 interface BusinessCreationModalProps {
   isOpen: boolean;
@@ -49,6 +50,12 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
   const [showPassword, setShowPassword] = useState(false);
 
   // Store Location & Contact Details
+  const [selectedCountry, setSelectedCountry] = useState('Philippines');
+  const [selectedCurrency, setSelectedCurrency] = useState('PHP');
+  const [selectedTimezone, setSelectedTimezone] = useState('Asia/Manila');
+  const [createStateProvince, setCreateStateProvince] = useState('');
+  const [createPostalCode, setCreatePostalCode] = useState('');
+
   const [cityOptions, setCityOptions] = useState<string[]>([
     'Quezon City',
     'Makati',
@@ -70,8 +77,38 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
   const [createEmail, setCreateEmail] = useState('');
   const [createStartTime, setCreateStartTime] = useState('09:00');
   const [createEndTime, setCreateEndTime] = useState('18:00');
+  const [timeError, setTimeError] = useState<string | null>(null);
   const [createWebsite, setCreateWebsite] = useState('');
   const [createSocialHandle, setCreateSocialHandle] = useState('');
+
+  // Handle Country selection change: automatically update currency, timezone, dial code
+  const handleCountryChange = (countryName: string) => {
+    setSelectedCountry(countryName);
+    const cfg = getCountryByName(countryName);
+    setSelectedCurrency(cfg.currency);
+    setSelectedTimezone(cfg.defaultTimezone);
+    if (!createPhone || createPhone.startsWith('+')) {
+      setCreatePhone(`${cfg.dialCode} `);
+    }
+    if (cfg.defaultCity && !cityOptions.includes(cfg.defaultCity)) {
+      setCityOptions(prev => [...prev, cfg.defaultCity!]);
+      setCreateCity(cfg.defaultCity);
+    }
+  };
+
+  // Validate start and end time
+  const validateTimeRange = (start: string, end: string) => {
+    if (!start || !end) {
+      setTimeError(null);
+      return true;
+    }
+    if (start >= end) {
+      setTimeError('Invalid time range: Opening time must be earlier than closing time.');
+      return false;
+    }
+    setTimeError(null);
+    return true;
+  };
 
   const [creatingBusiness, setCreatingBusiness] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -142,6 +179,12 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
       return;
     }
 
+    if (!validateTimeRange(createStartTime, createEndTime)) {
+      setCreateError('Opening time must be earlier than closing time.');
+      setCreatingBusiness(false);
+      return;
+    }
+
     const formattedOpeningHours = formatTimeRange(createStartTime, createEndTime);
 
     try {
@@ -152,10 +195,15 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
           category: finalCategory,
           tagline: createTagline.trim() || undefined,
           description: createDescription.trim() || undefined,
+          currency: selectedCurrency,
+          timezone: selectedTimezone,
           logoUrl: createLogoUrl.trim() || undefined,
           ownerName: ownerName.trim() || createName.trim(),
           ownerEmail: (ownerEmail || createEmail).trim() || undefined,
           ownerPassword: ownerPassword.trim(),
+          country: selectedCountry,
+          stateProvince: createStateProvince.trim() || undefined,
+          postalCode: createPostalCode.trim() || undefined,
           city: finalCity,
           address: createAddress.trim() || undefined,
           latitude: createLatitude,
@@ -358,6 +406,40 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             />
           </div>
 
+          {/* Country & Currency Selection */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                Country
+              </label>
+              <select
+                value={selectedCountry}
+                onChange={(e) => handleCountryChange(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+              >
+                {SUPPORTED_COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.name}>
+                    {c.name} ({c.dialCode})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                Store Currency
+              </label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${selectedCurrency} (${getCurrencySymbol(selectedCurrency).trim()})`}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/80 text-stone-700 dark:text-stone-300 text-xs font-semibold"
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Category Selection */}
             <div>
@@ -510,6 +592,21 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                   if (loc.address) {
                     setCreateAddress(loc.address);
                   }
+                  if (loc.country) {
+                    setSelectedCountry(loc.country);
+                    const cfg = getCountryByName(loc.country);
+                    setSelectedCurrency(cfg.currency);
+                    setSelectedTimezone(cfg.defaultTimezone);
+                    if (!createPhone || createPhone.startsWith('+')) {
+                      setCreatePhone(`${cfg.dialCode} `);
+                    }
+                  }
+                  if (loc.state) {
+                    setCreateStateProvince(loc.state);
+                  }
+                  if (loc.postalCode) {
+                    setCreatePostalCode(loc.postalCode);
+                  }
                   if (loc.city && !cityOptions.includes(loc.city)) {
                     setCityOptions(prev => [...prev, loc.city!]);
                     setCreateCity(loc.city);
@@ -520,9 +617,36 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               />
             </div>
             
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-stone-500 dark:text-stone-400 mb-1">
+                  Province / State
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Metro Manila, California"
+                  value={createStateProvince}
+                  onChange={(e) => setCreateStateProvince(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
+              <div>
+                <label className="block text-stone-500 dark:text-stone-400 mb-1">
+                  Postal / ZIP Code
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 1100, 90210"
+                  value={createPostalCode}
+                  onChange={(e) => setCreatePostalCode(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-stone-500 dark:text-stone-400 mb-1">
-                Street Address / Unit / Mall Level (Auto-filled from pin or enter manually)
+                Detailed Street Address / Unit / Mall Level (Auto-filled from map or enter manually)
               </label>
               <input
                 type="text"
@@ -568,8 +692,13 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                     type="time"
                     required
                     value={createStartTime}
-                    onChange={(e) => setCreateStartTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                    onChange={(e) => {
+                      setCreateStartTime(e.target.value);
+                      validateTimeRange(e.target.value, createEndTime);
+                    }}
+                    className={`w-full px-3 py-2 rounded-xl border ${
+                      timeError ? 'border-rose-400 dark:border-rose-600 bg-rose-50/30' : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800'
+                    } text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400`}
                   />
                 </div>
                 <div>
@@ -578,11 +707,22 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                     type="time"
                     required
                     value={createEndTime}
-                    onChange={(e) => setCreateEndTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                    onChange={(e) => {
+                      setCreateEndTime(e.target.value);
+                      validateTimeRange(createStartTime, e.target.value);
+                    }}
+                    className={`w-full px-3 py-2 rounded-xl border ${
+                      timeError ? 'border-rose-400 dark:border-rose-600 bg-rose-50/30' : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800'
+                    } text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400`}
                   />
                 </div>
               </div>
+              {timeError && (
+                <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 mt-1 flex items-center space-x-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{timeError}</span>
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
