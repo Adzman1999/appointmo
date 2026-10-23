@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Tag, Sparkles, CheckCircle2, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Tag, Sparkles, CheckCircle2, ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-import { LocationPicker } from './LocationPicker';
 import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol } from '../lib/countryConfig';
 
 interface BusinessCreationModalProps {
@@ -312,13 +311,18 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-          {/* Owner / Store Administrator Information */}
-          <div className="bg-amber-50/60 dark:bg-amber-950/30 p-3.5 rounded-2xl border border-amber-200/80 dark:border-amber-800/60 space-y-3">
-            <span className="font-bold text-amber-950 dark:text-amber-200 flex items-center space-x-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span>Store Owner &amp; Admin Sign-In Credentials</span>
-            </span>
+        <form onSubmit={handleSubmit} className="space-y-6 text-xs">
+          {/* Section 1: Store Owner & Administrator Credentials */}
+          <div className="bg-amber-50/60 dark:bg-amber-950/30 p-4 rounded-2xl border border-amber-200/80 dark:border-amber-800/60 space-y-3">
+            <div className="flex items-center space-x-2">
+              <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span className="font-bold text-amber-950 dark:text-amber-200 text-sm">
+                1. Owner &amp; Administrator Credentials
+              </span>
+            </div>
+            <p className="text-[11px] text-amber-900/80 dark:text-amber-300/80">
+              Create your primary administrator account to sign in and manage store operations.
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
@@ -373,75 +377,45 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 </div>
               </div>
             </div>
-            <p className="text-[10px] text-amber-800/80 dark:text-amber-300/80">
-              You will use this email and password to log into your store once approved.
-            </p>
           </div>
 
-          {/* Store Name & Tagline */}
-          <div>
-            <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-              Store / Business Name <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Lumina Hair &amp; Nail Lounge, Zen Dental Studio"
-              value={createName}
-              onChange={(e) => setCreateName(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-            />
-          </div>
-
-          <div>
-            <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-              Tagline / Catchphrase (Optional)
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Your Premier Sanctuary for Holistic Wellness &amp; Style"
-              value={createTagline}
-              onChange={(e) => setCreateTagline(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-            />
-          </div>
-
-          {/* Country & Currency Selection */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                Country
-              </label>
-              <select
-                value={selectedCountry}
-                onChange={(e) => handleCountryChange(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-              >
-                {SUPPORTED_COUNTRIES.map((c) => (
-                  <option key={c.code} value={c.name}>
-                    {c.name} ({c.dialCode})
-                  </option>
-                ))}
-              </select>
+          {/* Section 2: Store Identity & Branding */}
+          <div className="bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3.5">
+            <div className="flex items-center space-x-2">
+              <Building2 className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+              <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                2. Store Brand &amp; Identity
+              </span>
             </div>
 
             <div>
               <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                Store Currency
+                Store / Business Name <span className="text-rose-500">*</span>
               </label>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={`${selectedCurrency} (${getCurrencySymbol(selectedCurrency).trim()})`}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/80 text-stone-700 dark:text-stone-300 text-xs font-semibold"
-                />
-              </div>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Lumina Hair &amp; Nail Lounge, Zen Dental Studio"
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+              />
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Category Selection */}
+            <div>
+              <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                Tagline / Catchphrase (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Your Premier Sanctuary for Holistic Wellness &amp; Style"
+                value={createTagline}
+                onChange={(e) => setCreateTagline(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+              />
+            </div>
+
+            {/* Category */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block font-semibold text-stone-700 dark:text-stone-300">Category</label>
@@ -481,11 +455,106 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               )}
             </div>
 
-            {/* City / Primary Location */}
+            <div>
+              <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                Logo / Store Cover URL (Optional — auto-generates branded fallback if empty)
+              </label>
+              <input
+                type="url"
+                placeholder="e.g. https://images.unsplash.com/... or image link"
+                value={createLogoUrl}
+                onChange={(e) => setCreateLogoUrl(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Description</label>
+              <textarea
+                rows={2}
+                placeholder="Briefly describe what services, atmosphere, or specialties your store provides..."
+                value={createDescription}
+                onChange={(e) => setCreateDescription(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+              />
+            </div>
+
+            {/* Suggested Sample Services from Concierge (if generated) */}
+            {initialData?.services && initialData.services.length > 0 && (
+              <div className="p-3.5 bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 rounded-2xl space-y-2">
+                <div className="flex items-center space-x-1.5 text-xs font-bold text-amber-900 dark:text-amber-300">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Suggested Initial Services to Provision:</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {initialData.services.map((s, idx) => (
+                    <div key={idx} className="p-2 rounded-xl bg-white dark:bg-stone-900 border border-amber-200/80 dark:border-amber-900/40 text-stone-900 dark:text-stone-100 text-[11px]">
+                      <div className="font-bold truncate">{s.name}</div>
+                      <div className="flex justify-between text-stone-600 dark:text-stone-400 text-[10px] mt-0.5">
+                        <span>{s.duration}</span>
+                        <span className="font-semibold text-amber-700 dark:text-amber-300">₱{s.price}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Section 3: Country & Currency */}
+          <div className="bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3.5">
+            <div className="flex items-center space-x-2">
+              <Globe className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+              <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                3. Country &amp; Currency Settings
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Country
+                </label>
+                <select
+                  value={selectedCountry}
+                  onChange={(e) => handleCountryChange(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                >
+                  {SUPPORTED_COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.name}>
+                      {c.name} ({c.dialCode})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Store Currency
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  value={`${selectedCurrency} (${getCurrencySymbol(selectedCurrency).trim()})`}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-100 dark:bg-stone-800/80 text-stone-700 dark:text-stone-300 text-xs font-semibold"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Physical Location & Address */}
+          <div className="bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3.5">
+            <div className="flex items-center space-x-2">
+              <MapPin className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+              <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                4. Physical Location &amp; Address
+              </span>
+            </div>
+
+            {/* City Selection */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center space-x-1">
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300">City / Location</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300">City / Municipality <span className="text-rose-500">*</span></label>
                   {initialData?.city && (
                     <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.2 rounded-md">
                       AI Suggested
@@ -500,7 +569,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                   }}
                   className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 underline"
                 >
-                  {isCustomCity ? 'Choose City' : '+ Add Custom'}
+                  {isCustomCity ? 'Choose City' : '+ Add Custom City'}
                 </button>
               </div>
               {isCustomCity ? (
@@ -508,7 +577,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                   type="text"
                   required
                   autoFocus
-                  placeholder="e.g. Cebu IT Park, Davao City"
+                  placeholder="e.g. Cebu City, Davao City"
                   value={customCityInput}
                   onChange={(e) => setCustomCityInput(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
@@ -527,116 +596,27 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 </select>
               )}
             </div>
-          </div>
 
-          <div>
-            <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-              Logo / Store Cover URL (Optional — auto-generates branded fallback if empty)
-            </label>
-            <input
-              type="url"
-              placeholder="e.g. https://images.unsplash.com/... or image link"
-              value={createLogoUrl}
-              onChange={(e) => setCreateLogoUrl(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-            />
-          </div>
-
-          <div>
-            <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Description</label>
-            <textarea
-              rows={2}
-              placeholder="Briefly describe what services, atmosphere, or specialties your store provides..."
-              value={createDescription}
-              onChange={(e) => setCreateDescription(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-            />
-          </div>
-
-          {/* Suggested Sample Services from Concierge (if generated) */}
-          {initialData?.services && initialData.services.length > 0 && (
-            <div className="p-3.5 bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 rounded-2xl space-y-2">
-              <div className="flex items-center space-x-1.5 text-xs font-bold text-amber-900 dark:text-amber-300">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>Suggested Initial Services to Provision:</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {initialData.services.map((s, idx) => (
-                  <div key={idx} className="p-2 rounded-xl bg-white dark:bg-stone-900 border border-amber-200/80 dark:border-amber-900/40 text-stone-900 dark:text-stone-100 text-[11px]">
-                    <div className="font-bold truncate">{s.name}</div>
-                    <div className="flex justify-between text-stone-600 dark:text-stone-400 text-[10px] mt-0.5">
-                      <span>{s.duration}</span>
-                      <span className="font-semibold text-amber-700 dark:text-amber-300">₱{s.price}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Store Contact & Address */}
-          <div className="border-t border-stone-200 dark:border-stone-800 pt-3 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-stone-800 dark:text-stone-200 block">Store Location &amp; Map Pin</span>
-              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Interactive Map Search &amp; Pinning</span>
-            </div>
-
-            {/* Real Map Search & Interactive Pin Placement */}
-            <div>
-              <LocationPicker
-                initialLat={14.5547}
-                initialLng={121.0244}
-                onLocationSelect={(loc) => {
-                  setCreateLatitude(loc.lat);
-                  setCreateLongitude(loc.lng);
-                  if (loc.address) {
-                    setCreateAddress(loc.address);
-                  }
-                  if (loc.country) {
-                    setSelectedCountry(loc.country);
-                    const cfg = getCountryByName(loc.country);
-                    setSelectedCurrency(cfg.currency);
-                    setSelectedTimezone(cfg.defaultTimezone);
-                    if (!createPhone || createPhone.startsWith('+')) {
-                      setCreatePhone(`${cfg.dialCode} `);
-                    }
-                  }
-                  if (loc.state) {
-                    setCreateStateProvince(loc.state);
-                  }
-                  if (loc.postalCode) {
-                    setCreatePostalCode(loc.postalCode);
-                  }
-                  if (loc.city && !cityOptions.includes(loc.city)) {
-                    setCityOptions(prev => [...prev, loc.city!]);
-                    setCreateCity(loc.city);
-                  } else if (loc.city) {
-                    setCreateCity(loc.city);
-                  }
-                }}
-              />
-            </div>
-            
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-stone-500 dark:text-stone-400 mb-1">
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
                   Province / State
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Metro Manila, California"
+                  placeholder="e.g. Metro Manila, Cebu, California"
                   value={createStateProvince}
                   onChange={(e) => setCreateStateProvince(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                 />
               </div>
               <div>
-                <label className="block text-stone-500 dark:text-stone-400 mb-1">
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
                   Postal / ZIP Code
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. 1100, 90210"
+                  placeholder="e.g. 1100, 6000, 90210"
                   value={createPostalCode}
                   onChange={(e) => setCreatePostalCode(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
@@ -645,8 +625,8 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-stone-500 dark:text-stone-400 mb-1">
-                Detailed Street Address / Unit / Mall Level (Auto-filled from map or enter manually)
+              <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                Detailed Street Address / Unit / Mall Level
               </label>
               <input
                 type="text"
@@ -656,10 +636,20 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
               />
             </div>
+          </div>
 
-            <div className="grid grid-cols-2 gap-3">
+          {/* Section 5: Contact Channels & Online Presence */}
+          <div className="bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3.5">
+            <div className="flex items-center space-x-2">
+              <Phone className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+              <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                5. Contact &amp; Online Channels
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-stone-500 dark:text-stone-400 mb-1">Contact Phone</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Contact Phone</label>
                 <input
                   type="text"
                   placeholder="+63 2 8999 0001"
@@ -669,10 +659,10 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-stone-500 dark:text-stone-400 mb-1">Store Email (Optional)</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Email (Public / Inquiries)</label>
                 <input
                   type="email"
-                  placeholder="contact@yourstore.demo"
+                  placeholder="contact@yourstore.com"
                   value={createEmail}
                   onChange={(e) => setCreateEmail(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
@@ -680,54 +670,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               </div>
             </div>
 
-            {/* Operating Hours as Start Time & End Time */}
-            <div>
-              <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
-                Operating Hours (Daily Opening &amp; Closing)
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <span className="text-[10px] text-stone-500 dark:text-stone-400 block mb-0.5">Opening Time</span>
-                  <input
-                    type="time"
-                    required
-                    value={createStartTime}
-                    onChange={(e) => {
-                      setCreateStartTime(e.target.value);
-                      validateTimeRange(e.target.value, createEndTime);
-                    }}
-                    className={`w-full px-3 py-2 rounded-xl border ${
-                      timeError ? 'border-rose-400 dark:border-rose-600 bg-rose-50/30' : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800'
-                    } text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400`}
-                  />
-                </div>
-                <div>
-                  <span className="text-[10px] text-stone-500 dark:text-stone-400 block mb-0.5">Closing Time</span>
-                  <input
-                    type="time"
-                    required
-                    value={createEndTime}
-                    onChange={(e) => {
-                      setCreateEndTime(e.target.value);
-                      validateTimeRange(createStartTime, e.target.value);
-                    }}
-                    className={`w-full px-3 py-2 rounded-xl border ${
-                      timeError ? 'border-rose-400 dark:border-rose-600 bg-rose-50/30' : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800'
-                    } text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400`}
-                  />
-                </div>
-              </div>
-              {timeError && (
-                <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 mt-1 flex items-center space-x-1">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>{timeError}</span>
-                </p>
-              )}
-            </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-stone-500 dark:text-stone-400 mb-1">Social Media Handle (Any Platform)</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Social Media Handle (Any Platform)</label>
                 <input
                   type="text"
                   placeholder="e.g. @yourstore, fb.com/yourstore, or tiktok.com/@store"
@@ -737,7 +682,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-stone-500 dark:text-stone-400 mb-1">Website URL (Optional)</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Website URL (Optional)</label>
                 <input
                   type="url"
                   placeholder="https://yourstore.ph"
@@ -749,9 +694,54 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             </div>
           </div>
 
-          {/* <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 text-[11px] leading-relaxed">
-            <strong>Instant Store Setup:</strong> Upon creation, Appointmo automatically configures an initial consultation service, lead specialist, and standard working hours so you can immediately begin scheduling and managing appointments for this store.
-          </div> */}
+          {/* Section 6: Operating Hours */}
+          <div className="bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3.5">
+            <div className="flex items-center space-x-2">
+              <Clock className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+              <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                6. Daily Operating Hours
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block mb-1">Opening Time</span>
+                <input
+                  type="time"
+                  required
+                  value={createStartTime}
+                  onChange={(e) => {
+                    setCreateStartTime(e.target.value);
+                    validateTimeRange(e.target.value, createEndTime);
+                  }}
+                  className={`w-full px-3 py-2.5 rounded-xl border ${
+                    timeError ? 'border-rose-400 dark:border-rose-600 bg-rose-50/30' : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800'
+                  } text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400`}
+                />
+              </div>
+              <div>
+                <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block mb-1">Closing Time</span>
+                <input
+                  type="time"
+                  required
+                  value={createEndTime}
+                  onChange={(e) => {
+                    setCreateEndTime(e.target.value);
+                    validateTimeRange(createStartTime, e.target.value);
+                  }}
+                  className={`w-full px-3 py-2.5 rounded-xl border ${
+                    timeError ? 'border-rose-400 dark:border-rose-600 bg-rose-50/30' : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800'
+                  } text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400`}
+                />
+              </div>
+            </div>
+            {timeError && (
+              <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 mt-1 flex items-center space-x-1">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{timeError}</span>
+              </p>
+            )}
+          </div>
 
           <div className="flex space-x-3 pt-2">
             <button

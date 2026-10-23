@@ -13,7 +13,6 @@ import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { DemoTopNav } from '../components/DemoTopNav';
 import { Pagination } from '../components/Pagination';
-import { LocationPicker } from '../components/LocationPicker';
 import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol } from '../lib/countryConfig';
 import { toast } from 'sonner';
 
@@ -1249,7 +1248,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in">
                 {/* Brand Identity & Contact */}
                 <div className="lg:col-span-2 space-y-6">
-                  <form onSubmit={handleSaveStoreSettings} className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-5">
+                  <form onSubmit={handleSaveStoreSettings} className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-6">
                     <div className="border-b border-stone-100 dark:border-stone-800 pb-3 flex items-center justify-between">
                       <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
                         <Store className="w-4 h-4 text-amber-500" />
@@ -1258,69 +1257,43 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       <span className="text-[11px] text-stone-500 font-mono">Slug: {activeSlug}</span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                      <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store / Business Name</label>
-                        <input
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          placeholder="e.g. Atelier Skin Clinic"
-                          required
-                          disabled={isPending}
-                          className={`w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Tagline / Catchphrase (Optional)</label>
-                        <input
-                          type="text"
-                          value={editTagline}
-                          onChange={(e) => setEditTagline(e.target.value)}
-                          placeholder="e.g. Your Premier Sanctuary for Holistic Wellness & Style"
-                          disabled={isPending}
-                          className={`w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Country & Currency Selection */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                      <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                          Country
-                        </label>
-                        <select
-                          value={editCountry}
-                          onChange={(e) => handleCountryChange(e.target.value)}
-                          disabled={isPending}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                        >
-                          {SUPPORTED_COUNTRIES.map((c) => (
-                            <option key={c.code} value={c.name}>
-                              {c.name} ({c.dialCode})
-                            </option>
-                          ))}
-                        </select>
+                    {/* Section 1: Store Brand & Identity */}
+                    <div className="bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <Building2 className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+                        <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                          1. Store Brand &amp; Identity
+                        </span>
                       </div>
 
-                      <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                          Store Currency
-                        </label>
-                        <input
-                          type="text"
-                          readOnly
-                          value={`${editCurrency} (${getCurrencySymbol(editCurrency).trim()})`}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/80 text-stone-700 dark:text-stone-300 text-xs font-semibold"
-                        />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store / Business Name</label>
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            placeholder="e.g. Atelier Skin Clinic"
+                            required
+                            disabled={isPending}
+                            className={`w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Tagline / Catchphrase (Optional)</label>
+                          <input
+                            type="text"
+                            value={editTagline}
+                            onChange={(e) => setEditTagline(e.target.value)}
+                            placeholder="e.g. Your Premier Sanctuary for Holistic Wellness & Style"
+                            disabled={isPending}
+                            className={`w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          />
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Category and City Selection Matching Launch Modal */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                      {/* Category Selection */}
-                      <div>
+                      {/* Category */}
+                      <div className="text-xs">
                         <div className="flex items-center justify-between mb-1">
                           <label className="block font-semibold text-stone-700 dark:text-stone-300">Category</label>
                           <button
@@ -1361,8 +1334,99 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         )}
                       </div>
 
+                      {/* Store Description */}
+                      <div className="text-xs">
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Description</label>
+                        <textarea
+                          rows={3}
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          placeholder="Briefly describe what services, atmosphere, or specialties your store provides..."
+                          disabled={isPending}
+                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                        />
+                      </div>
+
+                      {/* Logo URL with Live Preview */}
+                      <div className="p-4 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs space-y-2.5 transition-colors">
+                        <label className="block font-semibold text-stone-800 dark:text-stone-200">
+                          Logo / Store Cover URL (Optional — auto-generates branded fallback if empty)
+                        </label>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                            {editLogoUrl ? (
+                              <img src={editLogoUrl} alt="Store Logo" className="w-full h-full object-cover" />
+                            ) : (
+                              <Image className="w-5 h-5 text-stone-400 dark:text-stone-500" />
+                            )}
+                          </div>
+                          <input
+                            type="url"
+                            value={editLogoUrl}
+                            onChange={(e) => setEditLogoUrl(e.target.value)}
+                            placeholder="e.g. https://images.unsplash.com/... or image link"
+                            disabled={isPending}
+                            className={`flex-1 px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          />
+                        </div>
+                        <p className="text-[11px] text-stone-600 dark:text-stone-400 font-medium">
+                          Provide an image link to replace the default lettermark logo.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Section 2: Country & Currency */}
+                    <div className="bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <Globe className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+                        <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                          2. Country &amp; Currency Settings
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                            Country
+                          </label>
+                          <select
+                            value={editCountry}
+                            onChange={(e) => handleCountryChange(e.target.value)}
+                            disabled={isPending}
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                          >
+                            {SUPPORTED_COUNTRIES.map((c) => (
+                              <option key={c.code} value={c.name}>
+                                {c.name} ({c.dialCode})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                            Store Currency
+                          </label>
+                          <input
+                            type="text"
+                            readOnly
+                            value={`${editCurrency} (${getCurrencySymbol(editCurrency).trim()})`}
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-100 dark:bg-stone-800/80 text-stone-700 dark:text-stone-300 text-xs font-semibold"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 3: Physical Location & Address */}
+                    <div className="bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+                        <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                          3. Physical Location &amp; Address
+                        </span>
+                      </div>
+
                       {/* City / Primary Location */}
-                      <div>
+                      <div className="text-xs">
                         <div className="flex items-center justify-between mb-1">
                           <label className="block font-semibold text-stone-700 dark:text-stone-300">City / Location</label>
                           <button
@@ -1373,7 +1437,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             }}
                             className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 underline"
                           >
-                            {isCustomCity ? 'Choose City' : '+ Add Custom'}
+                            {isCustomCity ? 'Choose City' : '+ Add Custom City'}
                           </button>
                         </div>
                         {isCustomCity ? (
@@ -1402,143 +1466,39 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           </select>
                         )}
                       </div>
-                    </div>
 
-                    <div className="text-xs">
-                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Description</label>
-                      <textarea
-                        rows={3}
-                        value={editDescription}
-                        onChange={(e) => setEditDescription(e.target.value)}
-                        placeholder="Briefly describe what services, atmosphere, or specialties your store provides..."
-                        disabled={isPending}
-                        className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                      />
-                    </div>
-
-                    {/* Logo URL with Live Preview */}
-                    <div className="p-4 rounded-2xl bg-stone-100/80 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 text-xs space-y-2.5 transition-colors">
-                      <label className="block font-semibold text-stone-800 dark:text-stone-200">
-                        Logo / Store Cover URL (Optional — auto-generates branded fallback if empty)
-                      </label>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 rounded-xl bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
-                          {editLogoUrl ? (
-                            <img src={editLogoUrl} alt="Store Logo" className="w-full h-full object-cover" />
-                          ) : (
-                            <Image className="w-5 h-5 text-stone-400 dark:text-stone-500" />
-                          )}
-                        </div>
-                        <input
-                          type="url"
-                          value={editLogoUrl}
-                          onChange={(e) => setEditLogoUrl(e.target.value)}
-                          placeholder="e.g. https://images.unsplash.com/... or image link"
-                          disabled={isPending}
-                          className={`flex-1 px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                        />
-                      </div>
-                      <p className="text-[11px] text-stone-600 dark:text-stone-400 font-medium">
-                        Provide an image link to replace the default lettermark logo.
-                      </p>
-                    </div>
-
-                    {/* Contact & Location Details */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                      <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Contact Phone</label>
-                        <input
-                          type="text"
-                          value={editPhone}
-                          onChange={(e) => setEditPhone(e.target.value)}
-                          placeholder="+63 2 8999 0001"
-                          disabled={isPending}
-                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Email (Optional)</label>
-                        <input
-                          type="email"
-                          value={editEmail}
-                          onChange={(e) => setEditEmail(e.target.value)}
-                          placeholder="contact@yourstore.demo"
-                          disabled={isPending}
-                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                        />
-                      </div>
-                      {/* Interactive Real-Time Map Placement */}
-                      <div className="sm:col-span-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="block font-semibold text-stone-700 dark:text-stone-300">
-                            Store Location &amp; Interactive Map Pin
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                            Province / State
                           </label>
-                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Real-time Address &amp; Delivery Geocoding</span>
+                          <input
+                            type="text"
+                            placeholder="e.g. Metro Manila, Cebu, California"
+                            value={editStateProvince}
+                            onChange={(e) => setEditStateProvince(e.target.value)}
+                            disabled={isPending}
+                            className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          />
                         </div>
-                        <LocationPicker
-                          initialLat={editLatitude || 14.5547}
-                          initialLng={editLongitude || 121.0244}
-                          onLocationSelect={(loc) => {
-                            setEditLatitude(loc.lat);
-                            setEditLongitude(loc.lng);
-                            if (loc.address) {
-                              setEditAddress(loc.address);
-                            }
-                            if (loc.country) {
-                              setEditCountry(loc.country);
-                              const cfg = getCountryByName(loc.country);
-                              setEditCurrency(cfg.currency);
-                              setEditTimezone(cfg.defaultTimezone);
-                              if (!editPhone || editPhone.startsWith('+')) {
-                                setEditPhone(`${cfg.dialCode} `);
-                              }
-                            }
-                            if (loc.state) {
-                              setEditStateProvince(loc.state);
-                            }
-                            if (loc.postalCode) {
-                              setEditPostalCode(loc.postalCode);
-                            }
-                            if (loc.city && !cityOptions.includes(loc.city)) {
-                              setCityOptions(prev => [...prev, loc.city!]);
-                              setEditCity(loc.city);
-                            } else if (loc.city) {
-                              setEditCity(loc.city);
-                            }
-                          }}
-                        />
+                        <div>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                            Postal / ZIP Code
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. 1100, 6000, 90210"
+                            value={editPostalCode}
+                            onChange={(e) => setEditPostalCode(e.target.value)}
+                            disabled={isPending}
+                            className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          />
+                        </div>
                       </div>
 
-                      <div>
+                      <div className="text-xs">
                         <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                          Province / State
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Metro Manila, California"
-                          value={editStateProvince}
-                          onChange={(e) => setEditStateProvince(e.target.value)}
-                          disabled={isPending}
-                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                          Postal / ZIP Code
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. 1100, 90210"
-                          value={editPostalCode}
-                          onChange={(e) => setEditPostalCode(e.target.value)}
-                          disabled={isPending}
-                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                        />
-                      </div>
-
-                      <div className="sm:col-span-2">
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                          Street Address / Unit / Mall Level (Auto-filled from map or enter manually)
+                          Detailed Street Address / Unit / Mall Level
                         </label>
                         <input
                           type="text"
@@ -1549,78 +1509,117 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                         />
                       </div>
+                    </div>
 
-                      {/* Operating Hours as Start Time & End Time Pickers */}
-                      <div className="sm:col-span-2">
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                          Operating Hours (Daily Opening &amp; Closing)
-                        </label>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <span className="text-[10px] text-stone-500 dark:text-stone-400 block mb-0.5">Opening Time</span>
-                            <input
-                              type="time"
-                              required
-                              value={editStartTime}
-                              onChange={(e) => {
-                                setIsTimeModified(true);
-                                setEditStartTime(e.target.value);
-                                validateTimeRange(e.target.value, editEndTime);
-                              }}
-                              disabled={isPending}
-                              className={`w-full px-3 py-2 rounded-xl border ${
-                                timeError ? 'border-rose-400 dark:border-rose-600 bg-rose-50/30' : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800'
-                              } text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                            />
-                          </div>
-                          <div>
-                            <span className="text-[10px] text-stone-500 dark:text-stone-400 block mb-0.5">Closing Time</span>
-                            <input
-                              type="time"
-                              required
-                              value={editEndTime}
-                              onChange={(e) => {
-                                setIsTimeModified(true);
-                                setEditEndTime(e.target.value);
-                                validateTimeRange(editStartTime, e.target.value);
-                              }}
-                              disabled={isPending}
-                              className={`w-full px-3 py-2 rounded-xl border ${
-                                timeError ? 'border-rose-400 dark:border-rose-600 bg-rose-50/30' : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800'
-                              } text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                            />
-                          </div>
+                    {/* Section 4: Contact & Social Media Channels */}
+                    <div className="bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <Phone className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+                        <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                          4. Contact &amp; Online Channels
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Contact Phone</label>
+                          <input
+                            type="text"
+                            value={editPhone}
+                            onChange={(e) => setEditPhone(e.target.value)}
+                            placeholder="+63 2 8999 0001"
+                            disabled={isPending}
+                            className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          />
                         </div>
-                        {timeError && (
-                          <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 mt-1 flex items-center space-x-1">
-                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                            <span>{timeError}</span>
-                          </p>
-                        )}
+                        <div>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Store Email (Optional)</label>
+                          <input
+                            type="email"
+                            value={editEmail}
+                            onChange={(e) => setEditEmail(e.target.value)}
+                            placeholder="contact@yourstore.demo"
+                            disabled={isPending}
+                            className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Official Website (Optional)</label>
+                          <input
+                            type="url"
+                            value={editWebsite}
+                            onChange={(e) => setEditWebsite(e.target.value)}
+                            placeholder="https://yourbrand.com"
+                            disabled={isPending}
+                            className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Social Media Handle (Optional)</label>
+                          <input
+                            type="text"
+                            value={editSocialHandle}
+                            onChange={(e) => setEditSocialHandle(e.target.value)}
+                            placeholder="@yourbrand"
+                            disabled={isPending}
+                            className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 5: Daily Operating Hours */}
+                    <div className="bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <Clock className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+                        <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                          5. Daily Operating Hours
+                        </span>
                       </div>
 
-                      <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Official Website (Optional)</label>
-                        <input
-                          type="url"
-                          value={editWebsite}
-                          onChange={(e) => setEditWebsite(e.target.value)}
-                          placeholder="https://yourbrand.com"
-                          disabled={isPending}
-                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                        />
+                      <div className="grid grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block mb-1">Opening Time</span>
+                          <input
+                            type="time"
+                            required
+                            value={editStartTime}
+                            onChange={(e) => {
+                              setIsTimeModified(true);
+                              setEditStartTime(e.target.value);
+                              validateTimeRange(e.target.value, editEndTime);
+                            }}
+                            disabled={isPending}
+                            className={`w-full px-3 py-2.5 rounded-xl border ${
+                              timeError ? 'border-rose-400 dark:border-rose-600 bg-rose-50/30' : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800'
+                            } text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block mb-1">Closing Time</span>
+                          <input
+                            type="time"
+                            required
+                            value={editEndTime}
+                            onChange={(e) => {
+                              setIsTimeModified(true);
+                              setEditEndTime(e.target.value);
+                              validateTimeRange(editStartTime, e.target.value);
+                            }}
+                            disabled={isPending}
+                            className={`w-full px-3 py-2.5 rounded-xl border ${
+                              timeError ? 'border-rose-400 dark:border-rose-600 bg-rose-50/30' : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800'
+                            } text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Social Media Handle (Optional)</label>
-                        <input
-                          type="text"
-                          value={editSocialHandle}
-                          onChange={(e) => setEditSocialHandle(e.target.value)}
-                          placeholder="@yourbrand"
-                          disabled={isPending}
-                          className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
-                        />
-                      </div>
+                      {timeError && (
+                        <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 mt-1 flex items-center space-x-1">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{timeError}</span>
+                        </p>
+                      )}
                     </div>
 
                     {/* Operational Status Switcher */}
