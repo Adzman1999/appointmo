@@ -24,7 +24,7 @@ async function getDemoBusinessId(req?: Request, allowPending: boolean = true): P
 
   const biz = bizRes.rows[0];
   if (!allowPending && biz.status === 'pending') {
-    throw new Error('This store is currently pending Super Admin approval. Management actions and edits are locked until approved.');
+    throw new Error('This store is currently pending approval. Management actions and edits are locked until approved.');
   }
   if (biz.status === 'rejected') {
     throw new Error('This store registration was rejected by the administrator.');
@@ -425,7 +425,7 @@ router.post('/create-business', async (req: Request, res: Response) => {
     }
 
     res.status(201).json({
-      message: 'Your store is successfully created! Please wait 1 to 2 business days for Super Admin approval before full access is granted.',
+      message: 'Your store is successfully created! Please wait 1 to 2 business days for review and approval before full access is granted.',
       business: newBiz,
       branch: brRes.rows[0],
       user: createdUser,
@@ -627,7 +627,7 @@ router.patch('/appointments/:id/status', async (req: Request, res: Response) => 
     const bCheck = await client.query('SELECT status FROM businesses WHERE id = $1', [businessId]);
     if (bCheck.rows[0]?.status === 'pending') {
       await client.query('ROLLBACK');
-      return res.status(403).json({ error: 'This store is pending Super Admin approval. Appointment actions are locked until approved.' });
+      return res.status(403).json({ error: 'This store is pending approval. Appointment actions are locked until approved.' });
     }
     const prevStatus = appt.status;
 
@@ -715,7 +715,7 @@ router.post('/appointments/:id/reschedule', async (req: Request, res: Response) 
     const bCheck = await client.query('SELECT status FROM businesses WHERE id = $1', [appt.business_id]);
     if (bCheck.rows[0]?.status === 'pending') {
       await client.query('ROLLBACK');
-      return res.status(403).json({ error: 'This store is pending Super Admin approval. Rescheduling is locked until approved.' });
+      return res.status(403).json({ error: 'This store is pending approval. Rescheduling is locked until approved.' });
     }
     const actualApptId = appt.id;
     const businessId = appt.business_id;
@@ -838,7 +838,7 @@ router.post('/appointments/:id/reassign-staff', async (req: Request, res: Respon
     const bCheck = await client.query('SELECT status FROM businesses WHERE id = $1', [appt.business_id]);
     if (bCheck.rows[0]?.status === 'pending') {
       await client.query('ROLLBACK');
-      return res.status(403).json({ error: 'This store is pending Super Admin approval. Staff reassignment is locked until approved.' });
+      return res.status(403).json({ error: 'This store is pending approval. Staff reassignment is locked until approved.' });
     }
     const actualApptId = appt.id;
     const businessId = appt.business_id;

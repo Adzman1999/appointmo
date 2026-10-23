@@ -179,7 +179,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
 
       setSubmittedStoreNotice({
         business: res.business,
-        message: res.message || 'Your store is successfully created! Please wait 1 to 2 business days for Super Admin approval before full access is granted.',
+        message: res.message || 'Your store is successfully created! Please wait 1 to 2 business days for review and approval before full access is granted.',
       });
     } catch (err: any) {
       setCreateError(err.message || 'Failed to create store');
@@ -202,7 +202,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 Store Successfully Created!
               </h3>
               <p className="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 py-1.5 px-3.5 rounded-full inline-block">
-                Status: Pending Super Admin Approval
+                Status: Pending Approval &amp; Verification
               </p>
             </div>
 
@@ -220,7 +220,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 <span className="font-mono text-stone-800 dark:text-stone-200">{createEmail.trim() || 'Provided in store form'}</span>
               </div>
               <div className="p-3 bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 rounded-xl text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed font-medium">
-                <strong>Notice:</strong> Your store is successfully created! Please allow <strong>1 to 2 business days</strong> for the Super Admin to review and approve your store. Once approved, you can sign in directly with your email and password.
+                <strong>Notice:</strong> Your store is successfully created! Please allow <strong>1 to 2 business days</strong> for review and verification. Once approved, you can sign in directly with your email and password.
               </div>
             </div>
 
@@ -326,7 +326,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               </div>
             </div>
             <p className="text-[10px] text-amber-800/80 dark:text-amber-300/80">
-              You will use this email and password to log into your store once approved by the Super Admin.
+              You will use this email and password to log into your store once approved.
             </p>
           </div>
 
