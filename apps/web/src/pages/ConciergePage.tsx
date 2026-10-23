@@ -9,6 +9,9 @@ import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { DemoTopNav } from '../components/DemoTopNav';
+import { FormalNameFields } from '../components/FormalNameFields';
+import { CountryPhoneInput } from '../components/CountryPhoneInput';
+import { formatFormalName, parseFormalName, validateFullPhoneNumber, normalizePhoneNumber, getCountryByName } from '../lib/countryConfig';
 
 export const ConciergePage: React.FC = () => {
   const navigate = useNavigate();
@@ -26,7 +29,9 @@ export const ConciergePage: React.FC = () => {
 
   // Booking modal/step
   const [bookingRec, setBookingRec] = useState<any | null>(null);
-  const [customerName, setCustomerName] = useState('');
+  const [customerFirstName, setCustomerFirstName] = useState('');
+  const [customerMiddleName, setCustomerMiddleName] = useState('');
+  const [customerLastName, setCustomerLastName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
@@ -70,8 +75,31 @@ export const ConciergePage: React.FC = () => {
     e.preventDefault();
     if (!bookingRec) return;
 
+    if (!customerFirstName.trim() || !customerLastName.trim()) {
+      setBookingError('First name and last name are required.');
+      return;
+    }
+
+    if (!customerEmail.trim()) {
+      setBookingError('Email address is required.');
+      return;
+    }
+
+    const phoneVal = validateFullPhoneNumber(customerPhone, 'Philippines', true);
+    if (!phoneVal.isValid) {
+      setBookingError(phoneVal.error || 'Please provide a valid complete phone number.');
+      return;
+    }
+
     setBookingLoading(true);
     setBookingError(null);
+
+    const formalFullName = formatFormalName({
+      firstName: customerFirstName,
+      middleName: customerMiddleName,
+      lastName: customerLastName,
+    });
+    const normalizedPhone = normalizePhoneNumber(customerPhone, 'PH');
 
     try {
       const res: any = await apiFetch('/bookings', {
@@ -80,10 +108,10 @@ export const ConciergePage: React.FC = () => {
           serviceId: bookingRec.serviceId,
           staffId: bookingRec.staffId,
           startTime: bookingRec.slot.startTime,
-          customerName,
-          customerEmail,
-          customerPhone,
-          notes: notes ? `[Concierge Note] ${notes}` : '[Concierge Recommendation]',
+          customerName: formalFullName,
+          customerEmail: customerEmail.trim(),
+          customerPhone: normalizedPhone,
+          notes: notes ? `[Concierge Note] ${notes.trim()}` : '[Concierge Recommendation]',
         }),
       });
 
@@ -421,20 +449,25 @@ export const ConciergePage: React.FC = () => {
             )}
 
             <form onSubmit={handleConfirmBooking} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Elena Rostova"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition"
-                />
-              </div>
+              <FormalNameFields
+                firstName={customerFirstName}
+                middleName={customerMiddleName}
+                lastName={customerLastName}
+                onFirstNameChange={setCustomerFirstName}
+                onMiddleNameChange={setCustomerMiddleName}
+                onLastNameChange={setCustomerLastName}
+                required={true}
+                labels={{
+                  first: 'First Name',
+                  middle: 'Middle Initial / Name',
+                  last: 'Last Name',
+                }}
+              />
 
               <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Email Address</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Email Address <span className="text-rose-500 font-bold">* (Required)</span>
+                </label>
                 <input
                   type="email"
                   required
@@ -446,14 +479,19 @@ export const ConciergePage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Phone Number</label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="+63 900 000 0000"
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300">
+                    Phone Number <span className="text-rose-500 font-bold">* (Required)</span>
+                  </label>
+                  <span className="text-[10px] text-stone-400">
+                    +63 • Max 10 digits
+                  </span>
+                </div>
+                <CountryPhoneInput
+                  countryNameOrCode="Philippines"
                   value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition"
+                  onChange={(val) => setCustomerPhone(val)}
+                  required
                 />
               </div>
 
@@ -478,7 +516,7 @@ export const ConciergePage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={bookingLoading || !customerName || !customerEmail || !customerPhone}
+                  disabled={bookingLoading || !customerFirstName.trim() || !customerLastName.trim() || !customerEmail.trim() || !customerPhone.trim()}
                   className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-stone-900 text-white hover:bg-stone-800 transition shadow disabled:opacity-50"
                 >
                   {bookingLoading ? 'Reserving...' : 'Confirm Booking'}

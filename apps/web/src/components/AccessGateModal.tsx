@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { X, CheckCircle2, ArrowRight, Mail, Sparkles, AlertCircle, Lock } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { FormalNameFields } from './FormalNameFields';
+import { formatFormalName } from '../lib/countryConfig';
 
 interface AccessGateModalProps {
   isOpen: boolean;
@@ -18,7 +20,9 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
   const [tab, setTab] = useState<'request' | 'login'>(initialTab);
 
   // Request form state
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [message, setMessage] = useState('');
@@ -36,23 +40,40 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
 
   const handleRequestAccess = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!firstName.trim() || !lastName.trim()) {
+      setRequestError('First name and last name are required.');
+      return;
+    }
+    if (!email.trim()) {
+      setRequestError('Email address is required.');
+      return;
+    }
+
     setRequestLoading(true);
     setRequestError(null);
     setRequestSuccess(null);
+
+    const formalFullName = formatFormalName({ firstName, middleName, lastName });
 
     try {
       const res: any = await apiFetch('/access/request', {
         method: 'POST',
         body: JSON.stringify({
-          fullName,
-          email,
-          businessName,
-          message,
+          fullName: formalFullName,
+          email: email.trim(),
+          businessName: businessName.trim(),
+          message: message.trim(),
           acceptedPrivacy: true,
         }),
       });
 
       setRequestSuccess(res.message || "Thanks for reaching out! We've received your request. You'll receive an email once approved.");
+      setFirstName('');
+      setMiddleName('');
+      setLastName('');
+      setEmail('');
+      setBusinessName('');
+      setMessage('');
     } catch (err: any) {
       setRequestError(err.message || 'Unable to submit your request. Please check your information and try again.');
     } finally {
@@ -169,20 +190,25 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
                   </div>
                 )}
 
-                <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Your Full Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Elena Rostova"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition"
-                  />
-                </div>
+                <FormalNameFields
+                  firstName={firstName}
+                  middleName={middleName}
+                  lastName={lastName}
+                  onFirstNameChange={setFirstName}
+                  onMiddleNameChange={setMiddleName}
+                  onLastNameChange={setLastName}
+                  required={true}
+                  labels={{
+                    first: 'First Name',
+                    middle: 'Middle Initial / Name',
+                    last: 'Last Name',
+                  }}
+                />
 
                 <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Email Address</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Email Address <span className="text-rose-500 font-bold">* (Required)</span>
+                  </label>
                   <input
                     type="email"
                     required
@@ -217,7 +243,7 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
 
                 <button
                   type="submit"
-                  disabled={requestLoading || !fullName || !email}
+                  disabled={requestLoading || !firstName.trim() || !lastName.trim() || !email.trim()}
                   className="w-full bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-semibold py-3 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition text-xs shadow disabled:opacity-50 flex items-center justify-center space-x-2 mt-2"
                 >
                   <Mail className="w-4 h-4" />

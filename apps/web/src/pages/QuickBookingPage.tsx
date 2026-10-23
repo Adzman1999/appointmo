@@ -7,6 +7,9 @@ import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { DemoTopNav } from '../components/DemoTopNav';
 import { toast } from 'sonner';
+import { FormalNameFields } from '../components/FormalNameFields';
+import { CountryPhoneInput } from '../components/CountryPhoneInput';
+import { formatFormalName, parseFormalName, validateFullPhoneNumber, normalizePhoneNumber, getCountryByName } from '../lib/countryConfig';
 
 interface Service {
   id: string;
@@ -30,6 +33,7 @@ interface BusinessProfile {
   slug: string;
   category: string;
   description: string;
+  country?: string;
   logoUrl?: string | null;
   branches: Array<{
     id: string;
@@ -67,7 +71,9 @@ export const QuickBookingPage: React.FC = () => {
   const [loadingSlots, setLoadingSlots] = useState(false);
 
   // Guest details form
-  const [customerName, setCustomerName] = useState('');
+  const [customerFirstName, setCustomerFirstName] = useState('');
+  const [customerMiddleName, setCustomerMiddleName] = useState('');
+  const [customerLastName, setCustomerLastName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
@@ -82,7 +88,12 @@ export const QuickBookingPage: React.FC = () => {
     apiFetch<any>('/demo/admin/customer-portal')
       .then(res => {
         if (res?.customer) {
-          if (!customerName) setCustomerName(res.customer.name || '');
+          if (res.customer.name && !customerFirstName) {
+            const parsed = parseFormalName(res.customer.name);
+            setCustomerFirstName(parsed.firstName);
+            setCustomerMiddleName(parsed.middleName || '');
+            setCustomerLastName(parsed.lastName);
+          }
           if (!customerEmail) setCustomerEmail(res.customer.email || '');
           if (!customerPhone) setCustomerPhone(res.customer.phone || '');
         }
@@ -93,7 +104,12 @@ export const QuickBookingPage: React.FC = () => {
         if (stored) {
           try {
             const parsed = JSON.parse(stored);
-            if (parsed.customerName && !customerName) setCustomerName(parsed.customerName);
+            if (parsed.customerName && !customerFirstName) {
+              const parsedName = parseFormalName(parsed.customerName);
+              setCustomerFirstName(parsedName.firstName);
+              setCustomerMiddleName(parsedName.middleName || '');
+              setCustomerLastName(parsedName.lastName);
+            }
             if (parsed.customerEmail && !customerEmail) setCustomerEmail(parsed.customerEmail);
             if (parsed.customerPhone && !customerPhone) setCustomerPhone(parsed.customerPhone);
           } catch (_) {}
@@ -149,7 +165,37 @@ export const QuickBookingPage: React.FC = () => {
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedService || !selectedSlot) return;
+    if (!selectedService || !selectedSlot) {
+      toast.error('Please select both a service and a time slot.');
+      return;
+    }
+
+    if (!customerFirstName.trim() || !customerLastName.trim()) {
+      setBookingError('Please enter your first name and last name.');
+      toast.error('Name Required', { description: 'First name and last name are required.' });
+      return;
+    }
+
+    if (!customerEmail.trim()) {
+      setBookingError('Please enter your email address.');
+      toast.error('Email Required', { description: 'A valid email address is required.' });
+      return;
+    }
+
+    const storeCountry = business?.country || 'Philippines';
+    const phoneVal = validateFullPhoneNumber(customerPhone, storeCountry, true);
+    if (!phoneVal.isValid) {
+      setBookingError(phoneVal.error || 'Please provide a valid complete phone number.');
+      toast.error('Invalid Phone Number', { description: phoneVal.error });
+      return;
+    }
+
+    const formalFullName = formatFormalName({
+      firstName: customerFirstName,
+      middleName: customerMiddleName,
+      lastName: customerLastName,
+    });
+    const normalizedCustomerPhone = normalizePhoneNumber(customerPhone, getCountryByName(storeCountry).code);
 
     setBookingLoading(true);
     setBookingError(null);
@@ -161,10 +207,10 @@ export const QuickBookingPage: React.FC = () => {
           serviceId: selectedService.id,
           staffId: selectedSlot.staffId,
           startTime: selectedSlot.startTime,
-          customerName,
-          customerEmail,
-          customerPhone,
-          notes,
+          customerName: formalFullName,
+          customerEmail: customerEmail.trim(),
+          customerPhone: normalizedCustomerPhone,
+          notes: notes.trim(),
         }),
       });
 
@@ -178,9 +224,9 @@ export const QuickBookingPage: React.FC = () => {
         localStorage.setItem('appointmo_latest_booking', JSON.stringify({
           bookingReference: res.booking.bookingReference,
           managementToken: res.booking.managementToken,
-          customerName,
-          customerEmail,
-          customerPhone,
+          customerName: formalFullName,
+          customerEmail: customerEmail.trim(),
+          customerPhone: normalizedCustomerPhone,
           serviceName: selectedService.name,
           createdAt: new Date().toISOString()
         }));
@@ -443,45 +489,61 @@ export const QuickBookingPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="space-y-4 text-xs">
+                <FormalNameFields
+                  firstName={customerFirstName}
+                  middleName={customerMiddleName}
+                  lastName={customerLastName}
+                  onFirstNameChange={setCustomerFirstName}
+                  onMiddleNameChange={setCustomerMiddleName}
+                  onLastNameChange={setCustomerLastName}
+                  required={true}
+                  labels={{
+                    first: 'First Name',
+                    middle: 'Middle Initial / Name',
+                    last: 'Last Name',
+                  }}
+                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                      Email Address <span className="text-rose-500 font-bold">* (Required)</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="beatriz@example.com"
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-semibold text-stone-700 dark:text-stone-300">
+                        Phone Number <span className="text-rose-500 font-bold">* (Required)</span>
+                      </label>
+                      <span className="text-[10px] text-stone-400">
+                        {getCountryByName(business?.country || 'Philippines').dialCode} • Max {getCountryByName(business?.country || 'Philippines').nationalPhoneLength} digits
+                      </span>
+                    </div>
+                    <CountryPhoneInput
+                      countryNameOrCode={business?.country || 'Philippines'}
+                      value={customerPhone}
+                      onChange={(val) => setCustomerPhone(val)}
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Full Name</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Notes / Preferences <span className="text-stone-400 font-normal">(Optional)</span>
+                  </label>
                   <input
                     type="text"
-                    required
-                    placeholder="e.g. Beatriz Alonzo"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="beatriz@example.com"
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Phone Number</label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="+63 900 000 0000"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Notes / Preferences (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="Any preferences..."
+                    placeholder="Any special requests or instructions..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
@@ -492,7 +554,7 @@ export const QuickBookingPage: React.FC = () => {
               <div className="pt-6">
                 <button
                   type="submit"
-                  disabled={bookingLoading || !selectedSlot || !customerName || !customerEmail || !customerPhone}
+                  disabled={bookingLoading || !selectedSlot || !customerFirstName.trim() || !customerLastName.trim() || !customerEmail.trim() || !customerPhone.trim()}
                   className="w-full bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold py-3.5 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition text-xs shadow-md disabled:opacity-50 flex items-center justify-center space-x-2"
                 >
                   <span>{bookingLoading ? 'Reserving...' : 'Confirm Appointment Booking'}</span>

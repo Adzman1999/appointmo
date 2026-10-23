@@ -673,3 +673,86 @@ export const normalizePhoneNumber = (input: string, countryCode: string): string
     return input.trim();
   }
 };
+
+// Check if a full or national phone number meets all validation requirements
+export const validateFullPhoneNumber = (
+  input: string,
+  countryNameOrCode: string,
+  required = false
+): { isValid: boolean; error?: string } => {
+  if (!input || !input.trim()) {
+    if (required) {
+      return { isValid: false, error: 'Phone number is required.' };
+    }
+    return { isValid: true };
+  }
+
+  const country = getCountryByName(countryNameOrCode);
+  const dialCode = country.dialCode || '+63';
+  const nationalLength = country.nationalPhoneLength || 10;
+  const nationalDigits = extractNationalDigits(input, dialCode);
+
+  if (!nationalDigits) {
+    if (required) {
+      return { isValid: false, error: 'Please enter a valid phone number.' };
+    }
+    return { isValid: true };
+  }
+
+  // Check valid starting digit
+  const startVal = validateStartingDigit(nationalDigits, country.code);
+  if (!startVal.isValid) {
+    return {
+      isValid: false,
+      error: `Invalid phone prefix for ${country.name}: ${startVal.warning || 'Invalid starting digit'}.`,
+    };
+  }
+
+  // Check national digit length
+  if (nationalDigits.length < nationalLength) {
+    return {
+      isValid: false,
+      error: `Phone number is incomplete. ${country.name} requires ${nationalLength} digits (${nationalDigits.length}/${nationalLength} entered).`,
+    };
+  }
+
+  return { isValid: true };
+};
+
+// Helper to format structured formal name (First Name, Middle Name/Initial, Last Name)
+export interface FormalName {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+}
+
+export const formatFormalName = (parts: {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+}): string => {
+  const f = (parts.firstName || '').trim();
+  const m = (parts.middleName || '').trim();
+  const l = (parts.lastName || '').trim();
+
+  if (m) {
+    return `${f} ${m} ${l}`.trim().replace(/\s+/g, ' ');
+  }
+  return `${f} ${l}`.trim().replace(/\s+/g, ' ');
+};
+
+// Helper to parse single name string into First, Middle, Last
+export const parseFormalName = (full: string): FormalName => {
+  if (!full) return { firstName: '', middleName: '', lastName: '' };
+  const tokens = full.trim().split(/\s+/);
+  if (tokens.length === 1) {
+    return { firstName: tokens[0], middleName: '', lastName: '' };
+  }
+  if (tokens.length === 2) {
+    return { firstName: tokens[0], middleName: '', lastName: tokens[1] };
+  }
+  const firstName = tokens[0];
+  const lastName = tokens[tokens.length - 1];
+  const middleName = tokens.slice(1, tokens.length - 1).join(' ');
+  return { firstName, middleName, lastName };
+};

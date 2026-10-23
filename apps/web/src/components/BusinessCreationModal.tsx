@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Tag, Sparkles, CheckCircle2, ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol, normalizePhoneNumber } from '../lib/countryConfig';
+import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol, normalizePhoneNumber, formatFormalName, validateFullPhoneNumber } from '../lib/countryConfig';
 import { CountryPhoneInput } from './CountryPhoneInput';
+import { FormalNameFields } from './FormalNameFields';
 
 interface BusinessCreationModalProps {
   isOpen: boolean;
@@ -44,7 +45,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
   const [createLogoUrl, setCreateLogoUrl] = useState('');
 
   // Store Owner / Administrator Details
-  const [ownerName, setOwnerName] = useState('');
+  const [ownerFirstName, setOwnerFirstName] = useState('');
+  const [ownerMiddleName, setOwnerMiddleName] = useState('');
+  const [ownerLastName, setOwnerLastName] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
   const [ownerPassword, setOwnerPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -180,10 +183,32 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
       return;
     }
 
+    if (!ownerFirstName.trim() || !ownerLastName.trim()) {
+      setCreateError('Please provide the store owner first name and last name');
+      setCreatingBusiness(false);
+      return;
+    }
+
+    if (!ownerEmail.trim()) {
+      setCreateError('Please provide an owner email address');
+      setCreatingBusiness(false);
+      return;
+    }
+
     if (!ownerPassword.trim() || ownerPassword.length < 6) {
       setCreateError('Please provide an admin password (at least 6 characters)');
       setCreatingBusiness(false);
       return;
+    }
+
+    // Phone validation if entered
+    if (createPhone.trim()) {
+      const phoneVal = validateFullPhoneNumber(createPhone, selectedCountry, false);
+      if (!phoneVal.isValid) {
+        setCreateError(phoneVal.error || 'Please provide a valid contact phone number.');
+        setCreatingBusiness(false);
+        return;
+      }
     }
 
     if (!validateTimeRange(createStartTime, createEndTime)) {
@@ -193,6 +218,11 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
     }
 
     const formattedOpeningHours = formatTimeRange(createStartTime, createEndTime);
+    const finalOwnerName = formatFormalName({
+      firstName: ownerFirstName,
+      middleName: ownerMiddleName,
+      lastName: ownerLastName,
+    });
 
     try {
       const res: any = await apiFetch('/demo/admin/create-business', {
@@ -205,7 +235,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
           currency: selectedCurrency,
           timezone: selectedTimezone,
           logoUrl: createLogoUrl.trim() || undefined,
-          ownerName: ownerName.trim() || createName.trim(),
+          ownerName: finalOwnerName,
           ownerEmail: (ownerEmail || createEmail).trim() || undefined,
           ownerPassword: ownerPassword.trim(),
           country: selectedCountry,
@@ -331,54 +361,58 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             <p className="text-[11px] text-amber-900/80 dark:text-amber-300/80">
               Create your primary administrator account to sign in and manage store operations.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Owner Full Name <span className="text-rose-500 font-bold">* (Required)</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Maria Santos"
-                  value={ownerName}
-                  onChange={(e) => setOwnerName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                />
-              </div>
-              <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Owner Email / Sign-In <span className="text-rose-500 font-bold">* (Required)</span>
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="owner@yourstore.com"
-                  value={ownerEmail}
-                  onChange={(e) => setOwnerEmail(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                />
-              </div>
-              <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Admin Password <span className="text-rose-500 font-bold">* (Required)</span>
-                </label>
-                <div className="relative">
+            <div className="space-y-3">
+              <FormalNameFields
+                firstName={ownerFirstName}
+                middleName={ownerMiddleName}
+                lastName={ownerLastName}
+                onFirstNameChange={setOwnerFirstName}
+                onMiddleNameChange={setOwnerMiddleName}
+                onLastNameChange={setOwnerLastName}
+                required={true}
+                labels={{
+                  first: 'Owner First Name',
+                  middle: 'Owner Middle Name / Initial',
+                  last: 'Owner Last Name',
+                }}
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Owner Email / Sign-In <span className="text-rose-500 font-bold">* (Required)</span>
+                  </label>
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type="email"
                     required
-                    minLength={6}
-                    placeholder="Min. 6 characters"
-                    value={ownerPassword}
-                    onChange={(e) => setOwnerPassword(e.target.value)}
-                    className="w-full pl-3 pr-8 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                    placeholder="owner@yourstore.com"
+                    value={ownerEmail}
+                    onChange={(e) => setOwnerEmail(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
-                  >
-                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
+                </div>
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Admin Password <span className="text-rose-500 font-bold">* (Required)</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      minLength={6}
+                      placeholder="Min. 6 characters"
+                      value={ownerPassword}
+                      onChange={(e) => setOwnerPassword(e.target.value)}
+                      className="w-full pl-3 pr-8 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+                    >
+                      {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

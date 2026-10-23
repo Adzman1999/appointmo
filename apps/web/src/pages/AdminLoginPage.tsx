@@ -5,8 +5,9 @@ import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { LocationPicker } from '../components/LocationPicker';
-import { SUPPORTED_COUNTRIES, getCountryByName, normalizePhoneNumber } from '../lib/countryConfig';
+import { SUPPORTED_COUNTRIES, getCountryByName, normalizePhoneNumber, formatFormalName, validateFullPhoneNumber } from '../lib/countryConfig';
 import { CountryPhoneInput } from '../components/CountryPhoneInput';
+import { FormalNameFields } from '../components/FormalNameFields';
 
 export const AdminLoginPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -20,7 +21,9 @@ export const AdminLoginPage: React.FC = () => {
   const [email, setEmail] = useState(searchParams.get('email') || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('Philippines');
   const [phone, setPhone] = useState('');
 
@@ -65,13 +68,34 @@ export const AdminLoginPage: React.FC = () => {
           navigate(`/admin/dashboard?slug=${encodeURIComponent(targetSlug)}`);
         }
       } else {
-        // Customer Sign Up: After sign up, prompt user and transition to sign in (no approval required)
+        // Customer Sign Up: Validate requirements strictly
+        if (!firstName.trim() || !lastName.trim()) {
+          setError('First name and last name are required.');
+          setLoading(false);
+          return;
+        }
+
+        const phoneValidation = validateFullPhoneNumber(phone, selectedCountry, true);
+        if (!phoneValidation.isValid) {
+          setError(phoneValidation.error || 'Please provide a valid complete phone number.');
+          setLoading(false);
+          return;
+        }
+
+        if (!password || password.length < 6) {
+          setError('Password must be at least 6 characters long.');
+          setLoading(false);
+          return;
+        }
+
+        const fullName = formatFormalName({ firstName, middleName, lastName });
         const countryCfg = getCountryByName(selectedCountry);
-        const normalizedPhone = phone.trim() ? normalizePhoneNumber(phone, countryCfg.code) : '';
+        const normalizedPhone = normalizePhoneNumber(phone, countryCfg.code);
+
         const res: any = await apiFetch('/auth/register', {
           method: 'POST',
           body: JSON.stringify({
-            name: name.trim(),
+            name: fullName,
             email: email.trim(),
             password,
             phone: normalizedPhone,
@@ -176,27 +200,25 @@ export const AdminLoginPage: React.FC = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* If Sign Up: ask for Name, Country, and Phone */}
+            {/* If Sign Up: ask for Formal Name, Country, and Phone */}
             {authMode === 'signup' && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Your Full Name <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Maria Santos"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  <FormalNameFields
+                    firstName={firstName}
+                    middleName={middleName}
+                    lastName={lastName}
+                    onFirstNameChange={setFirstName}
+                    onMiddleNameChange={setMiddleName}
+                    onLastNameChange={setLastName}
+                    required={true}
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                      Country <span className="text-rose-500">*</span>
+                      Country <span className="text-rose-500 font-bold">* (Required)</span>
                     </label>
                     <select
                       value={selectedCountry}
@@ -204,7 +226,7 @@ export const AdminLoginPage: React.FC = () => {
                         setSelectedCountry(e.target.value);
                         setPhone(''); // reset phone when switching countries for clean format
                       }}
-                      className="w-full px-3 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                     >
                       {SUPPORTED_COUNTRIES.map((c) => (
                         <option key={c.code} value={c.name}>
@@ -217,7 +239,7 @@ export const AdminLoginPage: React.FC = () => {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
-                        Mobile Phone <span className="text-rose-500">*</span>
+                        Mobile Phone <span className="text-rose-500 font-bold">* (Required)</span>
                       </label>
                       <span className="text-[10px] text-stone-400">
                         Max {getCountryByName(selectedCountry).nationalPhoneLength} digits

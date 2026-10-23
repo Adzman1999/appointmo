@@ -13,8 +13,9 @@ import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { DemoTopNav } from '../components/DemoTopNav';
 import { Pagination } from '../components/Pagination';
-import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol, formatPhoneNumberLive, normalizePhoneNumber } from '../lib/countryConfig';
+import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol, formatPhoneNumberLive, normalizePhoneNumber, formatFormalName, parseFormalName, validateFullPhoneNumber } from '../lib/countryConfig';
 import { CountryPhoneInput } from '../components/CountryPhoneInput';
+import { FormalNameFields } from '../components/FormalNameFields';
 import { toast } from 'sonner';
 
 export const DemoAdminDashboardPage: React.FC = () => {
@@ -211,6 +212,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   // Detailed Staff Profile Modal (for HRIS management)
   const [editingStaffMember, setEditingStaffMember] = useState<any | null>(null);
+  const [editStaffFirstName, setEditStaffFirstName] = useState('');
+  const [editStaffMiddleName, setEditStaffMiddleName] = useState('');
+  const [editStaffLastName, setEditStaffLastName] = useState('');
   const [editStaffPosition, setEditStaffPosition] = useState('Specialist');
   const [editStaffEmploymentType, setEditStaffEmploymentType] = useState('Full-Time');
   const [editStaffBaseSalary, setEditStaffBaseSalary] = useState('25000');
@@ -244,7 +248,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   // Quick Staff Creation Form
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
-  const [newStaffName, setNewStaffName] = useState('');
+  const [newStaffFirstName, setNewStaffFirstName] = useState('');
+  const [newStaffMiddleName, setNewStaffMiddleName] = useState('');
+  const [newStaffLastName, setNewStaffLastName] = useState('');
   const [newStaffBio, setNewStaffBio] = useState('');
   const [addingStaff, setAddingStaff] = useState(false);
 
@@ -749,6 +755,20 @@ export const DemoAdminDashboardPage: React.FC = () => {
       return;
     }
 
+    if (!editName.trim()) {
+      toast.error('Store Name Required', { description: 'Please enter a name for your store.' });
+      return;
+    }
+
+    // Phone validation if entered
+    if (editPhone.trim()) {
+      const phoneVal = validateFullPhoneNumber(editPhone, editCountry, false);
+      if (!phoneVal.isValid) {
+        toast.error('Invalid Contact Phone', { description: phoneVal.error });
+        return;
+      }
+    }
+
     const finalCategory = isCustomCategory ? customCategoryInput.trim() : editCategory.trim();
     const finalCity = isCustomCity ? customCityInput.trim() : editCity.trim();
     const formattedHours = formatTimeRange(editStartTime, editEndTime);
@@ -812,18 +832,28 @@ export const DemoAdminDashboardPage: React.FC = () => {
       });
       return;
     }
-    if (!newStaffName.trim()) return;
+    if (!newStaffFirstName.trim() || !newStaffLastName.trim()) {
+      toast.error('First name and last name are required for staff specialist.');
+      return;
+    }
+    const staffFullName = formatFormalName({
+      firstName: newStaffFirstName,
+      middleName: newStaffMiddleName,
+      lastName: newStaffLastName,
+    });
     setAddingStaff(true);
     try {
       await apiFetch(`/demo/admin/staff?slug=${encodeURIComponent(activeSlug)}`, {
         method: 'POST',
         body: JSON.stringify({
-          name: newStaffName.trim(),
+          name: staffFullName,
           bio: newStaffBio.trim() || 'Store specialist and consultant',
         }),
       });
       toast.success('Staff specialist added successfully');
-      setNewStaffName('');
+      setNewStaffFirstName('');
+      setNewStaffMiddleName('');
+      setNewStaffLastName('');
       setNewStaffBio('');
       setShowAddStaffModal(false);
       fetchDashboardData();
@@ -950,7 +980,38 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const handleSaveStaffHris = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStaffMember) return;
+
+    if (!editStaffFirstName.trim() || !editStaffLastName.trim()) {
+      toast.error('First name and last name are required for staff profile.');
+      return;
+    }
+
+    // Phone validation if entered
+    if (editStaffPhone.trim()) {
+      const phoneVal = validateFullPhoneNumber(editStaffPhone, editCountry, false);
+      if (!phoneVal.isValid) {
+        toast.error('Invalid Staff Phone', { description: phoneVal.error });
+        return;
+      }
+    }
+
+    // Emergency phone validation if entered
+    if (editStaffEmergencyPhone.trim()) {
+      const emVal = validateFullPhoneNumber(editStaffEmergencyPhone, editCountry, false);
+      if (!emVal.isValid) {
+        toast.error('Invalid Emergency Phone', { description: emVal.error });
+        return;
+      }
+    }
+
     setSavingStaffHris(true);
+
+    // Combine formal name
+    const finalStaffName = formatFormalName({
+      firstName: editStaffFirstName,
+      middleName: editStaffMiddleName,
+      lastName: editStaffLastName,
+    });
 
     // Combine emergency contact name and phone formatted
     let combinedEmergency: string | null = null;
@@ -968,7 +1029,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       await apiFetch(`/demo/admin/staff/${editingStaffMember.id}?slug=${encodeURIComponent(activeSlug)}`, {
         method: 'PUT',
         body: JSON.stringify({
-          name: editingStaffMember.name,
+          name: finalStaffName,
           bio: editingStaffMember.bio,
           position: editStaffPosition.trim() || 'Specialist',
           employmentType: editStaffEmploymentType,
@@ -2021,6 +2082,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             type="button"
                             onClick={() => {
                               setEditingStaffMember(st);
+                              const parsedFormal = parseFormalName(st.name || '');
+                              setEditStaffFirstName(parsedFormal.firstName);
+                              setEditStaffMiddleName(parsedFormal.middleName || '');
+                              setEditStaffLastName(parsedFormal.lastName);
                               setEditStaffPosition(st.position || 'Specialist');
                               setEditStaffEmploymentType(st.employmentType || 'Full-Time');
                               setEditStaffBaseSalary(String(st.baseSalary || '25000'));
@@ -2484,6 +2549,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                                   type="button"
                                   onClick={() => {
                                     setEditingStaffMember(staff);
+                                    const parsedFormal = parseFormalName(staff.name || '');
+                                    setEditStaffFirstName(parsedFormal.firstName);
+                                    setEditStaffMiddleName(parsedFormal.middleName || '');
+                                    setEditStaffLastName(parsedFormal.lastName);
                                     setEditStaffPosition(staff.position || 'Specialist');
                                     setEditStaffEmploymentType(staff.employmentType || 'Full-Time');
                                     setEditStaffBaseSalary(String(staff.baseSalary || '25000'));
@@ -3332,20 +3401,25 @@ export const DemoAdminDashboardPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleAddStaff} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Staff Member Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Maria Santos"
-                  value={newStaffName}
-                  onChange={(e) => setNewStaffName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                />
-              </div>
+              <FormalNameFields
+                firstName={newStaffFirstName}
+                middleName={newStaffMiddleName}
+                lastName={newStaffLastName}
+                onFirstNameChange={setNewStaffFirstName}
+                onMiddleNameChange={setNewStaffMiddleName}
+                onLastNameChange={setNewStaffLastName}
+                required={true}
+                labels={{
+                  first: 'Staff First Name',
+                  middle: 'Middle Initial / Name',
+                  last: 'Staff Last Name',
+                }}
+              />
 
               <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Role &amp; Bio</label>
+                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Role &amp; Bio <span className="text-stone-400 font-normal">(Optional)</span>
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. Senior Aesthetician &amp; Skin Specialist"
@@ -3591,9 +3665,26 @@ export const DemoAdminDashboardPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveStaffHris} className="space-y-4 text-xs">
+              <FormalNameFields
+                firstName={editStaffFirstName}
+                middleName={editStaffMiddleName}
+                lastName={editStaffLastName}
+                onFirstNameChange={setEditStaffFirstName}
+                onMiddleNameChange={setEditStaffMiddleName}
+                onLastNameChange={setEditStaffLastName}
+                required={true}
+                labels={{
+                  first: 'Staff First Name',
+                  middle: 'Middle Initial / Name',
+                  last: 'Staff Last Name',
+                }}
+              />
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Position / Title</label>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Position / Title <span className="text-rose-500 font-bold">* (Required)</span>
+                  </label>
                   <input
                     type="text"
                     required
