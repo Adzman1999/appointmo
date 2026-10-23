@@ -8,7 +8,6 @@ import {
 import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { DemoTopNav } from '../components/DemoTopNav';
 import { toast } from 'sonner';
 
 interface CustomerAppointment {
@@ -475,12 +474,6 @@ export const ManageBookingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-24 transition-colors">
-      {/* Top Segmented Navigation Bar with Global Reset */}
-      <DemoTopNav 
-        currentRole="customer" 
-        onResetComplete={() => loadCustomerPortal(customer?.id)}
-      />
-
       {/* Top Customer Portal Navigation Bar */}
       <header className="sticky top-0 z-40 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200 dark:border-stone-800">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -604,7 +597,7 @@ export const ManageBookingPage: React.FC = () => {
               Book New
             </button>
             <button
-              onClick={() => navigate('/demo/concierge')}
+              onClick={() => navigate('/concierge')}
               className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 text-xs font-semibold hover:bg-amber-200 dark:hover:bg-amber-900 transition"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
@@ -682,8 +675,8 @@ export const ManageBookingPage: React.FC = () => {
             <div className="text-stone-600 dark:text-stone-300 text-xs font-semibold">Total Bookings</div>
             <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1">{appointments.length}</div>
             <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center space-x-1 font-medium">
-              <Sparkles className="w-3 h-3" />
-              <span>Lifetime demo activity</span>
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Lifetime account activity</span>
             </div>
           </div>
         </div>

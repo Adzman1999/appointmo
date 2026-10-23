@@ -204,7 +204,7 @@ router.get('/customer-portal', async (req: Request, res: Response) => {
 
     const customer = custDetails.rows[0];
 
-    // 2. Get customer's appointments across all businesses matching either customer ID or email
+    // 2. Get customer's appointments across all businesses matching customer ID or email across all branches
     const apptsRes = await query(`
       SELECT 
         a.id, a.booking_reference AS "bookingReference", a.status,
@@ -220,7 +220,8 @@ router.get('/customer-portal', async (req: Request, res: Response) => {
       JOIN businesses b ON a.business_id = b.id
       JOIN branches br ON a.branch_id = br.id
       JOIN customers c ON a.customer_id = c.id
-      WHERE a.customer_id = $1 OR LOWER(c.email) = LOWER($2)
+      WHERE a.customer_id = $1 
+         OR LOWER(c.email) = LOWER($2)
       ORDER BY a.created_at DESC, a.id DESC
     `, [targetCustId, customer.email]);
 
