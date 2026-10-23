@@ -360,7 +360,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               </div>
               <div>
                 <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Admin Password <span className="text-rose-500 font-bold">* (Required, Min. 6 chars)</span>
+                  Admin Password <span className="text-rose-500 font-bold">* (Required)</span>
                 </label>
                 <div className="relative">
                   <input
