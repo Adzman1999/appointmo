@@ -105,6 +105,20 @@ router.post('/register', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Name, email, and password are required' });
     }
 
+    // Strong password validation on backend
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long.' });
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password)) {
+      return res.status(400).json({ error: 'Password must contain both uppercase and lowercase letters.' });
+    }
+    if (!/[0-9]/.test(password)) {
+      return res.status(400).json({ error: 'Password must contain at least one number (0-9).' });
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      return res.status(400).json({ error: 'Password must contain at least one special character (!@#$%^&* etc.).' });
+    }
+
     const emailNorm = email.toLowerCase().trim();
 
     // Check if user already exists

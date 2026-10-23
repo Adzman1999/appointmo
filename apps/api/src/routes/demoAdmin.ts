@@ -160,6 +160,21 @@ router.get('/customer-portal', async (req: Request, res: Response) => {
               targetCustId = insCust.rows[0].id;
             }
           }
+        } else {
+          // If customer signed up directly or is accessing their account, create their customer record automatically
+          const defaultBiz = await query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio' LIMIT 1");
+          const bizId = defaultBiz.rows[0]?.id;
+          if (bizId) {
+            const insCust = await query(`
+              INSERT INTO customers (business_id, name, email, phone)
+              VALUES ($1, $2, $3, $4)
+              ON CONFLICT (business_id, email) DO UPDATE SET name = $2, phone = $4
+              RETURNING id
+            `, [bizId, cleanEmail.split('@')[0], cleanEmail, '+63 900 000 0000']);
+            if (insCust.rows.length > 0) {
+              targetCustId = insCust.rows[0].id;
+            }
+          }
         }
       }
 

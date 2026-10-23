@@ -5,7 +5,7 @@ import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { LocationPicker } from '../components/LocationPicker';
-import { SUPPORTED_COUNTRIES, getCountryByName, normalizePhoneNumber, formatFormalName, validateFullPhoneNumber } from '../lib/countryConfig';
+import { SUPPORTED_COUNTRIES, getCountryByName, normalizePhoneNumber, formatFormalName, validateFullPhoneNumber, validateStrongPassword } from '../lib/countryConfig';
 import { CountryPhoneInput } from '../components/CountryPhoneInput';
 import { FormalNameFields } from '../components/FormalNameFields';
 
@@ -82,8 +82,9 @@ export const AdminLoginPage: React.FC = () => {
           return;
         }
 
-        if (!password || password.length < 6) {
-          setError('Password must be at least 6 characters long.');
+        const passVal = validateStrongPassword(password);
+        if (!passVal.isValid) {
+          setError(passVal.error || 'Please provide a strong password.');
           setLoading(false);
           return;
         }
@@ -308,7 +309,11 @@ export const AdminLoginPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 pr-11 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  className={`w-full px-3.5 py-2.5 pr-11 rounded-xl border ${
+                    authMode === 'signup' && password.length > 0 && !validateStrongPassword(password).isValid
+                      ? 'border-amber-400 dark:border-amber-500 focus:border-amber-500'
+                      : 'border-stone-300 dark:border-stone-700 focus:border-stone-900 dark:focus:border-amber-400'
+                  } bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none`}
                 />
                 <button
                   type="button"
@@ -324,6 +329,37 @@ export const AdminLoginPage: React.FC = () => {
                   {showPassword ? <EyeOff className="w-4 h-4 pointer-events-none" /> : <Eye className="w-4 h-4 pointer-events-none" />}
                 </button>
               </div>
+
+              {/* Password strength criteria indicator for Sign Up */}
+              {authMode === 'signup' && (
+                <div className="mt-2 p-3 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200 dark:border-stone-700 text-[11px] space-y-1.5">
+                  <div className="font-semibold text-stone-700 dark:text-stone-300">
+                    Password Requirements:
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 text-[10px]">
+                    <span className={password.length >= 8 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
+                      {password.length >= 8 ? '✓' : '○'} Min. 8 characters
+                    </span>
+                    <span className={/[A-Z]/.test(password) ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
+                      {/[A-Z]/.test(password) ? '✓' : '○'} Uppercase letter
+                    </span>
+                    <span className={/[a-z]/.test(password) ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
+                      {/[a-z]/.test(password) ? '✓' : '○'} Lowercase letter
+                    </span>
+                    <span className={/[0-9]/.test(password) ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
+                      {/[0-9]/.test(password) ? '✓' : '○'} One number (0-9)
+                    </span>
+                    <span className={/[^A-Za-z0-9]/.test(password) ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
+                      {/[^A-Za-z0-9]/.test(password) ? '✓' : '○'} One special char
+                    </span>
+                  </div>
+                  {password.length > 0 && !validateStrongPassword(password).isValid && (
+                    <p className="text-amber-600 dark:text-amber-400 font-medium pt-0.5">
+                      {validateStrongPassword(password).error}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <button
@@ -336,7 +372,7 @@ export const AdminLoginPage: React.FC = () => {
                   (!firstName.trim() ||
                     !lastName.trim() ||
                     !validateFullPhoneNumber(phone, selectedCountry, true).isValid ||
-                    password.length < 6))
+                    !validateStrongPassword(password).isValid))
               }
               className="w-full bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold py-3.5 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition text-xs shadow-md flex items-center justify-center space-x-2 disabled:opacity-50"
             >

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Tag, Sparkles, CheckCircle2, ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol, normalizePhoneNumber, formatFormalName, validateFullPhoneNumber } from '../lib/countryConfig';
+import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol, normalizePhoneNumber, formatFormalName, validateFullPhoneNumber, validateStrongPassword } from '../lib/countryConfig';
 import { CountryPhoneInput } from './CountryPhoneInput';
 import { FormalNameFields } from './FormalNameFields';
 
@@ -195,8 +195,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
       return;
     }
 
-    if (!ownerPassword.trim() || ownerPassword.length < 6) {
-      setCreateError('Please provide an admin password (at least 6 characters)');
+    const passVal = validateStrongPassword(ownerPassword);
+    if (!passVal.isValid) {
+      setCreateError(passVal.error || 'Please provide a strong admin password.');
       setCreatingBusiness(false);
       return;
     }
@@ -439,6 +440,11 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                       {showPassword ? <EyeOff className="w-3.5 h-3.5 pointer-events-none" /> : <Eye className="w-3.5 h-3.5 pointer-events-none" />}
                     </button>
                   </div>
+                  {ownerPassword.length > 0 && !validateStrongPassword(ownerPassword).isValid && (
+                    <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-1">
+                      {validateStrongPassword(ownerPassword).error}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -848,7 +854,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 !ownerFirstName.trim() ||
                 !ownerLastName.trim() ||
                 !ownerEmail.trim() ||
-                ownerPassword.trim().length < 6 ||
+                !validateStrongPassword(ownerPassword).isValid ||
                 (createPhone.trim() ? !validateFullPhoneNumber(createPhone, selectedCountry, false).isValid : false) ||
                 timeError !== null
               }

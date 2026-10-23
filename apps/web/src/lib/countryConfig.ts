@@ -756,3 +756,88 @@ export const parseFormalName = (full: string): FormalName => {
   const middleName = tokens.slice(1, tokens.length - 1).join(' ');
   return { firstName, middleName, lastName };
 };
+
+// Password Strength Validator
+export interface PasswordValidationResult {
+  isValid: boolean;
+  score: number; // 0 to 4
+  error?: string;
+  hasLength: boolean;
+  hasUpper: boolean;
+  hasLower: boolean;
+  hasNumber: boolean;
+  hasSpecial: boolean;
+}
+
+export const validateStrongPassword = (pass: string): PasswordValidationResult => {
+  const p = pass || '';
+  const hasLength = p.length >= 8;
+  const hasUpper = /[A-Z]/.test(p);
+  const hasLower = /[a-z]/.test(p);
+  const hasNumber = /[0-9]/.test(p);
+  const hasSpecial = /[^A-Za-z0-9]/.test(p);
+
+  const passedCount = [hasLength, hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
+
+  if (!hasLength) {
+    return {
+      isValid: false,
+      score: 1,
+      error: 'Password must be at least 8 characters long.',
+      hasLength,
+      hasUpper,
+      hasLower,
+      hasNumber,
+      hasSpecial,
+    };
+  }
+
+  if (!hasUpper || !hasLower) {
+    return {
+      isValid: false,
+      score: 2,
+      error: 'Password must contain both uppercase and lowercase letters.',
+      hasLength,
+      hasUpper,
+      hasLower,
+      hasNumber,
+      hasSpecial,
+    };
+  }
+
+  if (!hasNumber) {
+    return {
+      isValid: false,
+      score: 2,
+      error: 'Password must contain at least one number (0-9).',
+      hasLength,
+      hasUpper,
+      hasLower,
+      hasNumber,
+      hasSpecial,
+    };
+  }
+
+  if (!hasSpecial) {
+    return {
+      isValid: false,
+      score: 3,
+      error: 'Password must contain at least one special character (!@#$%^&* etc.).',
+      hasLength,
+      hasUpper,
+      hasLower,
+      hasNumber,
+      hasSpecial,
+    };
+  }
+
+  return {
+    isValid: true,
+    score: 4,
+    hasLength,
+    hasUpper,
+    hasLower,
+    hasNumber,
+    hasSpecial,
+  };
+};
