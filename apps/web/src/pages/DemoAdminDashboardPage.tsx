@@ -13,7 +13,7 @@ import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { DemoTopNav } from '../components/DemoTopNav';
 import { Pagination } from '../components/Pagination';
-import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol, formatPhoneNumberLive } from '../lib/countryConfig';
+import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol, formatPhoneNumberLive, normalizePhoneNumber } from '../lib/countryConfig';
 import { toast } from 'sonner';
 
 export const DemoAdminDashboardPage: React.FC = () => {
@@ -734,7 +734,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
           currency: editCurrency,
           timezone: editTimezone,
           logoUrl: editLogoUrl.trim() || null,
-          phone: editPhone.trim(),
+          phone: normalizePhoneNumber(editPhone, getCountryByName(editCountry).code),
           email: editEmail.trim(),
           address: editAddress.trim(),
           city: finalCity || 'Quezon City',

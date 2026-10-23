@@ -431,13 +431,16 @@ export const getPhoneRequirements = (countryCode: string) => {
     if (ex) {
       const dialCode = `+${ex.countryCallingCode}`;
       const intlExample = ex.format('INTERNATIONAL');
+      const nationalExample = ex.format('NATIONAL');
       const nationalLength = ex.nationalNumber.length;
       return {
         dialCode,
-        placeholder: intlExample,
+        placeholder: `${nationalExample} or ${intlExample}`,
+        nationalExample,
+        intlExample,
         nationalLength,
         // formatted international string limit with extra cushion for spacing
-        maxTotalLength: intlExample.length + 3,
+        maxTotalLength: Math.max(intlExample.length, nationalExample.length) + 4,
       };
     }
   } catch (e) {
@@ -445,9 +448,11 @@ export const getPhoneRequirements = (countryCode: string) => {
   }
   return {
     dialCode: '+1',
-    placeholder: '+1 (555) 000-0000',
+    placeholder: '(555) 000-0000 or +1 555 000 0000',
+    nationalExample: '(555) 000-0000',
+    intlExample: '+1 555 000 0000',
     nationalLength: 10,
-    maxTotalLength: 18,
+    maxTotalLength: 20,
   };
 };
 
@@ -534,15 +539,35 @@ export const formatPhoneNumberLive = (input: string, countryCode: string): strin
 
   try {
     const raw = input.trim();
-    // If user enters leading 0 or local digits (e.g. 09171234567 or 9171234567), format properly
-    const parsed = parsePhoneNumberFromString(raw, code);
+    if (!raw) return '';
+
+    // If starts with +, clean non-digits except the leading +
+    if (raw.startsWith('+')) {
+      const clean = '+' + raw.slice(1).replace(/\D/g, '');
+      const formatter = new AsYouType(code);
+      return formatter.input(clean);
+    }
+
+    // National format: keep only digits
+    const digitsOnly = raw.replace(/\D/g, '');
+    const formatter = new AsYouType(code);
+    return formatter.input(digitsOnly);
+  } catch (e) {
+    return input;
+  }
+};
+
+// Normalize phone number on submit/save to international E.164-compatible format if valid
+export const normalizePhoneNumber = (input: string, countryCode: string): string => {
+  if (!input) return '';
+  const code = (countryCode || 'PH').toUpperCase() as CountryCode;
+  try {
+    const parsed = parsePhoneNumberFromString(input.trim(), code);
     if (parsed && parsed.isValid()) {
       return parsed.formatInternational();
     }
-
-    const formatter = new AsYouType(code);
-    return formatter.input(raw);
-  } catch (e) {
-    return input;
+    return input.trim();
+  } catch {
+    return input.trim();
   }
 };

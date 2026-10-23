@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Building2, MapPin, AlertCircle, Phone, Mail, Clock, Globe, Tag, Sparkles, CheckCircle2, ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol, formatPhoneNumberLive } from '../lib/countryConfig';
+import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol, formatPhoneNumberLive, normalizePhoneNumber } from '../lib/countryConfig';
 
 interface BusinessCreationModalProps {
   isOpen: boolean;
@@ -214,7 +214,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
           address: createAddress.trim() || undefined,
           latitude: createLatitude,
           longitude: createLongitude,
-          phone: createPhone.trim() || undefined,
+          phone: createPhone.trim() ? normalizePhoneNumber(createPhone, getCountryByName(selectedCountry).code) : undefined,
           email: (ownerEmail || createEmail).trim() || undefined,
           openingHours: formattedOpeningHours,
           website: createWebsite.trim() || undefined,
