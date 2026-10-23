@@ -2721,20 +2721,26 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <label className="block text-stone-500 dark:text-stone-400 mb-1">
                           Current Password <span className="text-stone-400 font-normal">(Optional — required only if changing password)</span>
                         </label>
-                        <div className="relative">
+                        <div className="relative flex items-center">
                           <input
                             type={showCurrentPass ? "text" : "password"}
                             value={currentPassword}
                             onChange={(e) => setCurrentPassword(e.target.value)}
                             placeholder="Enter your current password"
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 pr-10"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 pr-11"
                           />
                           <button
                             type="button"
-                            onClick={() => setShowCurrentPass(!showCurrentPass)}
-                            className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowCurrentPass((prev) => !prev);
+                            }}
+                            className="absolute right-2.5 z-10 p-1 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition cursor-pointer"
+                            title={showCurrentPass ? 'Hide password' : 'Show password'}
+                            aria-label={showCurrentPass ? 'Hide password' : 'Show password'}
                           >
-                            {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            {showCurrentPass ? <EyeOff className="w-4 h-4 pointer-events-none" /> : <Eye className="w-4 h-4 pointer-events-none" />}
                           </button>
                         </div>
                       </div>
@@ -2744,20 +2750,26 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           <label className="block text-stone-500 dark:text-stone-400 mb-1">
                             New Password <span className="text-stone-400 font-normal">(Optional, Min. 6 chars)</span>
                           </label>
-                          <div className="relative">
+                          <div className="relative flex items-center">
                             <input
                               type={showNewPass ? "text" : "password"}
                               value={newPassword}
                               onChange={(e) => setNewPassword(e.target.value)}
                               placeholder="Minimum 6 characters"
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 pr-10"
+                              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 pr-11"
                             />
                             <button
                               type="button"
-                              onClick={() => setShowNewPass(!showNewPass)}
-                              className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setShowNewPass((prev) => !prev);
+                              }}
+                              className="absolute right-2.5 z-10 p-1 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition cursor-pointer"
+                              title={showNewPass ? 'Hide password' : 'Show password'}
+                              aria-label={showNewPass ? 'Hide password' : 'Show password'}
                             >
-                              {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              {showNewPass ? <EyeOff className="w-4 h-4 pointer-events-none" /> : <Eye className="w-4 h-4 pointer-events-none" />}
                             </button>
                           </div>
                         </div>

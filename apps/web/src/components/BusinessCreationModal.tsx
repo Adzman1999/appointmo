@@ -415,7 +415,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                   <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
                     Admin Password <span className="text-rose-500 font-bold">*</span>
                   </label>
-                  <div className="relative">
+                  <div className="relative flex items-center">
                     <input
                       type={showPassword ? 'text' : 'password'}
                       required
@@ -423,14 +423,20 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                       placeholder="Min. 6 characters"
                       value={ownerPassword}
                       onChange={(e) => setOwnerPassword(e.target.value)}
-                      className="w-full pl-3 pr-8 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                      className="w-full pl-3 pr-10 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowPassword((prev) => !prev);
+                      }}
+                      className="absolute right-2 z-10 p-1 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition cursor-pointer"
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
-                      {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      {showPassword ? <EyeOff className="w-3.5 h-3.5 pointer-events-none" /> : <Eye className="w-3.5 h-3.5 pointer-events-none" />}
                     </button>
                   </div>
                 </div>
