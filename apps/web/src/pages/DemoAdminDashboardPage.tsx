@@ -66,6 +66,13 @@ const recordMatchesSearch = (values: any[], search: string) => {
   return values.some((value) => String(value ?? '').toLowerCase().includes(term));
 };
 
+const ACCOUNT_ROLE_LABELS: Record<string, string> = {
+  business_admin: 'Store Admin',
+  staff: 'Staff',
+  platform_admin: 'Platform Admin',
+  owner: 'Platform Owner',
+};
+
 export const DemoAdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -272,6 +279,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [showCurrentPass, setShowCurrentPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
   const [updatingAccount, setUpdatingAccount] = useState(false);
+  const passwordChangeStarted = Boolean(currentPassword || newPassword || confirmPassword);
 
   // HRIS & Payroll Records State
   const [payrollRecords, setPayrollRecords] = useState<any[]>([]);
@@ -1197,7 +1205,21 @@ export const DemoAdminDashboardPage: React.FC = () => {
   // Update Account Profile
   const handleUpdateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword && newPassword !== confirmPassword) {
+    const normalizedCurrentPassword = currentPassword.trim();
+    const normalizedNewPassword = newPassword.trim();
+    const normalizedConfirmPassword = confirmPassword.trim();
+
+    if (passwordChangeStarted && (!normalizedCurrentPassword || !normalizedNewPassword || !normalizedConfirmPassword)) {
+      toast.error('Complete all password fields', {
+        description: 'Enter your current password and both new password fields, or leave all three blank.',
+      });
+      return;
+    }
+    if (normalizedNewPassword && normalizedNewPassword.length < 6) {
+      toast.error('New password is too short', { description: 'Use at least 6 characters.' });
+      return;
+    }
+    if (normalizedNewPassword && normalizedNewPassword !== normalizedConfirmPassword) {
       toast.error('Password mismatch', { description: 'New password and confirmation password must match.' });
       return;
     }
@@ -1209,8 +1231,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
           name: accountName.trim(),
           email: accountEmail.trim(),
           phone: accountPhone.trim(),
-          currentPassword: currentPassword.trim() || undefined,
-          newPassword: newPassword.trim() || undefined,
+          currentPassword: normalizedCurrentPassword || undefined,
+          newPassword: normalizedNewPassword || undefined,
         }),
       });
 
@@ -1222,6 +1244,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
           ...storedUser,
           ...res.user,
         }));
+        setAccountName(res.user.name || '');
+        setAccountEmail(res.user.email || '');
+        setAccountPhone(res.user.phone || '');
       }
 
       toast.success('Account Updated', {
@@ -1563,7 +1588,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     hris: 'HRIS & Payroll',
     schedule: 'Schedule & Hours',
     policies: 'Booking Policies',
-    account: 'Admin Security',
+    account: 'Account Security',
   };
   const setupMenuItems = [
     { id: 'profile', group: 'Store', label: 'Profile & Branding', icon: Store, count: null },
@@ -1574,7 +1599,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     { id: 'hris', group: 'Team', label: 'HRIS & Payroll', icon: Wallet, count: null },
     { id: 'customers', group: 'Customers', label: 'Customers', icon: User, count: storeCustomers.length },
     { id: 'reviews', group: 'Customers', label: 'Customer Ratings', icon: Star, count: storeReviewSummary?.reviewCount ?? null },
-    { id: 'account', group: 'Account', label: 'Admin Security', icon: ShieldCheck, count: null },
+    { id: 'account', group: 'Account', label: 'Account & Security', icon: ShieldCheck, count: null },
   ];
   const setupMenuGroups = ['Store', 'Team', 'Customers', 'Account'];
   const profileSectionItems = [
@@ -3611,12 +3636,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     <div>
                       <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
                         <User className="w-4 h-4 text-amber-500" />
-                        <span>Admin Account &amp; Credentials</span>
+                        <span>Account Profile &amp; Security</span>
                       </h2>
-                      <p className="text-[11px] text-stone-500">Update your store manager login credentials, contact info, and security password.</p>
+                      <p className="text-[11px] text-stone-500">Update your account name, sign-in email, contact number, and password.</p>
                     </div>
                     <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
-                      {storedUser?.role || 'Admin'}
+                      {ACCOUNT_ROLE_LABELS[storedUser?.role] || 'Account'}
                     </span>
                   </div>
 
@@ -3630,7 +3655,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         required
                         value={accountName}
                         onChange={(e) => setAccountName(e.target.value)}
-                        placeholder="Store Manager Name"
+                        placeholder="Your full name"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                       />
                     </div>
@@ -3645,7 +3670,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           required
                           value={accountEmail}
                           onChange={(e) => setAccountEmail(e.target.value)}
-                          placeholder="admin@appointmo.demo"
+                          placeholder="name@example.com"
                           className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                         />
                       </div>
@@ -3654,7 +3679,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           Phone Number <span className="text-stone-400 font-normal">(Optional)</span>
                         </label>
                         <input
-                          type="text"
+                          type="tel"
                           value={accountPhone}
                           onChange={(e) => setAccountPhone(e.target.value)}
                           placeholder="+63 917 123 4567"
@@ -3666,16 +3691,21 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     <div className="pt-4 border-t border-stone-100 dark:border-stone-800 space-y-4">
                       <div className="flex items-center space-x-2 text-stone-800 dark:text-stone-200 font-bold text-xs">
                         <Lock className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Change Account Password (Leave blank to keep unchanged)</span>
+                        <span>Change Account Password</span>
                       </div>
+                      <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                        Leave all three fields blank to keep your password. To change it, complete every field.
+                      </p>
 
                       <div>
                         <label className="block text-stone-500 dark:text-stone-400 mb-1">
-                          Current Password <span className="text-stone-400 font-normal">(Optional — required only if changing password)</span>
+                          Current Password {passwordChangeStarted && <span className="text-rose-500 font-bold">* (Required)</span>}
                         </label>
                         <div className="relative flex items-center">
                           <input
                             type={showCurrentPass ? "text" : "password"}
+                            required={passwordChangeStarted}
+                            autoComplete="current-password"
                             value={currentPassword}
                             onChange={(e) => setCurrentPassword(e.target.value)}
                             placeholder="Enter your current password"
@@ -3700,11 +3730,15 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-stone-500 dark:text-stone-400 mb-1">
-                            New Password <span className="text-stone-400 font-normal">(Optional, Min. 6 chars)</span>
+                            New Password <span className="text-stone-400 font-normal">(Optional, min. 6 characters)</span>
+                            {passwordChangeStarted && <span className="text-rose-500 font-bold"> *</span>}
                           </label>
                           <div className="relative flex items-center">
                             <input
                               type={showNewPass ? "text" : "password"}
+                              required={passwordChangeStarted}
+                              minLength={6}
+                              autoComplete="new-password"
                               value={newPassword}
                               onChange={(e) => setNewPassword(e.target.value)}
                               placeholder="Minimum 6 characters"
@@ -3728,10 +3762,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
                         <div>
                           <label className="block text-stone-500 dark:text-stone-400 mb-1">
-                            Confirm New Password <span className="text-stone-400 font-normal">(Optional)</span>
+                            Confirm New Password {passwordChangeStarted && <span className="text-rose-500 font-bold">* (Required)</span>}
                           </label>
                           <input
                             type="password"
+                            required={passwordChangeStarted}
+                            autoComplete="new-password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             placeholder="Repeat new password"
