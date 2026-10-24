@@ -179,16 +179,18 @@ export const CustomerPortalPage: React.FC = () => {
   const unreadCount = notifications.filter(n => !n.isRead).length;
   const reviewableAppointments = past.filter((appt) => appt.status === 'completed' && !appt.storeRating);
   const completedVisitCount = appointments.filter((appt) => appt.status === 'completed').length;
-  const customerMenuGroups = [
-    { label: 'Appointments', items: [
-      { id: 'upcoming', title: 'Upcoming', count: upcoming.length, icon: Calendar },
-      { id: 'history', title: 'History', count: past.length + cancelled.length, icon: CalendarDays },
-    ] },
-    { label: 'Your account', items: [
-      { id: 'reviews', title: 'Rate your visits', count: reviewableAppointments.length, icon: Star },
-      { id: 'notifications', title: 'Notifications', count: unreadCount, icon: Bell },
-    ] },
+  const customerMenuItems = [
+    { id: 'upcoming', title: 'Upcoming', count: upcoming.length, icon: Calendar },
+    { id: 'history', title: 'History', count: past.length + cancelled.length, icon: CalendarDays },
+    { id: 'reviews', title: 'Reviews', count: reviewableAppointments.length, icon: Star },
+    { id: 'notifications', title: 'Notifications', count: unreadCount, icon: Bell },
   ];
+  const activeSection = {
+    upcoming: { title: 'Upcoming appointments', description: 'Review your confirmed and pending bookings.' },
+    history: { title: 'Booking history', description: 'Look back at completed and cancelled appointments.' },
+    reviews: { title: 'Rate your visits', description: 'Share feedback about completed appointments.' },
+    notifications: { title: 'Notifications', description: `${unreadCount} unread update${unreadCount === 1 ? '' : 's'}.` },
+  }[activeTab];
 
   // View notification full details modal & mark as read
   const handleViewNotification = async (notif: any) => {
@@ -405,6 +407,43 @@ export const CustomerPortalPage: React.FC = () => {
             </button>
           </div>
         </div>
+        <nav aria-label="Customer account navigation" className="border-t border-stone-200 dark:border-stone-800">
+          <div className="mx-auto grid max-w-6xl grid-cols-4 gap-1 px-2 py-1.5 sm:px-4 sm:py-2">
+            {customerMenuItems.map((item) => {
+              const Icon = item.icon;
+              const isSelected = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  title={item.title}
+                  onClick={() => setActiveTab(item.id as typeof activeTab)}
+                  className={`flex min-w-0 min-h-12 flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-1.5 transition sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 ${
+                    isSelected
+                      ? 'border-stone-900 bg-stone-900 text-white shadow-sm dark:border-amber-400 dark:bg-amber-400 dark:text-stone-950'
+                      : 'border-transparent text-stone-600 hover:border-stone-200 hover:bg-stone-50 dark:text-stone-300 dark:hover:border-stone-700 dark:hover:bg-stone-800'
+                  }`}
+                >
+                  <span className="relative shrink-0">
+                    <Icon className="h-4 w-4" />
+                    {item.count > 0 && (
+                      <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[8px] font-bold text-stone-950 sm:hidden">
+                        {item.count > 9 ? '9+' : item.count}
+                      </span>
+                    )}
+                  </span>
+                  <span className="max-w-full truncate text-[10px] font-bold sm:text-[11px]">{item.title}</span>
+                  <span className={`hidden rounded-full px-1.5 py-0.5 text-[9px] font-bold sm:inline-flex ${
+                    item.count > 0
+                      ? isSelected ? 'bg-white/15 dark:bg-stone-950/15' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                      : isSelected ? 'bg-white/15 dark:bg-stone-950/15' : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
+                  }`}>{item.count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
       </header>
 
       {/* Main Content */}
@@ -430,52 +469,7 @@ export const CustomerPortalPage: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6">
-          <nav
-            aria-label="Customer account menu"
-            className="sticky top-16 z-30 -mx-4 border-y border-stone-200 bg-stone-100/95 px-4 py-2 backdrop-blur dark:border-stone-800 dark:bg-stone-950/95 lg:top-20 lg:mx-0 lg:rounded-2xl lg:border lg:bg-white lg:p-3 lg:shadow-sm dark:lg:bg-stone-900"
-          >
-            <div className="mb-3 hidden px-2 pt-1 lg:block">
-              <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100">My account</h2>
-              <p className="mt-0.5 text-[11px] text-stone-500">Bookings and activity</p>
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-3 lg:overflow-visible lg:pb-0">
-              {customerMenuGroups.map((group) => (
-                <section key={group.label} className="contents lg:block">
-                  <h3 className="hidden px-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400 lg:mb-1 lg:block">{group.label}</h3>
-                  <div className="flex shrink-0 gap-2 lg:flex-col lg:gap-1">
-                    {group.items.map((item) => {
-                      const Icon = item.icon;
-                      const isSelected = activeTab === item.id;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          aria-pressed={isSelected}
-                          onClick={() => setActiveTab(item.id as typeof activeTab)}
-                          className={`flex min-w-[142px] shrink-0 items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition lg:w-full ${
-                            isSelected
-                              ? 'border-stone-900 bg-stone-900 text-white shadow-sm dark:border-amber-400 dark:bg-amber-400 dark:text-stone-950'
-                              : 'border-transparent bg-white/70 text-stone-600 hover:border-stone-200 hover:bg-white dark:bg-stone-900/70 dark:text-stone-300 dark:hover:border-stone-700 dark:hover:bg-stone-800'
-                          }`}
-                        >
-                          <Icon className="h-4 w-4 shrink-0" />
-                          <span className="min-w-0 flex-1 truncate text-[11px] font-bold">{item.title}</span>
-                          <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
-                            item.count > 0
-                              ? isSelected ? 'bg-white/15 dark:bg-stone-950/15' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                              : isSelected ? 'bg-white/15 dark:bg-stone-950/15' : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
-                          }`}>{item.count}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))}
-            </div>
-          </nav>
-
-          <div className="min-w-0 space-y-6">
+        <div className="space-y-6">
             {/* Dashboard Top Stats */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
               <div className="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm dark:border-stone-800 dark:bg-stone-900 sm:p-4">
@@ -503,7 +497,11 @@ export const CustomerPortalPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Selected menu section */}
+            <div className="border-b border-stone-200 pb-3 dark:border-stone-800">
+              <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">{activeSection.title}</h2>
+              <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">{activeSection.description}</p>
+            </div>
+
             {loading ? (
           <div className="py-20 flex flex-col items-center justify-center space-y-3">
             <RefreshCw className="w-6 h-6 animate-spin text-amber-500" />
@@ -672,7 +670,6 @@ export const CustomerPortalPage: React.FC = () => {
             )}
           </div>
         )}
-          </div>
         </div>
       </main>
 
