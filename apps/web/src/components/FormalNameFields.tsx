@@ -9,6 +9,7 @@ interface FormalNameFieldsProps {
   onLastNameChange: (val: string) => void;
   required?: boolean;
   disabled?: boolean;
+  autoComplete?: string;
   layout?: 'grid' | 'stacked';
   className?: string;
   labels?: {
@@ -27,6 +28,7 @@ export const FormalNameFields: React.FC<FormalNameFieldsProps> = ({
   onLastNameChange,
   required = true,
   disabled = false,
+  autoComplete,
   layout = 'grid',
   className = '',
   labels,
@@ -51,6 +53,7 @@ export const FormalNameFields: React.FC<FormalNameFieldsProps> = ({
           type="text"
           required={required}
           disabled={disabled}
+          autoComplete={autoComplete}
           placeholder="e.g. Maria"
           value={firstName}
           onChange={(e) => onFirstNameChange(e.target.value)}
@@ -66,6 +69,7 @@ export const FormalNameFields: React.FC<FormalNameFieldsProps> = ({
         <input
           type="text"
           disabled={disabled}
+          autoComplete={autoComplete}
           placeholder="e.g. Clara"
           value={middleName}
           onChange={(e) => onMiddleNameChange(e.target.value)}
@@ -86,6 +90,7 @@ export const FormalNameFields: React.FC<FormalNameFieldsProps> = ({
           type="text"
           required={required}
           disabled={disabled}
+          autoComplete={autoComplete}
           placeholder="e.g. Santos"
           value={lastName}
           onChange={(e) => onLastNameChange(e.target.value)}

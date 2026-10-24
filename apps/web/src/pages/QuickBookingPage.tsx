@@ -9,7 +9,7 @@ import { DemoTopNav } from '../components/DemoTopNav';
 import { toast } from 'sonner';
 import { FormalNameFields } from '../components/FormalNameFields';
 import { CountryPhoneInput } from '../components/CountryPhoneInput';
-import { formatFormalName, parseFormalName, validateFullPhoneNumber, normalizePhoneNumber, getCountryByName } from '../lib/countryConfig';
+import { formatFormalName, validateFullPhoneNumber, normalizePhoneNumber, getCountryByName } from '../lib/countryConfig';
 
 interface Service {
   id: string;
@@ -84,46 +84,6 @@ export const QuickBookingPage: React.FC = () => {
 
   // Step-by-step wizard chunking: 1 = Service, 2 = Branch & Schedule, 3 = Guest Details & Review
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
-
-  // Auto-fill customer details from logged-in customer account or previous booking session
-  useEffect(() => {
-    // 1. Check logged-in user in localStorage first
-    const storedUserRaw = localStorage.getItem('appointmo_user');
-    if (storedUserRaw) {
-      try {
-        const u = JSON.parse(storedUserRaw);
-        if (u.name && !customerFirstName) {
-          const parsed = parseFormalName(u.name);
-          setCustomerFirstName(parsed.firstName);
-          setCustomerMiddleName(parsed.middleName || '');
-          setCustomerLastName(parsed.lastName);
-        }
-        if (u.email && !customerEmail) setCustomerEmail(u.email);
-        if (u.phone && !customerPhone) setCustomerPhone(u.phone);
-        if (u.email) {
-          return;
-        }
-      } catch (_) {}
-    }
-
-    // 2. Fallback to latest booking stored in localStorage (ignore any demo emails)
-    const stored = localStorage.getItem('appointmo_latest_booking');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (parsed.customerEmail && !parsed.customerEmail.includes('appointmo.demo')) {
-          if (parsed.customerName && !customerFirstName) {
-            const parsedName = parseFormalName(parsed.customerName);
-            setCustomerFirstName(parsedName.firstName);
-            setCustomerMiddleName(parsedName.middleName || '');
-            setCustomerLastName(parsedName.lastName);
-          }
-          if (parsed.customerEmail && !customerEmail) setCustomerEmail(parsed.customerEmail);
-          if (parsed.customerPhone && !customerPhone) setCustomerPhone(parsed.customerPhone);
-        }
-      } catch (_) {}
-    }
-  }, []);
 
   // 1. Fetch Business Profile
   useEffect(() => {
@@ -407,7 +367,7 @@ export const QuickBookingPage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <form onSubmit={handleBookingSubmit} className="space-y-6">
+          <form onSubmit={handleBookingSubmit} autoComplete="off" className="space-y-6">
             {/* Step Wizard Indicator */}
             <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-3 sm:p-4 shadow-sm">
               <div className="grid grid-cols-3 gap-2">
@@ -675,6 +635,7 @@ export const QuickBookingPage: React.FC = () => {
                     onMiddleNameChange={setCustomerMiddleName}
                     onLastNameChange={setCustomerLastName}
                     required={true}
+                    autoComplete="off"
                     labels={{
                       first: 'First Name',
                       middle: 'Middle Initial / Name',
@@ -690,6 +651,7 @@ export const QuickBookingPage: React.FC = () => {
                       <input
                         type="email"
                         required
+                        autoComplete="off"
                         placeholder="beatriz@example.com"
                         value={customerEmail}
                         onChange={(e) => setCustomerEmail(e.target.value)}
@@ -710,6 +672,7 @@ export const QuickBookingPage: React.FC = () => {
                         value={customerPhone}
                         onChange={(val) => setCustomerPhone(val)}
                         required
+                        autoComplete="off"
                       />
                     </div>
                   </div>
@@ -720,6 +683,7 @@ export const QuickBookingPage: React.FC = () => {
                     </label>
                     <input
                       type="text"
+                      autoComplete="off"
                       placeholder="Any special requests or instructions..."
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}

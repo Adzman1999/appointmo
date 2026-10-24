@@ -8,6 +8,7 @@ interface CountryPhoneInputProps {
   onChange: (fullPhoneNumber: string) => void;
   disabled?: boolean;
   required?: boolean;
+  autoComplete?: string;
   placeholder?: string;
   className?: string;
   id?: string;
@@ -20,6 +21,7 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
   onChange,
   disabled = false,
   required = false,
+  autoComplete,
   placeholder,
   className = '',
   id,
@@ -69,6 +71,7 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
           inputMode="numeric"
           required={required}
           disabled={disabled}
+          autoComplete={autoComplete}
           value={displayNational}
           onChange={handleInputChange}
           placeholder={placeholder || (country.code === 'PH' ? '905 242 2821' : `e.g. ${nationalLength} digits`)}
