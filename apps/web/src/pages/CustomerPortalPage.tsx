@@ -63,8 +63,23 @@ export const CustomerPortalPage: React.FC = () => {
   // Selected appointment for details modal
   const [selectedAppt, setSelectedAppt] = useState<CustomerAppointment | null>(null);
 
+  // Selected notification for full details modal (same as Admin & Super Admin)
+  const [selectedNotif, setSelectedNotif] = useState<any | null>(null);
+
   // Notification dropdown
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const notifRef = React.useRef<HTMLDivElement>(null);
+
+  // Close notification popover when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setIsNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Load authenticated customer data
   const loadCustomerData = async () => {
@@ -150,6 +165,26 @@ export const CustomerPortalPage: React.FC = () => {
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
+  // View notification full details modal & mark as read
+  const handleViewNotification = async (notif: any) => {
+    setSelectedNotif(notif);
+    setIsNotifOpen(false);
+    // Optimistically mark as read
+    setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, isRead: true } : n));
+    try {
+      await apiFetch(`/customer/notifications/${notif.id}/read`, { method: 'PATCH' });
+    } catch (_) {}
+  };
+
+  // Mark all notifications as read
+  const handleMarkAllNotificationsRead = async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    try {
+      await apiFetch('/customer/notifications/mark-all-read', { method: 'POST' });
+      toast.success('All notifications marked as read');
+    } catch (_) {}
+  };
+
   const handleCancelBooking = async (appt: CustomerAppointment) => {
     if (!window.confirm(`Are you sure you want to cancel appointment ${appt.bookingReference}?`)) {
       return;
@@ -205,8 +240,8 @@ export const CustomerPortalPage: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Notification Bell */}
-            <div className="relative">
+            {/* Notification Bell Dropdown */}
+            <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setIsNotifOpen(!isNotifOpen)}
                 className="relative p-2 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
@@ -221,19 +256,51 @@ export const CustomerPortalPage: React.FC = () => {
               </button>
 
               {isNotifOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xl z-50 overflow-hidden">
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xl z-50 overflow-hidden animate-in fade-in">
                   <div className="p-3.5 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between bg-stone-50 dark:bg-stone-800/60">
-                    <span className="font-bold text-xs text-stone-900 dark:text-stone-100">Notifications</span>
-                    <span className="text-[10px] text-stone-500 dark:text-stone-400 font-medium">{unreadCount} unread</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-bold text-xs text-stone-900 dark:text-stone-100">Live Updates</span>
+                      <span className="px-2 py-0.5 rounded-full bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 text-[10px] font-semibold">
+                        {unreadCount} unread
+                      </span>
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllNotificationsRead}
+                        className="text-[11px] text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white underline font-medium"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
                   </div>
                   <div className="max-h-80 overflow-y-auto divide-y divide-stone-100 dark:divide-stone-800 text-xs">
                     {notifications.length === 0 ? (
                       <div className="p-6 text-center text-stone-500 dark:text-stone-400">No notifications yet.</div>
                     ) : (
                       notifications.map(n => (
-                        <div key={n.id} className="p-3.5 hover:bg-stone-50 dark:hover:bg-stone-800/40">
-                          <p className="font-semibold text-stone-900 dark:text-stone-100">{n.title}</p>
-                          <p className="text-[11px] text-stone-600 dark:text-stone-300 mt-0.5">{n.message}</p>
+                        <div
+                          key={n.id}
+                          onClick={() => handleViewNotification(n)}
+                          className={`p-3.5 hover:bg-stone-50 dark:hover:bg-stone-800/60 cursor-pointer transition ${
+                            !n.isRead ? 'bg-amber-50/40 dark:bg-amber-950/30 font-semibold' : ''
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-stone-900 dark:text-stone-100 text-xs">{n.title}</span>
+                            {!n.isRead && (
+                              <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 mt-1"></span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-stone-600 dark:text-stone-300 font-normal mt-0.5 line-clamp-2 leading-relaxed">
+                            {n.message}
+                          </p>
+                          <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-1 flex items-center justify-between">
+                            <span>
+                              {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} •{' '}
+                              {new Date(n.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                            </span>
+                            <span className="text-amber-600 dark:text-amber-400 font-medium text-[10px]">View info &rarr;</span>
+                          </div>
                         </div>
                       ))
                     )}
@@ -475,20 +542,122 @@ export const CustomerPortalPage: React.FC = () => {
               <div className="p-12 text-center text-xs text-stone-500">No notifications on file.</div>
             ) : (
               notifications.map(n => (
-                <div key={n.id} className="p-4 flex items-start justify-between">
-                  <div>
-                    <h5 className="font-bold text-xs text-stone-900 dark:text-stone-100">{n.title}</h5>
-                    <p className="text-xs text-stone-600 dark:text-stone-300 mt-1">{n.message}</p>
+                <div
+                  key={n.id}
+                  onClick={() => handleViewNotification(n)}
+                  className={`p-4 flex items-start justify-between cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800/60 transition ${
+                    !n.isRead ? 'bg-amber-50/40 dark:bg-amber-950/20' : ''
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <h5 className="font-bold text-xs text-stone-900 dark:text-stone-100">{n.title}</h5>
+                      {!n.isRead && (
+                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                      )}
+                    </div>
+                    <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">{n.message}</p>
                     <span className="text-[10px] text-stone-400 mt-1 inline-block">
                       {new Date(n.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
                     </span>
                   </div>
+                  <button className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 shrink-0">
+                    View info &rarr;
+                  </button>
                 </div>
               ))
             )}
           </div>
         )}
       </main>
+
+      {/* NOTIFICATION FULL INFO MODAL (Matches Store Admin & Super Admin) */}
+      {selectedNotif && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-7 max-w-lg w-full shadow-2xl relative">
+            <div className="flex items-start justify-between pb-4 border-b border-stone-100 dark:border-stone-800">
+              <div className="pr-4">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  Notification Details
+                </span>
+                <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100 mt-0.5">
+                  {selectedNotif.title}
+                </h3>
+                <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                  {new Date(selectedNotif.createdAt).toLocaleString(undefined, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short'
+                  })}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedNotif(null)}
+                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="py-5 space-y-4">
+              <div className="bg-stone-50 dark:bg-stone-800/60 p-4 rounded-2xl border border-stone-100 dark:border-stone-800">
+                <p className="text-sm text-stone-700 dark:text-stone-200 leading-relaxed whitespace-pre-wrap">
+                  {selectedNotif.message}
+                </p>
+              </div>
+
+              {(selectedNotif.bookingReference || selectedNotif.serviceName) && (
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  {selectedNotif.bookingReference && (
+                    <div className="p-3 rounded-xl bg-stone-100 dark:bg-stone-800/80">
+                      <span className="text-[10px] uppercase font-bold text-stone-500 dark:text-stone-400 block mb-0.5">
+                        Booking Ref
+                      </span>
+                      <span className="font-mono font-bold text-stone-900 dark:text-stone-100">
+                        {selectedNotif.bookingReference}
+                      </span>
+                    </div>
+                  )}
+                  {selectedNotif.serviceName && (
+                    <div className="p-3 rounded-xl bg-stone-100 dark:bg-stone-800/80">
+                      <span className="text-[10px] uppercase font-bold text-stone-500 dark:text-stone-400 block mb-0.5">
+                        Service
+                      </span>
+                      <span className="font-medium text-stone-900 dark:text-stone-100 truncate block">
+                        {selectedNotif.serviceName}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-stone-100 dark:border-stone-800 flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setSelectedNotif(null)}
+                className="px-4 py-2 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-semibold text-xs hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+              >
+                Close
+              </button>
+              {selectedNotif.appointmentId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const foundAppt = appointments.find(a => a.id === selectedNotif.appointmentId);
+                    setSelectedNotif(null);
+                    if (foundAppt) {
+                      setSelectedAppt(foundAppt);
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow"
+                >
+                  View Appointment Details
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Appointment Detail Modal */}
       {selectedAppt && (

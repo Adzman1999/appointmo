@@ -93,19 +93,29 @@ router.get('/me', authenticateJwt, async (req: Request, res: Response) => {
     );
     const cancelled = appointments.filter(a => a.status === 'cancelled');
 
-    // 4. Notifications
-    let notifications: any[] = [];
-    if (customerProfile?.id) {
-      const notifRes = await query(
-        `SELECT id, type, title, message, booking_reference AS "bookingReference", is_read AS "isRead", created_at AS "createdAt"
-         FROM notifications
-         WHERE customer_id = $1
-         ORDER BY created_at DESC
-         LIMIT 30`,
-        [customerProfile.id]
-      );
-      notifications = notifRes.rows;
-    }
+    // 4. Notifications (Customer notifications matched by customer identifier, email, or appointment ID)
+    const notifRes = await query(
+      `SELECT n.id, n.appointment_id AS "appointmentId", n.type, n.title, n.message,
+              n.is_read AS "isRead", n.created_at AS "createdAt",
+              a.booking_reference AS "bookingReference",
+              s.name AS "serviceName"
+       FROM notifications n
+       LEFT JOIN appointments a ON n.appointment_id = a.id
+       LEFT JOIN services s ON a.service_id = s.id
+       LEFT JOIN customers c ON a.customer_id = c.id
+       WHERE n.recipient_type = 'customer'
+         AND (
+           LOWER(n.recipient_identifier) = $1
+           OR (c.id IS NOT NULL AND LOWER(c.email) = $1)
+           OR (a.id IS NOT NULL AND a.id = ANY($2::uuid[]))
+         )
+       ORDER BY n.created_at DESC
+       LIMIT 50`,
+      [cleanEmail, appointments.map(a => a.id).filter(Boolean)]
+    );
+    const notifications = notifRes.rows;
+
+    const unreadCount = notifications.filter(n => !n.isRead).length;
 
     res.json({
       customer: {
@@ -120,10 +130,52 @@ router.get('/me', authenticateJwt, async (req: Request, res: Response) => {
       past,
       cancelled,
       notifications,
+      unreadCount,
     });
   } catch (err: any) {
     console.error('Failed to get customer profile:', err);
     res.status(500).json({ error: 'Failed to retrieve customer account details: ' + (err.message || 'Server error') });
+  }
+});
+
+// PATCH /api/customer/notifications/:id/read - Mark customer notification as read
+router.patch('/notifications/:id/read', authenticateJwt, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await query("UPDATE notifications SET is_read = true, read_at = NOW() WHERE id = $1", [id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to mark notification as read' });
+  }
+});
+
+// POST /api/customer/notifications/mark-all-read - Mark all customer notifications as read
+router.post('/notifications/mark-all-read', authenticateJwt, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user || !user.email) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const cleanEmail = user.email.trim().toLowerCase();
+
+    await query(`
+      UPDATE notifications n
+      SET is_read = true, read_at = NOW()
+      WHERE n.recipient_type = 'customer'
+        AND n.is_read = false
+        AND (
+          LOWER(n.recipient_identifier) = $1
+          OR n.appointment_id IN (
+            SELECT a.id FROM appointments a
+            JOIN customers c ON a.customer_id = c.id
+            WHERE LOWER(c.email) = $1
+          )
+        )
+    `, [cleanEmail]);
+
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to mark all notifications as read' });
   }
 });
 

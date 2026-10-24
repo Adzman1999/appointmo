@@ -20,7 +20,9 @@ export const AdminLoginPage: React.FC = () => {
   // Common credentials
   const [email, setEmail] = useState(searchParams.get('email') || '');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -89,6 +91,12 @@ export const AdminLoginPage: React.FC = () => {
           return;
         }
 
+        if (password !== confirmPassword) {
+          setError('Passwords do not match. Please verify your confirm password.');
+          setLoading(false);
+          return;
+        }
+
         const fullName = formatFormalName({ firstName, middleName, lastName });
         const countryCfg = getCountryByName(selectedCountry);
         const normalizedPhone = normalizePhoneNumber(phone, countryCfg.code);
@@ -110,6 +118,7 @@ export const AdminLoginPage: React.FC = () => {
         setLastName('');
         setPhone('');
         setPassword('');
+        setConfirmPassword('');
         setEmail('');
 
         // If backend returned immediate token & user session, log in directly to customer portal!
@@ -277,92 +286,121 @@ export const AdminLoginPage: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition-colors"
                 />
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
-                    Password <span className="text-rose-500">*</span>
-                  </label>
+                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Password <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className={`w-full px-3.5 py-2.5 pr-11 rounded-xl border ${
+                      authMode === 'signup' && password.length > 0 && !validateStrongPassword(password).isValid
+                        ? 'border-amber-400 dark:border-amber-500 focus:border-amber-500'
+                        : 'border-stone-300 dark:border-stone-700 focus:border-stone-900 dark:focus:border-amber-400'
+                    } bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none transition-colors`}
+                  />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-[11px] text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100 flex items-center space-x-1 font-medium transition"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowPassword((prev) => !prev);
+                    }}
+                    className="absolute right-2.5 z-10 p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition cursor-pointer"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? (
-                    <>
-                      <EyeOff className="w-3.5 h-3.5" />
-                      <span>Hide</span>
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Show</span>
-                    </>
-                  )}
-                </button>
-              </div>
-              <div className="relative flex items-center">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className={`w-full px-3.5 py-2.5 pr-11 rounded-xl border ${
-                    authMode === 'signup' && password.length > 0 && !validateStrongPassword(password).isValid
-                      ? 'border-amber-400 dark:border-amber-500 focus:border-amber-500'
-                      : 'border-stone-300 dark:border-stone-700 focus:border-stone-900 dark:focus:border-amber-400'
-                  } bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none`}
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setShowPassword((prev) => !prev);
-                  }}
-                  className="absolute right-2.5 z-10 p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition cursor-pointer"
-                  title={showPassword ? 'Hide password' : 'Show password'}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4 pointer-events-none" /> : <Eye className="w-4 h-4 pointer-events-none" />}
-                </button>
+                    {showPassword ? <EyeOff className="w-4 h-4 pointer-events-none" /> : <Eye className="w-4 h-4 pointer-events-none" />}
+                  </button>
+                </div>
+
+                {/* Password strength criteria indicator for Sign Up */}
+                {authMode === 'signup' && (
+                  <div className="mt-2 p-3 bg-stone-100/80 dark:bg-stone-800/80 rounded-xl border border-stone-200 dark:border-stone-700 text-[11px] space-y-1.5">
+                    <div className="font-semibold text-stone-700 dark:text-stone-300">
+                      Password Requirements:
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 text-[10px]">
+                      <span className={password.length >= 8 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
+                        {password.length >= 8 ? '✓' : '○'} Min. 8 characters
+                      </span>
+                      <span className={/[A-Z]/.test(password) ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
+                        {/[A-Z]/.test(password) ? '✓' : '○'} Uppercase letter
+                      </span>
+                      <span className={/[a-z]/.test(password) ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
+                        {/[a-z]/.test(password) ? '✓' : '○'} Lowercase letter
+                      </span>
+                      <span className={/[0-9]/.test(password) ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
+                        {/[0-9]/.test(password) ? '✓' : '○'} One number (0-9)
+                      </span>
+                      <span className={/[^A-Za-z0-9]/.test(password) ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
+                        {/[^A-Za-z0-9]/.test(password) ? '✓' : '○'} One special char
+                      </span>
+                    </div>
+                    {password.length > 0 && !validateStrongPassword(password).isValid && (
+                      <p className="text-amber-600 dark:text-amber-400 font-medium pt-0.5">
+                        {validateStrongPassword(password).error}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* Password strength criteria indicator for Sign Up */}
+              {/* Confirm Password (Sign Up Mode) */}
               {authMode === 'signup' && (
-                <div className="mt-2 p-3 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200 dark:border-stone-700 text-[11px] space-y-1.5">
-                  <div className="font-semibold text-stone-700 dark:text-stone-300">
-                    Password Requirements:
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Confirm Password <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter password"
+                      className={`w-full px-3.5 py-2.5 pr-11 rounded-xl border ${
+                        confirmPassword.length > 0 && confirmPassword !== password
+                          ? 'border-rose-400 dark:border-rose-500 focus:border-rose-500'
+                          : confirmPassword.length > 0 && confirmPassword === password
+                          ? 'border-emerald-500 dark:border-emerald-400'
+                          : 'border-stone-300 dark:border-stone-700 focus:border-stone-900 dark:focus:border-amber-400'
+                      } bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none transition-colors`}
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowConfirmPassword((prev) => !prev);
+                      }}
+                      className="absolute right-2.5 z-10 p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition cursor-pointer"
+                      title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4 pointer-events-none" /> : <Eye className="w-4 h-4 pointer-events-none" />}
+                    </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-1 text-[10px]">
-                    <span className={password.length >= 8 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
-                      {password.length >= 8 ? '✓' : '○'} Min. 8 characters
-                    </span>
-                    <span className={/[A-Z]/.test(password) ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
-                      {/[A-Z]/.test(password) ? '✓' : '○'} Uppercase letter
-                    </span>
-                    <span className={/[a-z]/.test(password) ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
-                      {/[a-z]/.test(password) ? '✓' : '○'} Lowercase letter
-                    </span>
-                    <span className={/[0-9]/.test(password) ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
-                      {/[0-9]/.test(password) ? '✓' : '○'} One number (0-9)
-                    </span>
-                    <span className={/[^A-Za-z0-9]/.test(password) ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
-                      {/[^A-Za-z0-9]/.test(password) ? '✓' : '○'} One special char
-                    </span>
-                  </div>
-                  {password.length > 0 && !validateStrongPassword(password).isValid && (
-                    <p className="text-amber-600 dark:text-amber-400 font-medium pt-0.5">
-                      {validateStrongPassword(password).error}
+                  {confirmPassword.length > 0 && confirmPassword !== password && (
+                    <p className="text-[10px] text-rose-600 dark:text-rose-400 font-medium mt-1">
+                      Passwords do not match.
+                    </p>
+                  )}
+                  {confirmPassword.length > 0 && confirmPassword === password && (
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">
+                      ✓ Passwords match.
                     </p>
                   )}
                 </div>
               )}
-              </div>
             </div>
 
             <button
@@ -375,7 +413,8 @@ export const AdminLoginPage: React.FC = () => {
                   (!firstName.trim() ||
                     !lastName.trim() ||
                     !validateFullPhoneNumber(phone, selectedCountry, true).isValid ||
-                    !validateStrongPassword(password).isValid))
+                    !validateStrongPassword(password).isValid ||
+                    password !== confirmPassword))
               }
               className="w-full bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold py-3.5 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition text-xs shadow-md flex items-center justify-center space-x-2 disabled:opacity-50"
             >
