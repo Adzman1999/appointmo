@@ -177,6 +177,18 @@ export const CustomerPortalPage: React.FC = () => {
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
+  const reviewableAppointments = past.filter((appt) => appt.status === 'completed' && !appt.storeRating);
+  const completedVisitCount = appointments.filter((appt) => appt.status === 'completed').length;
+  const customerMenuGroups = [
+    { label: 'Appointments', items: [
+      { id: 'upcoming', title: 'Upcoming', count: upcoming.length, icon: Calendar },
+      { id: 'history', title: 'History', count: past.length + cancelled.length, icon: CalendarDays },
+    ] },
+    { label: 'Your account', items: [
+      { id: 'reviews', title: 'Rate your visits', count: reviewableAppointments.length, icon: Star },
+      { id: 'notifications', title: 'Notifications', count: unreadCount, icon: Bell },
+    ] },
+  ];
 
   // View notification full details modal & mark as read
   const handleViewNotification = async (notif: any) => {
@@ -226,7 +238,6 @@ export const CustomerPortalPage: React.FC = () => {
     return appointmentStart <= Date.now() || (cutoffHours > 0 && appointmentStart - Date.now() <= cutoffHours * 60 * 60 * 1000);
   };
 
-  const reviewableAppointments = past.filter((appt) => appt.status === 'completed' && !appt.storeRating);
   const openRatingForm = (appt: CustomerAppointment) => {
     setSelectedAppt(null);
     setRatingAppt(appt);
@@ -263,41 +274,42 @@ export const CustomerPortalPage: React.FC = () => {
     <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-24 transition-colors">
       {/* Top Navbar */}
       <header className="sticky top-0 z-40 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200 dark:border-stone-800">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-6">
+        <div className="max-w-6xl mx-auto px-4 min-h-16 py-2 flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             <div className="cursor-pointer" onClick={() => navigate('/')}>
               <AppointmoLogo size="sm" showText={false} />
             </div>
 
             <div className="h-6 w-px bg-stone-200 dark:bg-stone-800 hidden sm:block"></div>
 
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold flex items-center justify-center text-xs">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 shrink-0 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold flex items-center justify-center text-xs">
                 {customer?.name ? customer.name.charAt(0).toUpperCase() : 'C'}
               </div>
-              <div>
-                <div className="flex items-center space-x-2">
-                  <h1 className="text-sm font-bold text-stone-900 dark:text-stone-100">
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2">
+                  <h1 className="max-w-[125px] truncate text-sm font-bold text-stone-900 dark:text-stone-100 sm:max-w-[220px]">
                     {customer?.name || 'Customer Account'}
                   </h1>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+                  <span className="hidden text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 sm:inline-flex">
                     Verified Customer
                   </span>
                 </div>
-                <p className="text-[11px] text-stone-600 dark:text-stone-300 font-medium">
-                  {customer?.email || ''}{customer?.phone ? ` • ${customer.phone}` : ''}
+                <p className="hidden max-w-[280px] truncate text-[11px] text-stone-600 dark:text-stone-300 font-medium md:block">
+                  {customer?.email || ''}{customer?.phone ? ` · ${customer.phone}` : ''}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             {/* Notification Bell Dropdown */}
             <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setIsNotifOpen(!isNotifOpen)}
                 className="relative p-2 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
                 title="Notifications"
+                aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
               >
                 <Bell className="w-4 h-4" />
                 {unreadCount > 0 && (
@@ -365,22 +377,28 @@ export const CustomerPortalPage: React.FC = () => {
 
             <button
               onClick={() => navigate('/browse')}
-              className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition text-xs font-semibold"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-2.5 py-2 text-xs font-bold text-stone-950 transition hover:bg-amber-400 sm:px-3"
+              aria-label="Book a new appointment"
             >
-              Book New
+              <CalendarDays className="h-4 w-4" />
+              <span className="sm:hidden">Book</span>
+              <span className="hidden sm:inline">Book New</span>
             </button>
 
             <button
               onClick={() => navigate('/concierge')}
-              className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 text-xs font-semibold hover:bg-amber-200 dark:hover:bg-amber-900 transition"
+              aria-label="Open concierge"
+              title="Concierge"
+              className="hidden items-center gap-1.5 rounded-xl border border-stone-200 dark:border-stone-700 px-2 py-2 text-xs font-semibold text-stone-600 transition hover:bg-stone-50 dark:text-stone-300 dark:hover:bg-stone-800 sm:inline-flex sm:px-3"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span>Concierge</span>
+              <span className="hidden sm:inline">Concierge</span>
             </button>
 
             <button
               onClick={handleSignOut}
               title="Sign Out"
+              aria-label="Sign out"
               className="p-2 rounded-xl border border-stone-200 dark:border-stone-800 text-stone-500 hover:text-rose-600 dark:text-stone-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
             >
               <LogOut className="w-4 h-4" />
@@ -390,7 +408,7 @@ export const CustomerPortalPage: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 pt-8">
+      <main className="max-w-6xl mx-auto px-4 pt-4 sm:pt-6">
         {/* Banner Alerts */}
         {actionSuccess && (
           <div className="mb-6 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 text-xs flex items-center justify-between">
@@ -412,70 +430,81 @@ export const CustomerPortalPage: React.FC = () => {
           </div>
         )}
 
-        {/* Dashboard Top Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
-            <div className="text-stone-600 dark:text-stone-300 text-xs font-semibold">Upcoming Bookings</div>
-            <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1">{upcoming.length}</div>
-            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">Ready for visit</div>
-          </div>
-          <div className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
-            <div className="text-stone-600 dark:text-stone-300 text-xs font-semibold">Completed Visits</div>
-            <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1">{past.length}</div>
-            <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-1 font-medium">Past appointments</div>
-          </div>
-          <div className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
-            <div className="text-stone-600 dark:text-stone-300 text-xs font-semibold">Cancelled</div>
-            <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1">{cancelled.length}</div>
-            <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-1 font-medium">Archived</div>
-          </div>
-          <div className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
-            <div className="text-stone-600 dark:text-stone-300 text-xs font-semibold">Total Bookings</div>
-            <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1">{appointments.length}</div>
-            <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center space-x-1 font-medium">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Lifetime account activity</span>
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6">
+          <nav
+            aria-label="Customer account menu"
+            className="sticky top-16 z-30 -mx-4 border-y border-stone-200 bg-stone-100/95 px-4 py-2 backdrop-blur dark:border-stone-800 dark:bg-stone-950/95 lg:top-20 lg:mx-0 lg:rounded-2xl lg:border lg:bg-white lg:p-3 lg:shadow-sm dark:lg:bg-stone-900"
+          >
+            <div className="mb-3 hidden px-2 pt-1 lg:block">
+              <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100">My account</h2>
+              <p className="mt-0.5 text-[11px] text-stone-500">Bookings and activity</p>
             </div>
-          </div>
-        </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-3 lg:overflow-visible lg:pb-0">
+              {customerMenuGroups.map((group) => (
+                <section key={group.label} className="contents lg:block">
+                  <h3 className="hidden px-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400 lg:mb-1 lg:block">{group.label}</h3>
+                  <div className="flex shrink-0 gap-2 lg:flex-col lg:gap-1">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const isSelected = activeTab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          aria-pressed={isSelected}
+                          onClick={() => setActiveTab(item.id as typeof activeTab)}
+                          className={`flex min-w-[142px] shrink-0 items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition lg:w-full ${
+                            isSelected
+                              ? 'border-stone-900 bg-stone-900 text-white shadow-sm dark:border-amber-400 dark:bg-amber-400 dark:text-stone-950'
+                              : 'border-transparent bg-white/70 text-stone-600 hover:border-stone-200 hover:bg-white dark:bg-stone-900/70 dark:text-stone-300 dark:hover:border-stone-700 dark:hover:bg-stone-800'
+                          }`}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span className="min-w-0 flex-1 truncate text-[11px] font-bold">{item.title}</span>
+                          <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
+                            item.count > 0
+                              ? isSelected ? 'bg-white/15 dark:bg-stone-950/15' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                              : isSelected ? 'bg-white/15 dark:bg-stone-950/15' : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
+                          }`}>{item.count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </nav>
 
-        {/* Customer portal menu */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-          {[
-            { label: 'Appointments', items: [
-              { id: 'upcoming', title: 'Upcoming', count: upcoming.length, icon: Calendar },
-              { id: 'history', title: 'History & past', count: past.length + cancelled.length, icon: CalendarDays },
-            ] },
-            { label: 'Your account', items: [
-              { id: 'reviews', title: 'Rate your visits', count: reviewableAppointments.length, icon: Star },
-              { id: 'notifications', title: 'Notifications', count: notifications.length, icon: Bell },
-            ] },
-          ].map((group) => (
-            <section key={group.label} className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white/70 dark:bg-stone-900/60 p-3">
-              <h3 className="px-1 pb-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">{group.label}</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {group.items.map((item) => {
-                  const Icon = item.icon;
-                  const isSelected = activeTab === item.id;
-                  return (
-                    <button key={item.id} onClick={() => setActiveTab(item.id as typeof activeTab)} className={`min-w-0 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition ${
-                      isSelected
-                        ? 'border-amber-400 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
-                        : 'border-transparent text-stone-600 hover:bg-stone-50 dark:text-stone-300 dark:hover:bg-stone-800'
-                    }`}>
-                      <Icon className="w-4 h-4 shrink-0" />
-                      <span className="min-w-0 flex-1 truncate text-[11px] font-bold">{item.title}</span>
-                      <span className="shrink-0 rounded-full bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 text-[9px] font-bold">{item.count}</span>
-                    </button>
-                  );
-                })}
+          <div className="min-w-0 space-y-6">
+            {/* Dashboard Top Stats */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+              <div className="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm dark:border-stone-800 dark:bg-stone-900 sm:p-4">
+                <div className="text-xs font-semibold text-stone-600 dark:text-stone-300">Upcoming</div>
+                <div className="mt-1 text-2xl font-bold text-stone-900 dark:text-stone-100">{upcoming.length}</div>
+                <div className="mt-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">Bookings ahead</div>
               </div>
-            </section>
-          ))}
-        </div>
+              <div className="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm dark:border-stone-800 dark:bg-stone-900 sm:p-4">
+                <div className="text-xs font-semibold text-stone-600 dark:text-stone-300">Completed</div>
+                <div className="mt-1 text-2xl font-bold text-stone-900 dark:text-stone-100">{completedVisitCount}</div>
+                <div className="mt-1 text-[10px] font-medium text-stone-500 dark:text-stone-400">Finished visits</div>
+              </div>
+              <div className="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm dark:border-stone-800 dark:bg-stone-900 sm:p-4">
+                <div className="text-xs font-semibold text-stone-600 dark:text-stone-300">Cancelled</div>
+                <div className="mt-1 text-2xl font-bold text-stone-900 dark:text-stone-100">{cancelled.length}</div>
+                <div className="mt-1 text-[10px] font-medium text-stone-500 dark:text-stone-400">Archived bookings</div>
+              </div>
+              <div className="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm dark:border-stone-800 dark:bg-stone-900 sm:p-4">
+                <div className="text-xs font-semibold text-stone-600 dark:text-stone-300">All bookings</div>
+                <div className="mt-1 text-2xl font-bold text-stone-900 dark:text-stone-100">{appointments.length}</div>
+                <div className="mt-1 flex items-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>Account activity</span>
+                </div>
+              </div>
+            </div>
 
-        {/* Tab Body */}
-        {loading ? (
+            {/* Selected menu section */}
+            {loading ? (
           <div className="py-20 flex flex-col items-center justify-center space-y-3">
             <RefreshCw className="w-6 h-6 animate-spin text-amber-500" />
             <p className="text-xs text-stone-500 dark:text-stone-400">Loading your account appointments...</p>
@@ -643,6 +672,8 @@ export const CustomerPortalPage: React.FC = () => {
             )}
           </div>
         )}
+          </div>
+        </div>
       </main>
 
       {/* NOTIFICATION FULL INFO MODAL (Matches Store Admin & Super Admin) */}
