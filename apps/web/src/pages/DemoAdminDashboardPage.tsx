@@ -1544,46 +1544,37 @@ export const DemoAdminDashboardPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Grouped setup menu */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 border-b border-stone-200 dark:border-stone-800 pb-4">
-              {[
-                { label: 'Store', tabs: [
-                  { id: 'profile', label: 'Profile & Branding', icon: Store, count: null },
-                  { id: 'services', label: 'Services & Pricing', icon: Scissors, count: storeServices.length },
-                  { id: 'schedule', label: 'Schedule & Hours', icon: Clock, count: null },
-                  { id: 'policies', label: 'Booking Policies', icon: Sliders, count: null },
-                ] },
-                { label: 'Team', tabs: [
-                  { id: 'staff', label: 'Staff Specialists', icon: Users, count: storeStaff.length },
-                  { id: 'hris', label: 'HRIS & Payroll', icon: Wallet, count: null },
-                ] },
-                { label: 'Customers', tabs: [
-                  { id: 'customers', label: 'Customer Accounts', icon: User, count: storeCustomers.length },
-                ] },
-                { label: 'Account', tabs: [
-                  { id: 'account', label: 'Admin Security', icon: ShieldCheck, count: null },
-                ] },
-              ].map((group) => (
-                <section key={group.label} className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-900/60 p-2.5">
-                  <h3 className="px-2 pb-1.5 text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">{group.label}</h3>
-                  <div className="space-y-1">
-                    {group.tabs.map((tab) => {
-                      const IconComponent = tab.icon;
-                      const isSelected = setupSubTab === tab.id;
-                      return (
-                        <button key={tab.id} type="button" onClick={() => setSetupSubTab(tab.id as any)} className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-left text-[11px] font-bold transition ${
-                          isSelected
-                            ? 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 shadow-sm'
-                            : 'text-stone-600 dark:text-stone-400 hover:bg-white dark:hover:bg-stone-800'
-                        }`}>
-                          <span className="flex min-w-0 items-center gap-2"><IconComponent className="w-3.5 h-3.5 shrink-0" /><span className="truncate">{tab.label}</span></span>
-                          {tab.count !== null && <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-extrabold ${isSelected ? 'bg-white/20 dark:bg-stone-950/20' : 'bg-stone-200 dark:bg-stone-800'}`}>{tab.count}</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))}
+            {/* Compact settings menu */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 py-3 shadow-sm">
+              <div>
+                <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">Settings menu</p>
+                <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">Choose a section to manage your store.</p>
+              </div>
+              <label className="w-full sm:w-72">
+                <span className="sr-only">Choose a store settings section</span>
+                <select
+                  value={setupSubTab}
+                  onChange={(event) => setSetupSubTab(event.target.value as typeof setupSubTab)}
+                  className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-2.5 text-xs font-semibold text-stone-800 dark:text-stone-100 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                >
+                  <optgroup label="Store">
+                    <option value="profile">Profile &amp; Branding</option>
+                    <option value="services">Services &amp; Pricing ({storeServices.length})</option>
+                    <option value="schedule">Schedule &amp; Hours</option>
+                    <option value="policies">Booking Policies</option>
+                  </optgroup>
+                  <optgroup label="Team">
+                    <option value="staff">Staff Specialists ({storeStaff.length})</option>
+                    <option value="hris">HRIS &amp; Payroll</option>
+                  </optgroup>
+                  <optgroup label="Customers">
+                    <option value="customers">Customer Accounts ({storeCustomers.length})</option>
+                  </optgroup>
+                  <optgroup label="Account">
+                    <option value="account">Admin Security</option>
+                  </optgroup>
+                </select>
+              </label>
             </div>
 
             {/* Setup Views by Sub-Tab */}
