@@ -48,7 +48,7 @@ const defaultStaffSchedule = (): StaffScheduleDay[] => STAFF_SCHEDULE_DAYS.map((
   breakEnd: dayOfWeek === 0 ? '' : '13:00',
 }));
 
-const SERVICE_MODAL_CONTROL_CLASS = 'box-border h-10 w-full min-w-0 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20';
+const STANDARD_FORM_CONTROL_CLASS = 'box-border h-10 w-full min-w-0 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20';
 
 export const DemoAdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -2750,9 +2750,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                     {/* Booking Mode */}
                     <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <label className="font-bold text-stone-900 dark:text-stone-100">Booking Confirmation Mode</label>
+                      <div className="flex items-center justify-between gap-4">
+                        <label htmlFor="booking-confirmation-mode" className="flex min-w-0 items-center gap-2 font-bold text-stone-900 dark:text-stone-100">
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-amber-500" />
+                          <span>Booking Confirmation Mode</span>
+                        </label>
                         <input
+                          id="booking-confirmation-mode"
                           type="checkbox"
                           checked={requireApproval}
                           onChange={(e) => {
@@ -2760,7 +2764,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             setRequireApproval(e.target.checked);
                           }}
                           disabled={isPending}
-                          className="w-4 h-4 text-amber-500 rounded border-stone-300"
+                          className="h-4 w-4 shrink-0 rounded border-stone-300 accent-amber-500 focus:ring-2 focus:ring-amber-500/30"
                         />
                       </div>
                       <p className="text-[11px] text-stone-500 leading-relaxed">
@@ -2771,11 +2775,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
 
                     {/* Minimum Lead Time */}
-                    <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-2">
-                      <label className="font-bold text-stone-900 dark:text-stone-100 block">
+                    <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-3">
+                      <label htmlFor="minimum-lead-hours" className="flex items-center gap-2 font-bold text-stone-900 dark:text-stone-100">
+                        <Clock className="h-4 w-4 shrink-0 text-amber-500" />
                         Minimum Lead Notice (Hours)
                       </label>
                       <input
+                        id="minimum-lead-hours"
                         type="number"
                         min="1"
                         max="72"
@@ -2785,7 +2791,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           setMinLeadHours(Number(e.target.value));
                         }}
                         disabled={isPending}
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
+                        className={STANDARD_FORM_CONTROL_CLASS}
                       />
                       <p className="text-[10px] text-stone-500">
                         Prevents last-minute bookings. Clients must book at least {minLeadHours} hour(s) in advance.
@@ -2793,11 +2799,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
 
                     {/* Max Advance Booking Days */}
-                    <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-2">
-                      <label className="font-bold text-stone-900 dark:text-stone-100 block">
+                    <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-3">
+                      <label htmlFor="maximum-advance-days" className="flex items-center gap-2 font-bold text-stone-900 dark:text-stone-100">
+                        <Calendar className="h-4 w-4 shrink-0 text-amber-500" />
                         Max Advance Booking Window (Days)
                       </label>
                       <input
+                        id="maximum-advance-days"
                         type="number"
                         min="7"
                         max="365"
@@ -2807,7 +2815,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           setMaxAdvanceDays(Number(e.target.value));
                         }}
                         disabled={isPending}
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
+                        className={STANDARD_FORM_CONTROL_CLASS}
                       />
                       <p className="text-[10px] text-stone-500">
                         Limits future calendar visibility up to {maxAdvanceDays} days ahead.
@@ -2815,18 +2823,20 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
 
                     {/* Slot Interval */}
-                    <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-2">
-                      <label className="font-bold text-stone-900 dark:text-stone-100 block">
+                    <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-3">
+                      <label htmlFor="slot-interval" className="flex items-center gap-2 font-bold text-stone-900 dark:text-stone-100">
+                        <Clock className="h-4 w-4 shrink-0 text-amber-500" />
                         Time Slot Intervals (Minutes)
                       </label>
                       <select
+                        id="slot-interval"
                         value={slotInterval}
                         onChange={(e) => {
                           setIsSettingsDirty(true);
                           setSlotInterval(Number(e.target.value));
                         }}
                         disabled={isPending}
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
+                        className={STANDARD_FORM_CONTROL_CLASS}
                       >
                         <option value={15}>15 Minutes</option>
                         <option value={30}>30 Minutes</option>
@@ -2840,14 +2850,18 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
                     {/* Automated Reminders */}
                     <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-3 md:col-span-2">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <label className="font-bold text-stone-900 dark:text-stone-100">Automated Notification &amp; Audit Log</label>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <label htmlFor="automated-notifications" className="flex items-center gap-2 font-bold text-stone-900 dark:text-stone-100">
+                            <Bell className="h-4 w-4 shrink-0 text-amber-500" />
+                            <span>Automated Notification &amp; Audit Log</span>
+                          </label>
                           <p className="text-[11px] text-stone-500">
                             Dispatches real-time studio notifications and logs timestamped audit records for all booking status changes.
                           </p>
                         </div>
                         <input
+                          id="automated-notifications"
                           type="checkbox"
                           checked={autoReminderEmail}
                           onChange={(e) => {
@@ -2855,7 +2869,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             setAutoReminderEmail(e.target.checked);
                           }}
                           disabled={isPending}
-                          className="w-4 h-4 text-amber-500 rounded border-stone-300"
+                          className="h-4 w-4 shrink-0 rounded border-stone-300 accent-amber-500 focus:ring-2 focus:ring-amber-500/30"
                         />
                       </div>
                     </div>
@@ -4121,7 +4135,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   value={newServiceName}
                   onChange={(e) => setNewServiceName(e.target.value)}
                   maxLength={120}
-                  className={SERVICE_MODAL_CONTROL_CLASS}
+                  className={STANDARD_FORM_CONTROL_CLASS}
                 />
               </div>
 
@@ -4182,7 +4196,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <select
                           value={newServiceDurationHours}
                           onChange={(e) => setNewServiceDurationHours(e.target.value)}
-                          className={SERVICE_MODAL_CONTROL_CLASS}
+                          className={STANDARD_FORM_CONTROL_CLASS}
                         >
                           <option value="0">0 hrs</option>
                           <option value="1">1 hr</option>
@@ -4195,7 +4209,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <select
                           value={newServiceDurationMinutes}
                           onChange={(e) => setNewServiceDurationMinutes(e.target.value)}
-                          className={SERVICE_MODAL_CONTROL_CLASS}
+                          className={STANDARD_FORM_CONTROL_CLASS}
                         >
                           <option value="15">15 mins</option>
                           <option value="30">30 mins</option>
@@ -4239,7 +4253,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   <select
                     value={newServiceCategory}
                     onChange={(e) => setNewServiceCategory(e.target.value)}
-                    className={SERVICE_MODAL_CONTROL_CLASS}
+                    className={STANDARD_FORM_CONTROL_CLASS}
                   >
                     {categoryOptions.map((cat, i) => (
                       <option key={i} value={cat}>
