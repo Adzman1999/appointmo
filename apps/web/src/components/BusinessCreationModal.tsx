@@ -50,7 +50,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
   const [ownerLastName, setOwnerLastName] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
   const [ownerPassword, setOwnerPassword] = useState('');
+  const [ownerConfirmPassword, setOwnerConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Store Location & Contact Details
   const defaultCountryCfg = getCountryByName('Philippines');
@@ -201,6 +203,12 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
     const passVal = validateStrongPassword(ownerPassword);
     if (!passVal.isValid) {
       setCreateError(passVal.error || 'Please provide a strong admin password.');
+      setCreatingBusiness(false);
+      return;
+    }
+
+    if (ownerPassword !== ownerConfirmPassword) {
+      setCreateError('Passwords do not match. Please verify your confirm password.');
       setCreatingBusiness(false);
       return;
     }
@@ -443,20 +451,21 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                     }}
                   />
 
+                  <div className="pt-1">
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                      Owner Email / Sign-In <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="owner@yourstore.com"
+                      value={ownerEmail}
+                      onChange={(e) => setOwnerEmail(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                    />
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                        Owner Email / Sign-In <span className="text-rose-500 font-bold">*</span>
-                      </label>
-                      <input
-                        type="email"
-                        required
-                        placeholder="owner@yourstore.com"
-                        value={ownerEmail}
-                        onChange={(e) => setOwnerEmail(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                      />
-                    </div>
                     <div>
                       <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
                         Admin Password <span className="text-rose-500 font-bold">*</span>
@@ -469,7 +478,11 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                           placeholder="Min. 8 characters"
                           value={ownerPassword}
                           onChange={(e) => setOwnerPassword(e.target.value)}
-                          className="w-full pl-3 pr-10 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                          className={`w-full pl-3 pr-10 py-2 rounded-xl border ${
+                            ownerPassword.length > 0 && !validateStrongPassword(ownerPassword).isValid
+                              ? 'border-amber-400 dark:border-amber-500 focus:border-amber-500'
+                              : 'border-stone-300 dark:border-stone-700 focus:border-stone-900 dark:focus:border-amber-400'
+                          } bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none transition-colors`}
                         />
                         <button
                           type="button"
@@ -485,12 +498,81 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                           {showPassword ? <EyeOff className="w-3.5 h-3.5 pointer-events-none" /> : <Eye className="w-3.5 h-3.5 pointer-events-none" />}
                         </button>
                       </div>
-                      {ownerPassword.length > 0 && !validateStrongPassword(ownerPassword).isValid && (
-                        <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-1">
-                          {validateStrongPassword(ownerPassword).error}
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                        Confirm Admin Password <span className="text-rose-500 font-bold">*</span>
+                      </label>
+                      <div className="relative flex items-center">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          required
+                          placeholder="Re-enter password"
+                          value={ownerConfirmPassword}
+                          onChange={(e) => setOwnerConfirmPassword(e.target.value)}
+                          className={`w-full pl-3 pr-10 py-2 rounded-xl border ${
+                            ownerConfirmPassword.length > 0 && ownerConfirmPassword !== ownerPassword
+                              ? 'border-rose-400 dark:border-rose-500 focus:border-rose-500'
+                              : ownerConfirmPassword.length > 0 && ownerConfirmPassword === ownerPassword
+                              ? 'border-emerald-500 dark:border-emerald-400'
+                              : 'border-stone-300 dark:border-stone-700 focus:border-stone-900 dark:focus:border-amber-400'
+                          } bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none transition-colors`}
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowConfirmPassword((prev) => !prev);
+                          }}
+                          className="absolute right-2 z-10 p-1 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition cursor-pointer"
+                          title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                          aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5 pointer-events-none" /> : <Eye className="w-3.5 h-3.5 pointer-events-none" />}
+                        </button>
+                      </div>
+                      {ownerConfirmPassword.length > 0 && ownerConfirmPassword !== ownerPassword && (
+                        <p className="text-[10px] text-rose-600 dark:text-rose-400 font-medium mt-1">
+                          Passwords do not match.
+                        </p>
+                      )}
+                      {ownerConfirmPassword.length > 0 && ownerConfirmPassword === ownerPassword && (
+                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">
+                          ✓ Passwords match.
                         </p>
                       )}
                     </div>
+                  </div>
+
+                  {/* Password strength criteria indicator (matches sign up) */}
+                  <div className="mt-2 p-3 bg-stone-100/80 dark:bg-stone-800/80 rounded-xl border border-stone-200 dark:border-stone-700 text-[11px] space-y-1.5">
+                    <div className="font-semibold text-stone-700 dark:text-stone-300">
+                      Password Requirements:
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 text-[10px]">
+                      <span className={ownerPassword.length >= 8 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
+                        {ownerPassword.length >= 8 ? '✓' : '○'} Min. 8 characters
+                      </span>
+                      <span className={/[A-Z]/.test(ownerPassword) ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
+                        {/[A-Z]/.test(ownerPassword) ? '✓' : '○'} Uppercase letter
+                      </span>
+                      <span className={/[a-z]/.test(ownerPassword) ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
+                        {/[a-z]/.test(ownerPassword) ? '✓' : '○'} Lowercase letter
+                      </span>
+                      <span className={/[0-9]/.test(ownerPassword) ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
+                        {/[0-9]/.test(ownerPassword) ? '✓' : '○'} One number (0-9)
+                      </span>
+                      <span className={/[^A-Za-z0-9]/.test(ownerPassword) ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}>
+                        {/[^A-Za-z0-9]/.test(ownerPassword) ? '✓' : '○'} One special char
+                      </span>
+                    </div>
+                    {ownerPassword.length > 0 && !validateStrongPassword(ownerPassword).isValid && (
+                      <p className="text-amber-600 dark:text-amber-400 font-medium pt-0.5">
+                        {validateStrongPassword(ownerPassword).error}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -498,7 +580,13 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               <div className="flex justify-end pt-2">
                 <button
                   type="button"
-                  disabled={!ownerFirstName.trim() || !ownerLastName.trim() || !ownerEmail.trim() || !validateStrongPassword(ownerPassword).isValid}
+                  disabled={
+                    !ownerFirstName.trim() || 
+                    !ownerLastName.trim() || 
+                    !ownerEmail.trim() || 
+                    !validateStrongPassword(ownerPassword).isValid ||
+                    ownerPassword !== ownerConfirmPassword
+                  }
                   onClick={() => setWizardStep(2)}
                   className="px-6 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center space-x-2 disabled:opacity-40"
                 >
@@ -865,6 +953,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                       !ownerLastName.trim() ||
                       !ownerEmail.trim() ||
                       !validateStrongPassword(ownerPassword).isValid ||
+                      ownerPassword !== ownerConfirmPassword ||
                       (createPhone.trim() ? !validateFullPhoneNumber(createPhone, selectedCountry, false).isValid : false) ||
                       timeError !== null
                     }
