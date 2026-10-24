@@ -253,7 +253,7 @@ export const CustomerPortalPage: React.FC = () => {
     if (!ratingAppt) return;
     setSubmittingReview(true);
     try {
-      await apiFetch('/customer/reviews', {
+      const response: any = await apiFetch('/customer/reviews', {
         method: 'POST',
         body: JSON.stringify({
           appointmentId: ratingAppt.id,
@@ -262,9 +262,16 @@ export const CustomerPortalPage: React.FC = () => {
           comment: reviewComment.trim(),
         }),
       });
-      toast.success('Thanks for rating your visit');
+      const reviewedAppointment = {
+        ...ratingAppt,
+        storeRating: Number(response.review.storeRating),
+        staffRating: Number(response.review.staffRating),
+        reviewComment: response.review.comment || null,
+      };
+      setAppointments((current) => current.map((appt) => appt.id === reviewedAppointment.id ? reviewedAppointment : appt));
+      setPast((current) => current.map((appt) => appt.id === reviewedAppointment.id ? reviewedAppointment : appt));
+      toast.success('Rating saved', { description: 'Your store and specialist ratings are now recorded.' });
       setRatingAppt(null);
-      await loadCustomerData();
     } catch (err: any) {
       toast.error('Could not submit your rating', { description: err.message });
     } finally {

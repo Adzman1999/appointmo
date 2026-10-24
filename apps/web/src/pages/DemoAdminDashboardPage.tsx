@@ -6,7 +6,7 @@ import {
   Check, X, AlertTriangle, Shield, Bell, ChevronRight, ChevronLeft, UserCheck,
   RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store, MapPin, Lightbulb, TrendingUp, LogOut,
   Settings, Image, Scissors, Briefcase, Power, Save, Globe, Share2, Mail, Phone, Sliders, ShieldCheck, ShieldAlert,
-  User, Lock, Eye, EyeOff, Receipt, Wallet, Award, FileSpreadsheet
+  User, Lock, Eye, EyeOff, Receipt, Wallet, Award, FileSpreadsheet, Star
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { BusinessLogo } from '../components/BusinessLogo';
@@ -57,7 +57,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
   // Active Admin View Tab: 'appointments' or 'setup'
   const [activeTab, setActiveTab] = useState<'appointments' | 'setup'>('appointments');
   // Store Setup Sub-Navigation Menu
-  const [setupSubTab, setSetupSubTab] = useState<'profile' | 'services' | 'staff' | 'customers' | 'hris' | 'schedule' | 'policies' | 'account'>('profile');
+  const [setupSubTab, setSetupSubTab] = useState<'profile' | 'services' | 'staff' | 'customers' | 'reviews' | 'hris' | 'schedule' | 'policies' | 'account'>('profile');
   const [setupDropdownOpen, setSetupDropdownOpen] = useState(false);
   const [activeProfileSection, setActiveProfileSection] = useState('profile-brand-identity');
   const setupDropdownRef = useRef<HTMLDivElement>(null);
@@ -94,6 +94,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [storeWorkingHours, setStoreWorkingHours] = useState<any[]>([]);
   const [storeCustomers, setStoreCustomers] = useState<any[]>([]);
   const [loadingStoreCustomers, setLoadingStoreCustomers] = useState(false);
+  const [storeReviews, setStoreReviews] = useState<any[]>([]);
+  const [storeReviewSummary, setStoreReviewSummary] = useState<any | null>(null);
+  const [loadingStoreReviews, setLoadingStoreReviews] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
   const [editingStoreCustomer, setEditingStoreCustomer] = useState<any | null>(null);
   const [editCustomerName, setEditCustomerName] = useState('');
@@ -371,6 +374,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   const CUSTOMERS_PER_PAGE = 8;
   const [customerPage, setCustomerPage] = useState(1);
+
+  const REVIEWS_PER_PAGE = 8;
+  const [reviewPage, setReviewPage] = useState(1);
 
   useEffect(() => {
     setApptPage(1);
@@ -1021,6 +1027,27 @@ export const DemoAdminDashboardPage: React.FC = () => {
     }
   }, [activeTab, setupSubTab, activeSlug]);
 
+  const fetchStoreReviews = async (silent = false) => {
+    if (!silent) setLoadingStoreReviews(true);
+    try {
+      const res: any = await apiFetch(`/demo/admin/reviews?slug=${encodeURIComponent(activeSlug)}`);
+      setStoreReviews(res.reviews || []);
+      setStoreReviewSummary(res.summary || null);
+      if (!silent) setReviewPage(1);
+    } catch (err: any) {
+      if (!silent) toast.error('Failed to load customer reviews', { description: err.message });
+    } finally {
+      if (!silent) setLoadingStoreReviews(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'setup' || setupSubTab !== 'reviews') return;
+    fetchStoreReviews();
+    const refreshId = window.setInterval(() => fetchStoreReviews(true), 30000);
+    return () => window.clearInterval(refreshId);
+  }, [activeTab, setupSubTab, activeSlug]);
+
   const openStoreCustomerEditor = (customer: any) => {
     setEditingStoreCustomer(customer);
     setEditCustomerName(customer.name || '');
@@ -1398,11 +1425,17 @@ export const DemoAdminDashboardPage: React.FC = () => {
     (customerPage - 1) * CUSTOMERS_PER_PAGE,
     customerPage * CUSTOMERS_PER_PAGE
   );
+  const totalReviewPages = Math.ceil(storeReviews.length / REVIEWS_PER_PAGE);
+  const paginatedStoreReviews = storeReviews.slice(
+    (reviewPage - 1) * REVIEWS_PER_PAGE,
+    reviewPage * REVIEWS_PER_PAGE
+  );
   const setupSectionLabels: Record<typeof setupSubTab, string> = {
     profile: 'Profile & Branding',
     services: 'Services & Pricing',
     staff: 'Staff Specialists',
     customers: 'Customers',
+    reviews: 'Customer Ratings',
     hris: 'HRIS & Payroll',
     schedule: 'Schedule & Hours',
     policies: 'Booking Policies',
@@ -1416,6 +1449,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     { id: 'staff', group: 'Team', label: 'Staff Specialists', icon: Users, count: storeStaff.length },
     { id: 'hris', group: 'Team', label: 'HRIS & Payroll', icon: Wallet, count: null },
     { id: 'customers', group: 'Customers', label: 'Customers', icon: User, count: storeCustomers.length },
+    { id: 'reviews', group: 'Customers', label: 'Customer Ratings', icon: Star, count: storeReviewSummary?.reviewCount ?? null },
     { id: 'account', group: 'Account', label: 'Admin Security', icon: ShieldCheck, count: null },
   ];
   const setupMenuGroups = ['Store', 'Team', 'Customers', 'Account'];
@@ -2628,6 +2662,121 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   onPageChange={setCustomerPage}
                   itemName="customers"
                 />
+              </div>
+            )}
+
+            {setupSubTab === 'reviews' && (
+              <div className="space-y-5 animate-in fade-in">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold text-stone-500">Average store rating</p>
+                        <p className="mt-1 text-3xl font-bold text-stone-900 dark:text-stone-100">
+                          {storeReviewSummary?.reviewCount ? Number(storeReviewSummary.rating).toFixed(1) : '—'}
+                          <span className="ml-1 text-sm font-medium text-stone-400">/ 5</span>
+                        </p>
+                        <p className="mt-1 text-[11px] text-stone-500">{Number(storeReviewSummary?.reviewCount || 0)} customer reviews</p>
+                      </div>
+                      <Star className="h-7 w-7 fill-amber-400 text-amber-500" />
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold text-stone-500">Average specialist rating</p>
+                        <p className="mt-1 text-3xl font-bold text-stone-900 dark:text-stone-100">
+                          {storeReviewSummary?.staffReviewCount ? Number(storeReviewSummary.staffRating).toFixed(1) : '—'}
+                          <span className="ml-1 text-sm font-medium text-stone-400">/ 5</span>
+                        </p>
+                        <p className="mt-1 text-[11px] text-stone-500">{Number(storeReviewSummary?.staffReviewCount || 0)} specialist ratings</p>
+                      </div>
+                      <Users className="h-7 w-7 text-amber-500" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-stone-900 sm:p-6">
+                  <div className="mb-4 border-b border-stone-100 pb-3 dark:border-stone-800">
+                    <h2 className="flex items-center gap-2 text-sm font-bold text-stone-900 dark:text-stone-100">
+                      <Star className="h-4 w-4 text-amber-500" />
+                      Customer Ratings &amp; Reviews
+                    </h2>
+                    <p className="mt-1 text-[11px] text-stone-500">Store averages are recalculated from all saved customer ratings and refresh automatically.</p>
+                  </div>
+
+                  {loadingStoreReviews ? (
+                    <div className="flex items-center justify-center gap-2 py-12 text-xs text-stone-500">
+                      <RefreshCw className="h-4 w-4 animate-spin text-amber-500" />
+                      Loading customer reviews…
+                    </div>
+                  ) : storeReviews.length === 0 ? (
+                    <div className="py-12 text-center">
+                      <Star className="mx-auto h-7 w-7 text-stone-300 dark:text-stone-600" />
+                      <p className="mt-2 text-sm font-semibold text-stone-700 dark:text-stone-300">No customer ratings yet</p>
+                      <p className="mt-1 text-xs text-stone-500">Reviews will appear here after customers rate a completed appointment.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {paginatedStoreReviews.map((review) => (
+                        <article key={review.id} className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4 dark:border-stone-700 dark:bg-stone-800/40">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-bold text-stone-900 dark:text-stone-100">{review.customerName || 'Customer'}</p>
+                              <p className="mt-0.5 text-[11px] text-stone-500">
+                                {[review.customerEmail, review.customerPhone].filter(Boolean).join(' · ') || 'Customer contact unavailable'}
+                              </p>
+                              <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-stone-600 dark:text-stone-300">
+                                {review.serviceName && <span className="rounded-full bg-white px-2 py-1 dark:bg-stone-900">{review.serviceName}</span>}
+                                {review.staffName && <span className="rounded-full bg-white px-2 py-1 dark:bg-stone-900">{review.staffName}</span>}
+                                {review.bookingReference && <span className="rounded-full bg-white px-2 py-1 font-mono dark:bg-stone-900">{review.bookingReference}</span>}
+                              </div>
+                            </div>
+                            <time className="shrink-0 text-[10px] text-stone-500">
+                              {new Date(review.createdAt).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })}
+                            </time>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {[
+                              { label: 'Store', value: Number(review.storeRating || 0) },
+                              { label: 'Specialist', value: review.staffRating == null ? null : Number(review.staffRating) },
+                            ].map((rating) => (
+                              <div key={rating.label} className="flex items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 dark:bg-stone-900">
+                                <span className="text-[11px] font-semibold text-stone-600 dark:text-stone-300">{rating.label}</span>
+                                {rating.value == null ? (
+                                  <span className="text-[10px] text-stone-400">Not rated</span>
+                                ) : (
+                                  <span className="flex items-center gap-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <Star key={star} className={`h-3.5 w-3.5 ${star <= rating.value! ? 'fill-amber-400 text-amber-500' : 'text-stone-300 dark:text-stone-600'}`} />
+                                    ))}
+                                    <span className="ml-1 text-[10px] font-bold text-stone-700 dark:text-stone-200">{rating.value}/5</span>
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+
+                          {review.comment && (
+                            <p className="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-stone-700 dark:text-stone-300">“{review.comment}”</p>
+                          )}
+                        </article>
+                      ))}
+                    </div>
+                  )}
+
+                  {!loadingStoreReviews && storeReviews.length > 0 && (
+                    <Pagination
+                      currentPage={reviewPage}
+                      totalPages={totalReviewPages}
+                      totalItems={storeReviews.length}
+                      itemsPerPage={REVIEWS_PER_PAGE}
+                      onPageChange={setReviewPage}
+                      itemName="reviews"
+                    />
+                  )}
+                </div>
               </div>
             )}
 

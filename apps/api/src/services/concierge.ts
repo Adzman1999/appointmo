@@ -207,8 +207,8 @@ export class ConciergeService {
           const sortedSlots = [...slotChoices].sort((a, b) => {
             const aRating = staffRatings.get(a.staffId);
             const bRating = staffRatings.get(b.staffId);
-            const aBoost = aRating && aRating.reviewCount >= 3 ? aRating.rating : 0;
-            const bBoost = bRating && bRating.reviewCount >= 3 ? bRating.rating : 0;
+            const aBoost = aRating ? aRating.rating * Math.min(1, aRating.reviewCount / 3) : 0;
+            const bBoost = bRating ? bRating.rating * Math.min(1, bRating.reviewCount / 3) : 0;
             return bBoost - aBoost || new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
           });
           const chosenSlot = sortedSlots[0];
@@ -220,20 +220,26 @@ export class ConciergeService {
             reasons.push(`Nearest open opening (outside preferred ${timeOfDay})`);
           }
           reasons.push(`Verified open slot with certified specialist ${chosenSlot.staffName}`);
-          if (chosenStaffRating && chosenStaffRating.reviewCount >= 3) {
-            reasons.push(`Highly rated specialist (${chosenStaffRating.rating.toFixed(1)}/5 from ${chosenStaffRating.reviewCount} reviews)`);
+          if (chosenStaffRating && chosenStaffRating.reviewCount > 0) {
+            reasons.push(`Customers rate this specialist ${chosenStaffRating.rating.toFixed(1)}/5 (${chosenStaffRating.reviewCount} reviews)`);
           }
-          if (Number(item.service.service_review_count || 0) >= 3) {
+          if (Number(item.service.service_review_count || 0) > 0) {
             reasons.push(`Customers rate this service ${Number(item.service.service_rating).toFixed(1)}/5 (${item.service.service_review_count} reviews)`);
           }
-          if (businessReviewCount >= 3) {
+          if (businessReviewCount > 0) {
             reasons.push(`Customer rated store ${businessRating.toFixed(1)}/5 (${businessReviewCount} reviews)`);
           }
 
-          const trustedStaffBoost = chosenStaffRating && chosenStaffRating.reviewCount >= 3
-            ? Math.min(18, chosenStaffRating.rating * 3)
+          const trustedStaffBoost = chosenStaffRating && chosenStaffRating.reviewCount > 0
+            ? Math.min(18, chosenStaffRating.rating * 3) * Math.min(1, chosenStaffRating.reviewCount / 3)
             : 0;
-          const trustedBusinessBoost = businessReviewCount >= 3 ? Math.min(8, businessRating * 1.5) : 0;
+          const trustedBusinessBoost = businessReviewCount > 0
+            ? Math.min(8, businessRating * 1.5) * Math.min(1, businessReviewCount / 3)
+            : 0;
+          const serviceReviewCount = Number(item.service.service_review_count || 0);
+          const serviceRatingBoost = serviceReviewCount > 0
+            ? Math.min(6, Number(item.service.service_rating || 0) * 1.2) * Math.min(1, serviceReviewCount / 3)
+            : 0;
 
           const recItem: ConciergeRecommendation = {
             serviceId: item.service.id,
@@ -250,8 +256,7 @@ export class ConciergeService {
             serviceRating: Number(item.service.service_rating || 0),
             serviceReviewCount: Number(item.service.service_review_count || 0),
             slot: chosenSlot,
-            matchScore: item.score * 10 + (filteredSlots.length > 0 ? 15 : 0) + trustedStaffBoost + trustedBusinessBoost +
-              (Number(item.service.service_review_count || 0) >= 3 ? Math.min(6, Number(item.service.service_rating || 0) * 1.2) : 0),
+            matchScore: item.score * 10 + (filteredSlots.length > 0 ? 15 : 0) + trustedStaffBoost + trustedBusinessBoost + serviceRatingBoost,
             matchReasons: reasons,
           };
 

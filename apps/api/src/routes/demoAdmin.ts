@@ -1140,6 +1140,42 @@ router.patch('/customers/:id', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/reviews', async (req: Request, res: Response) => {
+  try {
+    const businessId = await getDemoBusinessId(req);
+    const [summaryRes, reviewsRes] = await Promise.all([
+      query(`
+        SELECT COALESCE(AVG(r.rating), 0)::numeric(3, 1) AS rating,
+               COUNT(r.id)::int AS "reviewCount",
+               COALESCE(AVG(r.staff_rating), 0)::numeric(3, 1) AS "staffRating",
+               COUNT(r.staff_rating)::int AS "staffReviewCount"
+        FROM reviews r
+        WHERE r.business_id = $1
+      `, [businessId]),
+      query(`
+        SELECT r.id, r.customer_name AS "customerName",
+               c.email AS "customerEmail", c.phone AS "customerPhone",
+               r.rating AS "storeRating", r.staff_rating AS "staffRating",
+               r.comment, r.created_at AS "createdAt",
+               s.name AS "serviceName", sp.name AS "staffName",
+               a.booking_reference AS "bookingReference"
+        FROM reviews r
+        LEFT JOIN customers c ON c.id = r.customer_id AND c.business_id = r.business_id
+        LEFT JOIN services s ON s.id = r.service_id
+        LEFT JOIN staff_profiles sp ON sp.id = r.staff_id
+        LEFT JOIN appointments a ON a.id = r.appointment_id
+        WHERE r.business_id = $1
+        ORDER BY r.created_at DESC, r.id DESC
+      `, [businessId]),
+    ]);
+
+    res.json({ summary: summaryRes.rows[0], reviews: reviewsRes.rows });
+  } catch (err: any) {
+    console.error('Fetch store reviews error:', err);
+    res.status(500).json({ error: 'Failed to fetch customer ratings and reviews' });
+  }
+});
+
 // 12. Update Business Profile & Setup (Logo, description, hours, phone, address, status, policies, country, currency)
 router.put('/settings', async (req: Request, res: Response) => {
   try {

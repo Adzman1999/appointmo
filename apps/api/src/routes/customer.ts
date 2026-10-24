@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { query } from '../db';
 import { getCustomerChangeCutoffHours } from '../services/bookingPolicies';
+import { NotificationService } from '../services/notification';
 import { authenticateJwt } from '../middleware/auth';
 
 const router = Router();
@@ -207,6 +208,20 @@ router.post('/reviews', authenticateJwt, async (req: Request, res: Response) => 
     );
     if (reviewRes.rows.length === 0) {
       return res.status(409).json({ error: 'This appointment has already been reviewed.' });
+    }
+
+    try {
+      await NotificationService.create({
+        businessId: appointment.businessId,
+        appointmentId: appointment.id,
+        recipientType: 'admin',
+        recipientIdentifier: 'admin',
+        type: 'system_alert',
+        title: 'New customer rating',
+        message: `${appointment.customerName} rated the store ${storeRating}/5 and specialist ${staffRating}/5.${comment ? ` Comment: ${comment}` : ''}`,
+      });
+    } catch (notificationError) {
+      console.error('Customer rating saved but admin notification failed:', notificationError);
     }
 
     res.status(201).json({ review: reviewRes.rows[0] });

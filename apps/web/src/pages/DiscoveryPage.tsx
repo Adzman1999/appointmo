@@ -263,7 +263,11 @@ export const DiscoveryPage: React.FC = () => {
           </div>
         ) : viewMode === 'list' ? (
           /* List Mode */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+          <div className="space-y-3">
+            <p className="text-[11px] text-stone-500 dark:text-stone-400">
+              Stores are ordered by their average customer rating; review count breaks ties.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
             {businesses.map((biz) => (
               <div
                 key={biz.id}
@@ -283,7 +287,14 @@ export const DiscoveryPage: React.FC = () => {
                         <span className="inline-block px-2.5 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-[10px] font-bold uppercase tracking-wider mb-1">
                           {biz.category}
                         </span>
-                        <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">{biz.name}</h3>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">{biz.name}</h3>
+                          {biz.reviewCount >= 3 && Number(biz.rating) >= 4.5 && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                              <Star className="h-3 w-3 fill-current" /> Top Rated
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className={`flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-bold shrink-0 ${biz.reviewCount ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800' : 'bg-stone-100 dark:bg-stone-800 text-stone-500 border border-stone-200 dark:border-stone-700'}`}>
@@ -331,6 +342,7 @@ export const DiscoveryPage: React.FC = () => {
                 </div>
               </div>
             ))}
+            </div>
           </div>
         ) : (
           /* Map View: Interactive Synthetic Map Display with Synchronized Sidebar */
