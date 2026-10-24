@@ -1591,14 +1591,14 @@ export const DemoAdminDashboardPage: React.FC = () => {
             </div>
 
             {/* Grouped icon dropdown for major settings areas */}
-            <div className="relative z-20" ref={setupDropdownRef} onKeyDown={(event) => { if (event.key === 'Escape') setSetupDropdownOpen(false); }}>
+            <div className="sticky top-[132px] z-40 -mx-2 rounded-2xl bg-stone-100/95 px-2 py-2 backdrop-blur-sm dark:bg-stone-950/95 lg:top-[76px]" ref={setupDropdownRef} onKeyDown={(event) => { if (event.key === 'Escape') setSetupDropdownOpen(false); }}>
               <button
                 type="button"
                 aria-haspopup="menu"
                 aria-expanded={setupDropdownOpen}
                 aria-label={setupDropdownOpen ? 'Close settings menu' : 'Open settings menu'}
                 onClick={() => setSetupDropdownOpen((open) => !open)}
-                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 py-3 text-left shadow-sm transition hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-stone-300 dark:border-stone-700 bg-transparent px-4 py-3 text-left transition hover:border-amber-400 hover:bg-white/50 dark:hover:bg-stone-900/50 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
               >
                 <span className="flex min-w-0 items-center gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300">
@@ -1658,7 +1658,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
 
                     {/* Swipeable shortcuts for fields in this profile form */}
-                    <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-800/40 p-3">
+                    <div className="sticky top-[220px] z-30 rounded-2xl border border-stone-200 dark:border-stone-700 bg-white/95 p-3 shadow-md backdrop-blur-sm dark:bg-stone-900/95 lg:top-[164px]">
                       <div className="mb-2 flex items-center justify-between gap-3 px-1">
                         <div>
                           <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">Profile section navigation</p>
