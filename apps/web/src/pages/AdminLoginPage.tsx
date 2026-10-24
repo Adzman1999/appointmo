@@ -198,8 +198,8 @@ export const AdminLoginPage: React.FC = () => {
             {authMode === 'signup' && (
               <div className="space-y-4">
                 {/* Group 1: Personal Identity */}
-                <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-850 border border-stone-200 dark:border-stone-800 space-y-3">
-                  <div className="flex items-center space-x-2 pb-1 border-b border-stone-200/60 dark:border-stone-800">
+                <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-3">
+                  <div className="flex items-center space-x-2 pb-1 border-b border-stone-200/60 dark:border-stone-700/60">
                     <UserCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                     <span className="font-bold text-xs text-stone-900 dark:text-stone-100">
                       Personal Identity
@@ -218,8 +218,8 @@ export const AdminLoginPage: React.FC = () => {
                 </div>
 
                 {/* Group 2: Contact Details */}
-                <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-850 border border-stone-200 dark:border-stone-800 space-y-3">
-                  <div className="flex items-center space-x-2 pb-1 border-b border-stone-200/60 dark:border-stone-800">
+                <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-3">
+                  <div className="flex items-center space-x-2 pb-1 border-b border-stone-200/60 dark:border-stone-700/60">
                     <Phone className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                     <span className="font-bold text-xs text-stone-900 dark:text-stone-100">
                       Contact &amp; Location
@@ -238,7 +238,7 @@ export const AdminLoginPage: React.FC = () => {
                       className="w-full h-10 px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                     >
                       {SUPPORTED_COUNTRIES.map((c) => (
-                        <option key={c.code} value={c.name}>
+                        <option key={c.code} value={c.name} className="bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100">
                           {c.emojiFlag ? `${c.emojiFlag} ` : ''}{c.name} ({c.dialCode})
                         </option>
                       ))}
@@ -266,9 +266,9 @@ export const AdminLoginPage: React.FC = () => {
             )}
 
             {/* Account Credentials Group */}
-            <div className={authMode === 'signup' ? 'p-4 rounded-2xl bg-stone-50 dark:bg-stone-850 border border-stone-200 dark:border-stone-800 space-y-3' : 'space-y-4'}>
+            <div className={authMode === 'signup' ? 'p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-3' : 'space-y-4'}>
               {authMode === 'signup' && (
-                <div className="flex items-center space-x-2 pb-1 border-b border-stone-200/60 dark:border-stone-800">
+                <div className="flex items-center space-x-2 pb-1 border-b border-stone-200/60 dark:border-stone-700/60">
                   <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   <span className="font-bold text-xs text-stone-900 dark:text-stone-100">
                     Account Security Credentials
