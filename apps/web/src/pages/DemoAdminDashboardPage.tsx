@@ -48,6 +48,8 @@ const defaultStaffSchedule = (): StaffScheduleDay[] => STAFF_SCHEDULE_DAYS.map((
   breakEnd: dayOfWeek === 0 ? '' : '13:00',
 }));
 
+const SERVICE_MODAL_CONTROL_CLASS = 'box-border h-10 w-full min-w-0 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20';
+
 export const DemoAdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -4084,7 +4086,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       {/* MODAL 7: ADD SERVICE MODAL */}
       {showAddServiceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-md w-full shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 shadow-2xl sm:p-7">
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
               <div className="flex items-center space-x-2">
                 <Scissors className="w-5 h-5 text-amber-500" />
@@ -4099,7 +4101,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleAddService} className="space-y-4 text-xs">
+            <form onSubmit={handleAddService} className="space-y-5 text-xs">
               <div>
                 <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
                   Service Name <span className="text-rose-500 font-bold">* (Required)</span>
@@ -4110,17 +4112,18 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   placeholder="e.g. Deluxe Hydra-Facial"
                   value={newServiceName}
                   onChange={(e) => setNewServiceName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  maxLength={120}
+                  className={SERVICE_MODAL_CONTROL_CLASS}
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Price ({getCurrencySymbol(editCurrency).trim()} {editCurrency}) <span className="text-rose-500 font-bold">* (Required)</span>
+                    Price ({editCurrency}) <span className="text-rose-500 font-bold">* (Required)</span>
                   </label>
-                  <div className="relative flex items-center rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 overflow-hidden focus-within:border-stone-900 dark:focus-within:border-amber-400">
-                    <span className="px-3 py-2 bg-stone-100 dark:bg-stone-700/60 text-stone-700 dark:text-stone-200 font-bold text-xs border-r border-stone-200 dark:border-stone-700 select-none">
+                  <div className="relative flex h-10 min-w-0 items-center overflow-hidden rounded-xl border border-stone-300 bg-white focus-within:border-stone-900 dark:border-stone-700 dark:bg-stone-800 dark:focus-within:border-amber-400">
+                    <span className="flex h-full shrink-0 items-center border-r border-stone-200 bg-stone-100 px-3 text-xs font-bold text-stone-700 dark:border-stone-700 dark:bg-stone-700/60 dark:text-stone-200 select-none">
                       {getCurrencySymbol(editCurrency)}
                     </span>
                     <input
@@ -4131,7 +4134,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       placeholder="1500"
                       value={newServicePrice}
                       onChange={(e) => setNewServicePrice(e.target.value)}
-                      className="w-full px-3 py-2 bg-transparent text-stone-900 dark:text-stone-100 focus:outline-none text-xs"
+                      className="h-full min-w-0 flex-1 bg-transparent px-3 text-xs text-stone-900 focus:outline-none dark:text-stone-100"
                     />
                   </div>
                 </div>
@@ -4150,7 +4153,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   </div>
 
                   {isCustomDuration ? (
-                    <div className="relative flex items-center rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 overflow-hidden focus-within:border-stone-900 dark:focus-within:border-amber-400">
+                    <div className="relative flex h-10 min-w-0 items-center overflow-hidden rounded-xl border border-stone-300 bg-white focus-within:border-stone-900 dark:border-stone-700 dark:bg-stone-800 dark:focus-within:border-amber-400">
                       <input
                         type="number"
                         min="5"
@@ -4159,9 +4162,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         placeholder="e.g. 75"
                         value={customDurationMinutes}
                         onChange={(e) => setCustomDurationMinutes(e.target.value)}
-                        className="w-full px-3 py-2 bg-transparent text-stone-900 dark:text-stone-100 focus:outline-none text-xs"
+                        className="h-full min-w-0 flex-1 bg-transparent px-3 text-xs text-stone-900 focus:outline-none dark:text-stone-100"
                       />
-                      <span className="px-3 py-2 bg-stone-100 dark:bg-stone-700/60 text-stone-500 dark:text-stone-300 text-xs border-l border-stone-200 dark:border-stone-700 select-none">
+                      <span className="flex h-full shrink-0 items-center border-l border-stone-200 bg-stone-100 px-3 text-xs text-stone-500 dark:border-stone-700 dark:bg-stone-700/60 dark:text-stone-300 select-none">
                         mins
                       </span>
                     </div>
@@ -4171,7 +4174,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <select
                           value={newServiceDurationHours}
                           onChange={(e) => setNewServiceDurationHours(e.target.value)}
-                          className="w-full px-2 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
+                          className={SERVICE_MODAL_CONTROL_CLASS}
                         >
                           <option value="0">0 hrs</option>
                           <option value="1">1 hr</option>
@@ -4184,7 +4187,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <select
                           value={newServiceDurationMinutes}
                           onChange={(e) => setNewServiceDurationMinutes(e.target.value)}
-                          className="w-full px-2 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none"
+                          className={SERVICE_MODAL_CONTROL_CLASS}
                         >
                           <option value="15">15 mins</option>
                           <option value="30">30 mins</option>
@@ -4221,13 +4224,14 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     placeholder="e.g. Nails & Pedicure"
                     value={newCustomCategoryInput}
                     onChange={(e) => setNewCustomCategoryInput(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                    maxLength={100}
+                    className="box-border h-10 w-full min-w-0 rounded-xl border border-amber-300 bg-amber-50/50 px-3 text-xs text-stone-900 focus:outline-none focus:border-stone-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-stone-100 dark:focus:border-amber-400"
                   />
                 ) : (
                   <select
                     value={newServiceCategory}
                     onChange={(e) => setNewServiceCategory(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                    className={SERVICE_MODAL_CONTROL_CLASS}
                   >
                     {categoryOptions.map((cat, i) => (
                       <option key={i} value={cat}>
@@ -4243,12 +4247,15 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   Short Description <span className="text-stone-400 font-normal">(Optional)</span>
                 </label>
                 <textarea
-                  rows={2}
+                  rows={3}
+                  maxLength={240}
+                  aria-describedby="service-description-limit"
                   placeholder="What is included in this session..."
                   value={newServiceDesc}
                   onChange={(e) => setNewServiceDesc(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                  className="box-border min-h-[88px] max-h-40 w-full min-w-0 resize-y rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-xs text-stone-900 focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-amber-500/20 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:focus:border-amber-400"
                 />
+                <p id="service-description-limit" className="mt-1 text-right text-[10px] text-stone-400">{newServiceDesc.length}/240 characters</p>
               </div>
 
               <div className="flex space-x-3 pt-2">
