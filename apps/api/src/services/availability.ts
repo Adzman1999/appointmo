@@ -9,6 +9,17 @@ export interface TimeSlot {
 }
 
 export class AvailabilityService {
+  static getManilaDateString(date: Date): string {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+    const part = (type: string) => parts.find((item) => item.type === type)?.value || '';
+    return `${part('year')}-${part('month')}-${part('day')}`;
+  }
+
   /**
    * Compute actual slots based on:
    * 1. Staff eligible for service
@@ -17,17 +28,45 @@ export class AvailabilityService {
    * 4. Staff time off
    * 5. Conflicting appointments
    */
-  static async getAvailableSlots(businessId: string, serviceId: string, dateStr: string, requestedStaffId?: string): Promise<TimeSlot[]> {
+  static async getAvailableSlots(
+    businessId: string,
+    serviceId: string,
+    dateStr: string,
+    requestedStaffId?: string,
+    excludeAppointmentId?: string
+  ): Promise<TimeSlot[]> {
     // 1. Get service duration
-    const serviceRes = await query('SELECT duration_minutes FROM services WHERE id = $1 AND business_id = $2 AND is_active = true', [serviceId, businessId]);
+    const serviceRes = await query(`
+      SELECT s.duration_minutes, b.weekly_schedule AS "businessWeeklySchedule"
+      FROM services s
+      JOIN businesses b ON b.id = s.business_id
+      WHERE s.id = $1 AND s.business_id = $2 AND s.is_active = true
+    `, [serviceId, businessId]);
     if (serviceRes.rows.length === 0) {
       throw new Error('Service not found or inactive');
     }
     const durationMinutes = serviceRes.rows[0].duration_minutes;
+    let businessSchedule = serviceRes.rows[0].businessWeeklySchedule;
+    if (typeof businessSchedule === 'string') {
+      try {
+        businessSchedule = JSON.parse(businessSchedule);
+      } catch {
+        businessSchedule = null;
+      }
+    }
 
     // Target date in YYYY-MM-DD
     const targetDate = new Date(`${dateStr}T00:00:00+08:00`); // Asia/Manila offset (+08:00)
     const dayOfWeek = targetDate.getDay(); // 0-6
+    const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek];
+    const businessDays = Array.isArray(businessSchedule) ? businessSchedule : [];
+    const businessDay = businessDays.find((day: any) => String(day?.day || '').toLowerCase() === dayName.toLowerCase())
+      || businessDays[(dayOfWeek + 6) % 7]; // Store settings are ordered Monday through Sunday.
+    if (businessDays.length > 0 && (!businessDay || !businessDay.isWorking)) {
+      return [];
+    }
+    const businessStart = businessDay?.startTime ? new Date(`${dateStr}T${businessDay.startTime}+08:00`) : null;
+    const businessEnd = businessDay?.endTime ? new Date(`${dateStr}T${businessDay.endTime}+08:00`) : null;
 
     // 2. Fetch eligible staff
     let staffQuery = `
@@ -63,8 +102,13 @@ export class AvailabilityService {
       const wh = whRes.rows[0];
 
       // Parse day start and end timestamps in Manila timezone
-      const dayStart = new Date(`${dateStr}T${wh.start_time}+08:00`);
-      const dayEnd = new Date(`${dateStr}T${wh.end_time}+08:00`);
+      const staffDayStart = new Date(`${dateStr}T${wh.start_time}+08:00`);
+      const staffDayEnd = new Date(`${dateStr}T${wh.end_time}+08:00`);
+      const dayStart = businessStart && businessStart > staffDayStart ? businessStart : staffDayStart;
+      const dayEnd = businessEnd && businessEnd < staffDayEnd ? businessEnd : staffDayEnd;
+      if (dayStart >= dayEnd) {
+        continue;
+      }
       const breakStart = wh.break_start ? new Date(`${dateStr}T${wh.break_start}+08:00`) : null;
       const breakEnd = wh.break_end ? new Date(`${dateStr}T${wh.break_end}+08:00`) : null;
 
@@ -83,8 +127,9 @@ export class AvailabilityService {
         `SELECT start_time, end_time
          FROM appointments
          WHERE staff_id = $1 AND status NOT IN ('cancelled')
+           AND ($4::uuid IS NULL OR id != $4::uuid)
            AND start_time < $2 AND end_time > $3`,
-        [staff.id, dayEnd, dayStart]
+        [staff.id, dayEnd, dayStart, excludeAppointmentId || null]
       );
 
       const existingAppointments = existingRes.rows.map(r => ({
@@ -167,58 +212,37 @@ export class AvailabilityService {
       const branchId = branchRes.rows[0].id;
 
       const startDate = new Date(params.startTime);
+      if (!Number.isFinite(startDate.getTime())) {
+        throw new Error('Choose a valid appointment time');
+      }
       const endDate = new Date(startDate.getTime() + srv.duration_minutes * 60 * 1000);
 
-      // 3. Resolve or assign staff
-      let staffId = params.staffId;
-      if (!staffId) {
-        // Find first eligible staff who has no conflict
-        const eligibleStaffRes = await client.query(`
-          SELECT sp.id, sp.name
-          FROM staff_profiles sp
-          JOIN staff_services ss ON sp.id = ss.staff_id
-          WHERE sp.business_id = $1 AND ss.service_id = $2 AND sp.is_active = true
-        `, [businessId, params.serviceId]);
+      // Resolve from current availability so a direct or stale request cannot bypass
+      // the staff member's service qualifications, working hours, breaks, or time off.
+      const localDate = this.getManilaDateString(startDate);
+      const matchingSlots = (await this.getAvailableSlots(businessId, params.serviceId, localDate, params.staffId))
+        .filter((slot) => new Date(slot.startTime).getTime() === startDate.getTime());
+      if (matchingSlots.length === 0) {
+        throw new Error('This time is outside the selected staff schedule or is no longer available. Please choose another slot.');
+      }
 
-        for (const st of eligibleStaffRes.rows) {
-          const conflictCheck = await client.query(`
-            SELECT 1 FROM appointments
-            WHERE staff_id = $1 AND status NOT IN ('cancelled')
-              AND start_time < $2 AND end_time > $3
-            FOR UPDATE
-          `, [st.id, endDate, startDate]);
-
-          if (conflictCheck.rows.length === 0) {
-            staffId = st.id;
-            break;
-          }
-        }
-
-        if (!staffId) {
-          throw new Error('No qualified staff available for this time slot');
-        }
-      } else {
-        // Verify eligibility
-        const eligRes = await client.query(`
-          SELECT 1 FROM staff_services ss
-          JOIN staff_profiles sp ON ss.staff_id = sp.id
-          WHERE ss.staff_id = $1 AND ss.service_id = $2 AND sp.is_active = true
-        `, [staffId, params.serviceId]);
-        if (eligRes.rows.length === 0) {
-          throw new Error('Selected staff member is not qualified for this service');
-        }
-
-        // Concurrency Lock: Lock conflicting appointments for this staff member
+      let staffId: string | undefined;
+      for (const slot of matchingSlots) {
+        // Recheck conflicts inside the booking transaction to catch a slot taken
+        // after availability was displayed to the customer.
         const conflict = await client.query(`
           SELECT 1 FROM appointments
           WHERE staff_id = $1 AND status NOT IN ('cancelled')
             AND start_time < $2 AND end_time > $3
           FOR UPDATE
-        `, [staffId, endDate, startDate]);
-
-        if (conflict.rows.length > 0) {
-          throw new Error('The selected time slot was just booked by another customer. Please choose another time.');
+        `, [slot.staffId, endDate, startDate]);
+        if (conflict.rows.length === 0) {
+          staffId = slot.staffId;
+          break;
         }
+      }
+      if (!staffId) {
+        throw new Error('The selected time slot was just booked by another customer. Please choose another time.');
       }
 
       // 4. Find or Create Customer

@@ -18,6 +18,36 @@ import { CountryPhoneInput } from '../components/CountryPhoneInput';
 import { FormalNameFields } from '../components/FormalNameFields';
 import { toast } from 'sonner';
 
+type StaffScheduleDay = {
+  dayOfWeek: number;
+  day: string;
+  isWorking: boolean;
+  startTime: string;
+  endTime: string;
+  breakStart: string;
+  breakEnd: string;
+};
+
+const STAFF_SCHEDULE_DAYS = [
+  { dayOfWeek: 1, day: 'Monday' },
+  { dayOfWeek: 2, day: 'Tuesday' },
+  { dayOfWeek: 3, day: 'Wednesday' },
+  { dayOfWeek: 4, day: 'Thursday' },
+  { dayOfWeek: 5, day: 'Friday' },
+  { dayOfWeek: 6, day: 'Saturday' },
+  { dayOfWeek: 0, day: 'Sunday' },
+];
+
+const defaultStaffSchedule = (): StaffScheduleDay[] => STAFF_SCHEDULE_DAYS.map(({ dayOfWeek, day }) => ({
+  dayOfWeek,
+  day,
+  isWorking: dayOfWeek !== 0,
+  startTime: '09:00',
+  endTime: '18:00',
+  breakStart: dayOfWeek === 0 ? '' : '12:00',
+  breakEnd: dayOfWeek === 0 ? '' : '13:00',
+}));
+
 export const DemoAdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -212,6 +242,11 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   // Detailed Staff Profile Modal (for HRIS management)
   const [editingStaffMember, setEditingStaffMember] = useState<any | null>(null);
+  const [staffScheduleTarget, setStaffScheduleTarget] = useState<any | null>(null);
+  const [staffScheduleDraft, setStaffScheduleDraft] = useState<StaffScheduleDay[]>(defaultStaffSchedule);
+  const [staffScheduleServiceIds, setStaffScheduleServiceIds] = useState<string[]>([]);
+  const [loadingStaffSchedule, setLoadingStaffSchedule] = useState(false);
+  const [savingStaffSchedule, setSavingStaffSchedule] = useState(false);
   const [editStaffFirstName, setEditStaffFirstName] = useState('');
   const [editStaffMiddleName, setEditStaffMiddleName] = useState('');
   const [editStaffLastName, setEditStaffLastName] = useState('');
@@ -850,7 +885,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
           bio: newStaffBio.trim() || 'Store specialist and consultant',
         }),
       });
-      toast.success('Staff specialist added successfully');
+      toast.success('Staff specialist added', {
+        description: 'Assign their services and weekly hours from Schedule & Services to make them bookable.',
+      });
       setNewStaffFirstName('');
       setNewStaffMiddleName('');
       setNewStaffLastName('');
@@ -861,6 +898,61 @@ export const DemoAdminDashboardPage: React.FC = () => {
       toast.error('Failed to add staff', { description: err.message });
     } finally {
       setAddingStaff(false);
+    }
+  };
+
+  const handleOpenStaffSchedule = async (staff: any) => {
+    setStaffScheduleTarget(staff);
+    setLoadingStaffSchedule(true);
+    setStaffScheduleDraft(defaultStaffSchedule());
+    setStaffScheduleServiceIds([]);
+    try {
+      const res: any = await apiFetch(`/demo/admin/staff/${staff.id}/schedule?slug=${encodeURIComponent(activeSlug)}`);
+      const scheduleByDay = new Map<number, any>(
+        (res.weeklySchedule || []).map((day: any) => [Number(day.dayOfWeek), day])
+      );
+      setStaffScheduleDraft(STAFF_SCHEDULE_DAYS.map(({ dayOfWeek, day }) => {
+        const value = scheduleByDay.get(dayOfWeek);
+        return {
+          dayOfWeek,
+          day,
+          isWorking: value ? Boolean(value.isWorking) : dayOfWeek !== 0,
+          startTime: value?.startTime || '09:00',
+          endTime: value?.endTime || '18:00',
+          breakStart: value?.breakStart || '',
+          breakEnd: value?.breakEnd || '',
+        };
+      }));
+      setStaffScheduleServiceIds(res.serviceIds || []);
+    } catch (err: any) {
+      setStaffScheduleTarget(null);
+      toast.error('Could not load staff schedule', { description: err.message });
+    } finally {
+      setLoadingStaffSchedule(false);
+    }
+  };
+
+  const handleSaveStaffSchedule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!staffScheduleTarget) return;
+    setSavingStaffSchedule(true);
+    try {
+      await apiFetch(`/demo/admin/staff/${staffScheduleTarget.id}/schedule?slug=${encodeURIComponent(activeSlug)}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          serviceIds: staffScheduleServiceIds,
+          weeklySchedule: staffScheduleDraft,
+        }),
+      });
+      toast.success('Staff schedule saved', {
+        description: `${staffScheduleTarget.name} will only appear for assigned services during these hours.`,
+      });
+      setStaffScheduleTarget(null);
+      fetchDashboardData();
+    } catch (err: any) {
+      toast.error('Failed to save staff schedule', { description: err.message });
+    } finally {
+      setSavingStaffSchedule(false);
     }
   };
 
@@ -2030,7 +2122,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       <Users className="w-4 h-4 text-amber-500" />
                       <span>Staff Specialists &amp; Team Members</span>
                     </h2>
-                    <p className="text-[11px] text-stone-500">Specialists available to service clients and take bookings.</p>
+                    <p className="text-[11px] text-stone-500">Assign each specialist the services they provide and the hours customers can book them.</p>
                   </div>
                   <button
                     type="button"
@@ -2078,7 +2170,16 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            disabled={isPending}
+                            onClick={() => handleOpenStaffSchedule(st)}
+                            className="px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition flex items-center space-x-1 disabled:opacity-50"
+                          >
+                            <Clock className="w-3 h-3" />
+                            <span>Schedule &amp; Services</span>
+                          </button>
                           <button
                             type="button"
                             onClick={() => {
@@ -3459,6 +3560,121 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   className="flex-1 py-2.5 rounded-xl font-bold bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow"
                 >
                   {addingStaff ? 'Adding...' : 'Add Specialist'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: STAFF SERVICES & WEEKLY SCHEDULE */}
+      {staffScheduleTarget && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-5 sm:p-7 max-w-4xl w-full shadow-2xl max-h-[92vh] flex flex-col">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
+              <div className="flex items-center space-x-2">
+                <Clock className="w-5 h-5 text-amber-500" />
+                <div>
+                  <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">Schedule &amp; Services</h3>
+                  <p className="text-xs text-stone-500 dark:text-stone-400">{staffScheduleTarget.name}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStaffScheduleTarget(null)}
+                className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
+                aria-label="Close staff schedule"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveStaffSchedule} className="flex min-h-0 flex-1 flex-col">
+              <div className="flex-1 overflow-y-auto space-y-5 pr-1">
+                {loadingStaffSchedule ? (
+                  <div className="py-12 text-center text-xs text-stone-500">Loading staff schedule...</div>
+                ) : (
+                  <>
+                    <section className="space-y-3">
+                      <div>
+                        <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100">Services this staff member can provide</h4>
+                        <p className="text-[11px] text-stone-500 mt-1">Customers will only see this staff member for selected services.</p>
+                      </div>
+                      {storeServices.length === 0 ? (
+                        <p className="rounded-xl bg-stone-50 dark:bg-stone-800 p-3 text-xs text-stone-500">Add a service before assigning one to this staff member.</p>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {storeServices.map((service) => (
+                            <label key={service.id} className="flex items-start gap-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/60 p-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={staffScheduleServiceIds.includes(service.id)}
+                                onChange={(event) => setStaffScheduleServiceIds((current) => (
+                                  event.target.checked
+                                    ? [...new Set([...current, service.id])]
+                                    : current.filter((id) => id !== service.id)
+                                ))}
+                                className="mt-0.5 h-4 w-4 rounded text-amber-500 focus:ring-amber-400"
+                              />
+                              <span className="text-xs text-stone-800 dark:text-stone-200">
+                                <span className="font-semibold">{service.name}</span>
+                                <span className="block text-[10px] text-stone-500 mt-0.5">{service.durationMinutes} min</span>
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+
+                    <section className="space-y-3">
+                      <div>
+                        <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100">Weekly working hours</h4>
+                        <p className="text-[11px] text-stone-500 mt-1">Bookable time is limited to both the store hours and this staff schedule. Breaks block appointment slots.</p>
+                      </div>
+                      <div className="space-y-2">
+                        {staffScheduleDraft.map((day, index) => (
+                          <div key={day.dayOfWeek} className={`grid grid-cols-1 lg:grid-cols-[150px_1fr] gap-3 rounded-2xl border p-3 ${day.isWorking ? 'border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800/60' : 'border-stone-100 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/60 opacity-70'}`}>
+                            <label className="flex items-center gap-2 text-xs font-semibold text-stone-800 dark:text-stone-200">
+                              <input
+                                type="checkbox"
+                                checked={day.isWorking}
+                                onChange={(event) => setStaffScheduleDraft((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, isWorking: event.target.checked } : item))}
+                                className="h-4 w-4 rounded text-amber-500 focus:ring-amber-400"
+                              />
+                              {day.day}
+                            </label>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              <label className="text-[10px] text-stone-500">
+                                Shift starts
+                                <input type="time" value={day.startTime} disabled={!day.isWorking} onChange={(event) => setStaffScheduleDraft((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, startTime: event.target.value } : item))} className="mt-1 w-full rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-2 py-1.5 text-xs text-stone-800 dark:text-stone-200 disabled:opacity-50" />
+                              </label>
+                              <label className="text-[10px] text-stone-500">
+                                Shift ends
+                                <input type="time" value={day.endTime} disabled={!day.isWorking} onChange={(event) => setStaffScheduleDraft((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, endTime: event.target.value } : item))} className="mt-1 w-full rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-2 py-1.5 text-xs text-stone-800 dark:text-stone-200 disabled:opacity-50" />
+                              </label>
+                              <label className="text-[10px] text-stone-500">
+                                Break starts
+                                <input type="time" value={day.breakStart} disabled={!day.isWorking} onChange={(event) => setStaffScheduleDraft((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, breakStart: event.target.value } : item))} className="mt-1 w-full rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-2 py-1.5 text-xs text-stone-800 dark:text-stone-200 disabled:opacity-50" />
+                              </label>
+                              <label className="text-[10px] text-stone-500">
+                                Break ends
+                                <input type="time" value={day.breakEnd} disabled={!day.isWorking} onChange={(event) => setStaffScheduleDraft((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, breakEnd: event.target.value } : item))} className="mt-1 w-full rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-2 py-1.5 text-xs text-stone-800 dark:text-stone-200 disabled:opacity-50" />
+                              </label>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  </>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-4 mt-4 border-t border-stone-100 dark:border-stone-800">
+                <button type="button" onClick={() => setStaffScheduleTarget(null)} className="flex-1 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800">
+                  Cancel
+                </button>
+                <button type="submit" disabled={loadingStaffSchedule || savingStaffSchedule || isPending} className="flex-1 py-2.5 rounded-xl font-bold bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow disabled:opacity-50">
+                  {savingStaffSchedule ? 'Saving...' : 'Save Schedule & Services'}
                 </button>
               </div>
             </form>

@@ -7,6 +7,23 @@ import { EmailService } from '../services/email';
 
 const router = Router();
 
+const staffScheduleDays = [
+  { dayOfWeek: 0, day: 'Sunday' },
+  { dayOfWeek: 1, day: 'Monday' },
+  { dayOfWeek: 2, day: 'Tuesday' },
+  { dayOfWeek: 3, day: 'Wednesday' },
+  { dayOfWeek: 4, day: 'Thursday' },
+  { dayOfWeek: 5, day: 'Friday' },
+  { dayOfWeek: 6, day: 'Saturday' },
+];
+
+const toScheduleTime = (value: unknown): string | null => {
+  if (typeof value !== 'string' || !/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(value)) {
+    return null;
+  }
+  return value.length === 5 ? `${value}:00` : value;
+};
+
 // Dedicated Demo Isolation Scope: Can operate against requested business slug or default to Lumière
 async function getDemoBusinessId(req?: Request, allowPending: boolean = true): Promise<string> {
   const querySlug = (req?.query?.slug as string | undefined) || (req?.body?.slug as string | undefined);
@@ -782,7 +799,23 @@ router.post('/appointments/:id/reschedule', async (req: Request, res: Response) 
     }
 
     const start = new Date(newStartTime);
+    if (!Number.isFinite(start.getTime())) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Choose a valid reschedule time' });
+    }
     const end = new Date(start.getTime() + appt.duration_minutes * 60 * 1000);
+
+    const scheduledSlots = await AvailabilityService.getAvailableSlots(
+      businessId,
+      appt.service_id,
+      AvailabilityService.getManilaDateString(start),
+      targetStaffId,
+      actualApptId
+    );
+    if (!scheduledSlots.some((slot) => new Date(slot.startTime).getTime() === start.getTime())) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'The selected staff member is not scheduled for this time. Choose another slot.' });
+    }
 
     // Concurrency Lock: Check for conflict (excluding this appointment itself)
     const conflictRes = await client.query(`
@@ -905,6 +938,18 @@ router.post('/appointments/:id/reassign-staff', async (req: Request, res: Respon
     }
 
     const targetStaffName = qualRes.rows[0].name;
+
+    const scheduledSlots = await AvailabilityService.getAvailableSlots(
+      businessId,
+      appt.service_id,
+      AvailabilityService.getManilaDateString(new Date(appt.start_time)),
+      staffId,
+      actualApptId
+    );
+    if (!scheduledSlots.some((slot) => new Date(slot.startTime).getTime() === new Date(appt.start_time).getTime())) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `${targetStaffName} is not scheduled for this appointment time.` });
+    }
 
     // Check conflict
     const conflictRes = await client.query(`
@@ -1207,6 +1252,163 @@ router.post('/staff', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('Create staff error:', err);
     res.status(500).json({ error: 'Failed to create staff: ' + err.message });
+  }
+});
+
+// 13a. Read and update the services and weekly hours assigned to a staff member
+router.get('/staff/:id/schedule', async (req: Request, res: Response) => {
+  try {
+    const businessId = await getDemoBusinessId(req);
+    const staffId = req.params.id;
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(staffId)) {
+      return res.status(400).json({ error: 'A valid staff member is required' });
+    }
+    const staffRes = await query(
+      'SELECT id, name FROM staff_profiles WHERE id = $1 AND business_id = $2',
+      [staffId, businessId]
+    );
+    if (staffRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Staff member not found for this store' });
+    }
+
+    const [servicesRes, hoursRes] = await Promise.all([
+      query('SELECT service_id AS "serviceId" FROM staff_services WHERE staff_id = $1', [staffId]),
+      query(`SELECT day_of_week AS "dayOfWeek", start_time AS "startTime", end_time AS "endTime",
+                    break_start AS "breakStart", break_end AS "breakEnd", is_working AS "isWorking"
+             FROM staff_working_hours WHERE staff_id = $1`, [staffId]),
+    ]);
+    const hoursByDay = new Map(hoursRes.rows.map((row: any) => [Number(row.dayOfWeek), row]));
+
+    const weeklySchedule = staffScheduleDays.map(({ dayOfWeek, day }) => {
+      const row: any = hoursByDay.get(dayOfWeek);
+      return {
+        dayOfWeek,
+        day,
+        isWorking: row ? row.isWorking : dayOfWeek !== 0,
+        startTime: row ? String(row.startTime).slice(0, 5) : '09:00',
+        endTime: row ? String(row.endTime).slice(0, 5) : '18:00',
+        breakStart: row?.breakStart ? String(row.breakStart).slice(0, 5) : '',
+        breakEnd: row?.breakEnd ? String(row.breakEnd).slice(0, 5) : '',
+      };
+    });
+
+    res.json({
+      staff: staffRes.rows[0],
+      serviceIds: servicesRes.rows.map((row: any) => row.serviceId),
+      weeklySchedule,
+    });
+  } catch (err: any) {
+    console.error('Fetch staff schedule error:', err);
+    res.status(500).json({ error: 'Failed to fetch staff schedule' });
+  }
+});
+
+router.put('/staff/:id/schedule', async (req: Request, res: Response) => {
+  const client = await pool.connect();
+  try {
+    const businessId = await getDemoBusinessId(req, false);
+    const staffId = req.params.id;
+    const { serviceIds: inputServiceIds, weeklySchedule: inputSchedule } = req.body || {};
+
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(staffId)) {
+      return res.status(400).json({ error: 'A valid staff member is required' });
+    }
+    if (!Array.isArray(inputServiceIds) || inputServiceIds.some((id: unknown) => typeof id !== 'string' || !uuidPattern.test(id))) {
+      return res.status(400).json({ error: 'Choose valid services for this staff member' });
+    }
+    if (!Array.isArray(inputSchedule) || inputSchedule.length !== 7) {
+      return res.status(400).json({ error: 'A schedule for all seven days is required' });
+    }
+
+    const seenDays = new Set<number>();
+    const weeklySchedule = [];
+    for (const entry of inputSchedule) {
+      if (!entry || typeof entry !== 'object' || typeof entry.isWorking !== 'boolean') {
+        return res.status(400).json({ error: 'Each schedule day must include a working or off-day selection' });
+      }
+      const dayOfWeek = Number(entry?.dayOfWeek);
+      if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6 || seenDays.has(dayOfWeek)) {
+        return res.status(400).json({ error: 'Schedule days must include each day of the week once' });
+      }
+      seenDays.add(dayOfWeek);
+
+      const startTime = toScheduleTime(entry.startTime);
+      const endTime = toScheduleTime(entry.endTime);
+      const breakStart = entry.breakStart ? toScheduleTime(entry.breakStart) : null;
+      const breakEnd = entry.breakEnd ? toScheduleTime(entry.breakEnd) : null;
+      if (!startTime || !endTime || startTime >= endTime) {
+        return res.status(400).json({ error: 'Each shift needs a valid start time before its end time' });
+      }
+      if (Boolean(entry.breakStart) !== Boolean(entry.breakEnd) || (entry.breakStart && (!breakStart || !breakEnd))) {
+        return res.status(400).json({ error: 'Enter both break times or leave both empty' });
+      }
+      if (breakStart && breakEnd && (breakStart >= breakEnd || breakStart < startTime || breakEnd > endTime)) {
+        return res.status(400).json({ error: 'Break time must fall within the staff shift' });
+      }
+
+      weeklySchedule.push({
+        dayOfWeek,
+        isWorking: Boolean(entry.isWorking),
+        startTime,
+        endTime,
+        breakStart,
+        breakEnd,
+      });
+    }
+
+    const serviceIds = [...new Set(inputServiceIds as string[])];
+
+    await client.query('BEGIN');
+    const staffRes = await client.query(
+      'SELECT id FROM staff_profiles WHERE id = $1 AND business_id = $2 FOR UPDATE',
+      [staffId, businessId]
+    );
+    if (staffRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Staff member not found for this store' });
+    }
+
+    if (serviceIds.length > 0) {
+      const validServices = await client.query(
+        'SELECT id FROM services WHERE business_id = $1 AND id = ANY($2::uuid[])',
+        [businessId, serviceIds]
+      );
+      if (validServices.rows.length !== serviceIds.length) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'One or more selected services do not belong to this store' });
+      }
+    }
+
+    await client.query('DELETE FROM staff_services WHERE staff_id = $1', [staffId]);
+    if (serviceIds.length > 0) {
+      await client.query(
+        'INSERT INTO staff_services (staff_id, service_id) SELECT $1, assigned.service_id FROM UNNEST($2::uuid[]) AS assigned(service_id)',
+        [staffId, serviceIds]
+      );
+    }
+
+    // Replace the seven rows so repeated edits cannot leave conflicting duplicate hours.
+    await client.query('DELETE FROM staff_working_hours WHERE staff_id = $1', [staffId]);
+    for (const day of weeklySchedule) {
+      await client.query(`
+        INSERT INTO staff_working_hours (
+          staff_id, day_of_week, start_time, end_time, break_start, break_end, is_working
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [staffId, day.dayOfWeek, day.startTime, day.endTime, day.breakStart, day.breakEnd, day.isWorking]);
+    }
+
+    await client.query('COMMIT');
+    res.json({ message: 'Staff services and schedule saved' });
+  } catch (err: any) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {}
+    console.error('Save staff schedule error:', err);
+    res.status(500).json({ error: 'Failed to save staff schedule' });
+  } finally {
+    client.release();
   }
 });
 
