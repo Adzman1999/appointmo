@@ -1305,6 +1305,16 @@ export const DemoAdminDashboardPage: React.FC = () => {
     (customerPage - 1) * CUSTOMERS_PER_PAGE,
     customerPage * CUSTOMERS_PER_PAGE
   );
+  const setupSectionLabels: Record<typeof setupSubTab, string> = {
+    profile: 'Profile & Branding',
+    services: 'Services & Pricing',
+    staff: 'Staff Specialists',
+    customers: 'Customer Accounts',
+    hris: 'HRIS & Payroll',
+    schedule: 'Schedule & Hours',
+    policies: 'Booking Policies',
+    account: 'Admin Security',
+  };
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20 transition-colors">
@@ -1545,35 +1555,39 @@ export const DemoAdminDashboardPage: React.FC = () => {
             </div>
 
             {/* Compact settings menu */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 py-3 shadow-sm">
-              <div>
-                <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">Settings menu</p>
-                <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">Choose a section to manage your store.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 py-3.5 shadow-sm">
+              <div className="min-w-0">
+                <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">Current section</p>
+                <p className="mt-0.5 text-sm font-bold text-stone-900 dark:text-stone-100">{setupSectionLabels[setupSubTab]}</p>
+                <p className="mt-0.5 text-[11px] text-stone-500 dark:text-stone-400">Use the menu to move between store, team, customer, and account settings.</p>
               </div>
-              <label className="w-full sm:w-72">
-                <span className="sr-only">Choose a store settings section</span>
-                <select
-                  value={setupSubTab}
-                  onChange={(event) => setSetupSubTab(event.target.value as typeof setupSubTab)}
-                  className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-2.5 text-xs font-semibold text-stone-800 dark:text-stone-100 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                >
-                  <optgroup label="Store">
-                    <option value="profile">Profile &amp; Branding</option>
-                    <option value="services">Services &amp; Pricing ({storeServices.length})</option>
-                    <option value="schedule">Schedule &amp; Hours</option>
-                    <option value="policies">Booking Policies</option>
-                  </optgroup>
-                  <optgroup label="Team">
-                    <option value="staff">Staff Specialists ({storeStaff.length})</option>
-                    <option value="hris">HRIS &amp; Payroll</option>
-                  </optgroup>
-                  <optgroup label="Customers">
-                    <option value="customers">Customer Accounts ({storeCustomers.length})</option>
-                  </optgroup>
-                  <optgroup label="Account">
-                    <option value="account">Admin Security</option>
-                  </optgroup>
-                </select>
+              <label className="w-full sm:w-72 shrink-0">
+                <span className="mb-1 block text-[10px] font-bold text-stone-600 dark:text-stone-300">Go to a section</span>
+                <span className="relative block">
+                  <select
+                    value={setupSubTab}
+                    onChange={(event) => setSetupSubTab(event.target.value as typeof setupSubTab)}
+                    className="w-full appearance-none rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 pl-3 pr-9 py-2.5 text-xs font-semibold text-stone-800 dark:text-stone-100 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 cursor-pointer"
+                  >
+                    <optgroup label="Store">
+                      <option value="profile">Profile &amp; Branding</option>
+                      <option value="services">Services &amp; Pricing ({storeServices.length})</option>
+                      <option value="schedule">Schedule &amp; Hours</option>
+                      <option value="policies">Booking Policies</option>
+                    </optgroup>
+                    <optgroup label="Team">
+                      <option value="staff">Staff Specialists ({storeStaff.length})</option>
+                      <option value="hris">HRIS &amp; Payroll</option>
+                    </optgroup>
+                    <optgroup label="Customers">
+                      <option value="customers">Customer Accounts ({storeCustomers.length})</option>
+                    </optgroup>
+                    <optgroup label="Account">
+                      <option value="account">Admin Security</option>
+                    </optgroup>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-500" />
+                </span>
               </label>
             </div>
 
