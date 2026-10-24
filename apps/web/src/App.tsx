@@ -33,6 +33,22 @@ const ProtectedOwnerRoute: React.FC<{ children: React.ReactElement }> = ({ child
   return children;
 };
 
+// Store admins use the business dashboard, while owner-only pages remain restricted.
+const ProtectedBusinessDashboardRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const token = localStorage.getItem('appointmo_token');
+  let role: string | undefined;
+  try {
+    role = JSON.parse(localStorage.getItem('appointmo_user') || '{}').role;
+  } catch {
+    role = undefined;
+  }
+
+  if (!token || !['owner', 'platform_admin', 'business_admin'].includes(role || '')) {
+    return <Navigate to="/admin/login" replace />;
+  }
+  return children;
+};
+
 export const App: React.FC = () => {
   return (
     <ThemeProvider>
@@ -74,9 +90,9 @@ export const App: React.FC = () => {
         <Route
           path="/admin/dashboard"
           element={
-            <ProtectedOwnerRoute>
+            <ProtectedBusinessDashboardRoute>
               <DemoAdminDashboardPage />
-            </ProtectedOwnerRoute>
+            </ProtectedBusinessDashboardRoute>
           }
         />
 
