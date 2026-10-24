@@ -314,6 +314,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [removingServiceId, setRemovingServiceId] = useState<string | null>(null);
+  const [servicePendingRemoval, setServicePendingRemoval] = useState<any | null>(null);
   const [newServiceName, setNewServiceName] = useState('');
   const [newServicePrice, setNewServicePrice] = useState('');
   const [newServiceDurationHours, setNewServiceDurationHours] = useState('0');
@@ -1117,6 +1118,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       return;
     }
 
+    const isEditing = Boolean(editingServiceId);
     setAddingService(true);
     try {
       await apiFetch(editingServiceId
@@ -1131,7 +1133,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
           description: newServiceDesc.trim() || 'Store appointment service',
         }),
       });
-      toast.success(editingServiceId ? 'Service changes saved and synced to booking' : 'Service added and synced to booking');
+      await fetchDashboardData();
+      toast.success(isEditing ? 'Service updated' : 'Service added', {
+        description: 'Your changes are now available in customer booking.',
+      });
       setNewServiceName('');
       setNewServicePrice('');
       setNewServiceDurationHours('0');
@@ -1143,9 +1148,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
       setNewServiceDesc('');
       setShowAddServiceModal(false);
       setEditingServiceId(null);
-      fetchDashboardData();
     } catch (err: any) {
-      toast.error(editingServiceId ? 'Failed to save service' : 'Failed to add service', { description: err.message });
+      toast.error(isEditing ? 'Failed to update service' : 'Failed to add service', {
+        description: err.message || 'Please try again.',
+      });
     } finally {
       setAddingService(false);
     }
@@ -1166,15 +1172,17 @@ export const DemoAdminDashboardPage: React.FC = () => {
   };
 
   const handleRemoveService = async (service: any) => {
-    if (!window.confirm(`Remove “${service.name}” from your booking menu? Existing appointments will keep their service history.`)) return;
     setRemovingServiceId(service.id);
     try {
       await apiFetch(`/demo/admin/services/${service.id}?slug=${encodeURIComponent(activeSlug)}`, { method: 'DELETE' });
-      toast.success('Service removed from booking and synced');
       if (paginatedServices.length === 1 && servicePage > 1) setServicePage((page) => page - 1);
       await fetchDashboardData();
+      setServicePendingRemoval(null);
+      toast.success('Service removed', {
+        description: 'It is no longer available for new bookings. Existing appointments are unchanged.',
+      });
     } catch (err: any) {
-      toast.error('Failed to remove service', { description: err.message });
+      toast.error('Failed to remove service', { description: err.message || 'Please try again.' });
     } finally {
       setRemovingServiceId(null);
     }
@@ -2320,7 +2328,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             <button type="button" disabled={isPending || removingServiceId === svc.id} onClick={() => openServiceEditor(svc)} className="px-2.5 py-1.5 rounded-lg border border-stone-200 dark:border-stone-700 text-[11px] font-semibold text-stone-700 dark:text-stone-300 hover:border-amber-500 hover:text-amber-600 disabled:opacity-50" aria-label={`Edit ${svc.name}`}>
                               Edit
                             </button>
-                            <button type="button" disabled={isPending || removingServiceId === svc.id} onClick={() => handleRemoveService(svc)} className="px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900/70 text-[11px] font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 disabled:opacity-50" aria-label={`Remove ${svc.name}`}>
+                            <button type="button" disabled={isPending || removingServiceId === svc.id} onClick={() => setServicePendingRemoval(svc)} className="px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900/70 text-[11px] font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 disabled:opacity-50" aria-label={`Remove ${svc.name}`}>
                               {removingServiceId === svc.id ? 'Removing…' : 'Remove'}
                             </button>
                           </div>
@@ -4275,6 +4283,37 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {servicePendingRemoval && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-stone-900/60 p-4 backdrop-blur-sm dark:bg-black/70">
+          <div role="alertdialog" aria-modal="true" aria-labelledby="remove-service-title" aria-describedby="remove-service-description" className="w-full max-w-md rounded-3xl border border-stone-200 bg-white p-6 shadow-2xl dark:border-stone-800 dark:bg-stone-900">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                <AlertTriangle className="h-5 w-5" />
+              </span>
+              <div>
+                <h3 id="remove-service-title" className="text-base font-bold text-stone-900 dark:text-stone-100">Remove service from the menu?</h3>
+                <p id="remove-service-description" className="mt-1 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+                  This stops new bookings for this service. Existing appointments keep their service details.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-3 dark:border-stone-800 dark:bg-stone-800/60">
+              <p className="text-sm font-bold text-stone-900 dark:text-stone-100">{servicePendingRemoval.name}</p>
+              <p className="mt-0.5 text-[11px] text-stone-500 dark:text-stone-400">
+                {getCurrencySymbol(editCurrency)}{Number(servicePendingRemoval.price).toLocaleString()} · {servicePendingRemoval.durationMinutes} mins · {servicePendingRemoval.category}
+              </p>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" disabled={removingServiceId === servicePendingRemoval.id} onClick={() => setServicePendingRemoval(null)} className="rounded-xl border border-stone-300 px-3.5 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800">Cancel</button>
+              <button type="button" disabled={removingServiceId === servicePendingRemoval.id} onClick={() => handleRemoveService(servicePendingRemoval)} className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50">
+                {removingServiceId === servicePendingRemoval.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
+                {removingServiceId === servicePendingRemoval.id ? 'Removing…' : 'Remove service'}
+              </button>
+            </div>
           </div>
         </div>
       )}
