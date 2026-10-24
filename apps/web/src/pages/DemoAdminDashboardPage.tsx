@@ -1009,7 +1009,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       const res: any = await apiFetch(`/demo/admin/customers?slug=${encodeURIComponent(activeSlug)}`);
       setStoreCustomers(res.customers || []);
     } catch (err: any) {
-      toast.error('Failed to load customer accounts', { description: err.message });
+      toast.error('Failed to load customer records', { description: err.message });
     } finally {
       setLoadingStoreCustomers(false);
     }
@@ -1051,6 +1051,74 @@ export const DemoAdminDashboardPage: React.FC = () => {
     } finally {
       setSavingCustomer(false);
     }
+  };
+
+  const handleExportStoreCustomers = () => {
+    if (storeCustomers.length === 0) {
+      toast.info('No customer records to export');
+      return;
+    }
+
+    const headers = [
+      'Store Name',
+      'Store Slug',
+      'Store ID',
+      'Customer ID',
+      'Customer Name',
+      'Email Address',
+      'Phone Number',
+      'Customer Record Created At',
+      'Customer Record Updated At',
+      'Total Bookings',
+      'Pending Bookings',
+      'Confirmed Bookings',
+      'Completed Bookings',
+      'Cancelled Bookings',
+      'Upcoming Bookings',
+      'Last Booking At',
+    ];
+    const csvCell = (value: unknown) => {
+      const rawValue = value == null ? '' : String(value);
+      const safeValue = /^[\s\u0000-\u001f]*[=+\-@]/.test(rawValue) ? `'${rawValue}` : rawValue;
+      return `"${safeValue.replace(/"/g, '""')}"`;
+    };
+    const isoDate = (value: unknown) => {
+      if (!value) return '';
+      const date = new Date(String(value));
+      return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
+    };
+    const rows = storeCustomers.map((customer) => [
+      currentBusiness?.name || activeSlug,
+      activeSlug,
+      customer.businessId,
+      customer.id,
+      customer.name,
+      customer.email,
+      customer.phone,
+      isoDate(customer.createdAt),
+      isoDate(customer.updatedAt),
+      Number(customer.bookingCount || 0),
+      Number(customer.pendingBookings || 0),
+      Number(customer.confirmedBookings || 0),
+      Number(customer.completedBookings || 0),
+      Number(customer.cancelledBookings || 0),
+      Number(customer.upcomingBookings || 0),
+      isoDate(customer.lastBookingAt),
+    ]);
+    const csvContent = `\uFEFF${[headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n')}`;
+    const downloadUrl = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }));
+    const downloadLink = document.createElement('a');
+    const exportDate = new Date().toISOString().slice(0, 10);
+    downloadLink.href = downloadUrl;
+    downloadLink.download = `${activeSlug}-customers-${exportDate}.csv`;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    downloadLink.remove();
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+
+    toast.success('Customer records exported', {
+      description: `Exported all ${storeCustomers.length} records with complete column headers.`,
+    });
   };
 
   // Update Account Profile
@@ -1334,7 +1402,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     profile: 'Profile & Branding',
     services: 'Services & Pricing',
     staff: 'Staff Specialists',
-    customers: 'Customer Accounts',
+    customers: 'Customers',
     hris: 'HRIS & Payroll',
     schedule: 'Schedule & Hours',
     policies: 'Booking Policies',
@@ -1347,7 +1415,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     { id: 'policies', group: 'Store', label: 'Booking Policies', icon: Sliders, count: null },
     { id: 'staff', group: 'Team', label: 'Staff Specialists', icon: Users, count: storeStaff.length },
     { id: 'hris', group: 'Team', label: 'HRIS & Payroll', icon: Wallet, count: null },
-    { id: 'customers', group: 'Customers', label: 'Customer Accounts', icon: User, count: storeCustomers.length },
+    { id: 'customers', group: 'Customers', label: 'Customers', icon: User, count: storeCustomers.length },
     { id: 'account', group: 'Account', label: 'Admin Security', icon: ShieldCheck, count: null },
   ];
   const setupMenuGroups = ['Store', 'Team', 'Customers', 'Account'];
@@ -2465,23 +2533,39 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
             {setupSubTab === 'customers' && (
               <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4 animate-in fade-in">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-stone-100 dark:border-stone-800">
-                  <div>
-                    <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
-                      <User className="w-4 h-4 text-amber-500" />
-                      <span>Customer Accounts</span>
-                    </h2>
-                    <p className="text-[11px] text-stone-500 mt-0.5">View customers who booked with this store and update their contact details.</p>
+                <div className="space-y-3 pb-3 border-b border-stone-100 dark:border-stone-800">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div>
+                      <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                        <User className="w-4 h-4 text-amber-500" />
+                        <span>Customers</span>
+                      </h2>
+                      <p className="text-[11px] text-stone-500 mt-0.5">View this store&apos;s customer and booking records, or update contact details.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleExportStoreCustomers}
+                      disabled={loadingStoreCustomers || storeCustomers.length === 0}
+                      className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-200 hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>Export CSV</span>
+                    </button>
                   </div>
-                  <label className="relative block w-full sm:w-72">
-                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-                    <input
-                      value={customerSearch}
-                      onChange={(event) => setCustomerSearch(event.target.value)}
-                      placeholder="Search name, email, or phone"
-                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-xs text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:border-amber-500"
-                    />
-                  </label>
+                  <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+                    <label className="relative block w-full sm:max-w-sm">
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                      <input
+                        value={customerSearch}
+                        onChange={(event) => setCustomerSearch(event.target.value)}
+                        placeholder="Search name, email, or phone"
+                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-xs text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:border-amber-500"
+                      />
+                    </label>
+                    <p className="text-[10px] text-stone-500 dark:text-stone-400">
+                      Export includes every customer record, independent of search or pagination.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -2498,11 +2582,11 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
                       {loadingStoreCustomers ? (
-                        <tr><td colSpan={6} className="py-12 text-center text-stone-500">Loading customer accounts…</td></tr>
+                        <tr><td colSpan={6} className="py-12 text-center text-stone-500">Loading customer records…</td></tr>
                       ) : paginatedStoreCustomers.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="py-12 text-center text-stone-500">
-                            {customerSearch.trim() ? 'No customers match your search.' : 'No customer accounts yet. Customers appear here after booking with this store.'}
+                            {customerSearch.trim() ? 'No customers match your search.' : 'No customers yet. Customers appear here after booking with this store.'}
                           </td>
                         </tr>
                       ) : paginatedStoreCustomers.map((customer) => (

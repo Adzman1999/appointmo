@@ -1088,9 +1088,13 @@ router.get('/customers', async (req: Request, res: Response) => {
   try {
     const businessId = await getDemoBusinessId(req);
     const customersRes = await query(`
-      SELECT c.id, c.name, c.email, c.phone, c.created_at AS "createdAt",
+      SELECT c.id, c.business_id AS "businessId", c.name, c.email, c.phone,
+             c.created_at AS "createdAt", c.updated_at AS "updatedAt",
              COUNT(a.id)::int AS "bookingCount",
+             (COUNT(a.id) FILTER (WHERE a.status = 'pending'))::int AS "pendingBookings",
+             (COUNT(a.id) FILTER (WHERE a.status = 'confirmed'))::int AS "confirmedBookings",
              (COUNT(a.id) FILTER (WHERE a.status = 'completed'))::int AS "completedBookings",
+             (COUNT(a.id) FILTER (WHERE a.status = 'cancelled'))::int AS "cancelledBookings",
              (COUNT(a.id) FILTER (
                WHERE a.status IN ('pending', 'confirmed') AND a.start_time > NOW()
              ))::int AS "upcomingBookings",
