@@ -14,6 +14,15 @@ import { SuperAdminApprovalPage } from './pages/SuperAdminApprovalPage';
 import { Toaster } from 'sonner';
 import { SHOW_PRODUCTION_AUTH } from './config';
 
+// Protected Route Guard requiring customer authentication
+const ProtectedCustomerRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const token = localStorage.getItem('appointmo_token');
+  if (!token) {
+    return <Navigate to="/admin/login" replace />;
+  }
+  return children;
+};
+
 // Protected Admin / Owner Route Guard for production management
 const ProtectedOwnerRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const token = localStorage.getItem('appointmo_token');
@@ -31,20 +40,63 @@ export const App: React.FC = () => {
         {/* 1. Public Landing Page */}
         <Route path="/" element={<LandingPage />} />
 
-        {/* 2. Customer Demo Experiences (Zero Accounts Required) */}
+        {/* 2. Customer Booking & Experiences (Secured for authentic accounts) */}
         <Route path="/browse" element={<DiscoveryPage />} />
         <Route path="/discover" element={<DiscoveryPage />} />
-        <Route path="/demo/book" element={<QuickBookingPage />} />
+        <Route
+          path="/demo/book"
+          element={
+            <ProtectedCustomerRoute>
+              <QuickBookingPage />
+            </ProtectedCustomerRoute>
+          }
+        />
+        <Route
+          path="/book"
+          element={
+            <ProtectedCustomerRoute>
+              <QuickBookingPage />
+            </ProtectedCustomerRoute>
+          }
+        />
         <Route path="/demo/concierge" element={<ConciergePage />} />
         <Route path="/concierge" element={<ConciergePage />} />
 
-        {/* 3. Interactive Admin Demo (Isolated Fictional Demo Business) */}
-        <Route path="/demo/admin" element={<DemoAdminDashboardPage />} />
-        <Route path="/admin/dashboard" element={<DemoAdminDashboardPage />} />
+        {/* 3. Interactive Admin (Isolated Fictional Demo Business) */}
+        <Route
+          path="/demo/admin"
+          element={
+            <ProtectedOwnerRoute>
+              <DemoAdminDashboardPage />
+            </ProtectedOwnerRoute>
+          }
+        />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedOwnerRoute>
+              <DemoAdminDashboardPage />
+            </ProtectedOwnerRoute>
+          }
+        />
 
         {/* 4. Customer Secure Booking Lookup & Management */}
-        <Route path="/customer/portal" element={<CustomerPortalPage />} />
-        <Route path="/manage" element={<CustomerPortalPage />} />
+        <Route
+          path="/customer/portal"
+          element={
+            <ProtectedCustomerRoute>
+              <CustomerPortalPage />
+            </ProtectedCustomerRoute>
+          }
+        />
+        <Route
+          path="/manage"
+          element={
+            <ProtectedCustomerRoute>
+              <CustomerPortalPage />
+            </ProtectedCustomerRoute>
+          }
+        />
 
         {/* 5. Production Authentication (Hidden from public links, but functional) */}
         <Route path="/admin/login" element={<AdminLoginPage />} />

@@ -154,49 +154,17 @@ export const AdminLoginPage: React.FC = () => {
       {/* Main Auth Form Container */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 my-6">
         <div className="w-full bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-5 sm:p-8 shadow-xl transition-all duration-300 max-w-lg">
-          {/* Header & Mode Switcher */}
-          <div className="mb-6 space-y-4">
+          {/* Header */}
+          <div className="mb-6 space-y-2">
             <div className="text-left">
               <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
-                {authMode === 'signin' ? 'Sign In to Appointmo' : 'Create an Account'}
+                {authMode === 'signin' ? 'Sign In to Appointmo' : 'Create Customer Account'}
               </h1>
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 leading-relaxed">
                 {authMode === 'signin' 
                   ? 'Access your appointments, store schedule, or admin console' 
-                  : 'Register as a customer to manage and book appointments'}
+                  : 'Register your verified profile to manage and book appointments'}
               </p>
-            </div>
-
-            {/* Mode Switcher Pills (Sign In vs Sign Up) */}
-            <div className="grid grid-cols-2 p-1 bg-stone-100 dark:bg-stone-800 rounded-2xl border border-stone-200 dark:border-stone-700">
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode('signin');
-                  setError(null);
-                }}
-                className={`py-2 text-center rounded-xl text-xs font-bold transition ${
-                  authMode === 'signin'
-                    ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-white shadow-sm'
-                    : 'text-stone-500 hover:text-stone-900 dark:text-stone-400'
-                }`}
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode('signup');
-                  setError(null);
-                }}
-                className={`py-2 text-center rounded-xl text-xs font-bold transition ${
-                  authMode === 'signup'
-                    ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-white shadow-sm'
-                    : 'text-stone-500 hover:text-stone-900 dark:text-stone-400'
-                }`}
-              >
-                Sign Up
-              </button>
             </div>
           </div>
 
@@ -217,21 +185,37 @@ export const AdminLoginPage: React.FC = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* If Sign Up: ask for Formal Name, Country, and Phone */}
+            {/* If Sign Up: Grouped and Organized Customer Fields */}
             {authMode === 'signup' && (
-              <div className="space-y-3">
-                <FormalNameFields
-                  firstName={firstName}
-                  middleName={middleName}
-                  lastName={lastName}
-                  onFirstNameChange={setFirstName}
-                  onMiddleNameChange={setMiddleName}
-                  onLastNameChange={setLastName}
-                  required={true}
-                  layout="stacked"
-                />
+              <div className="space-y-4">
+                {/* Group 1: Personal Identity */}
+                <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-850 border border-stone-200 dark:border-stone-800 space-y-3">
+                  <div className="flex items-center space-x-2 pb-1 border-b border-stone-200/60 dark:border-stone-800">
+                    <UserCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span className="font-bold text-xs text-stone-900 dark:text-stone-100">
+                      Personal Identity
+                    </span>
+                  </div>
+                  <FormalNameFields
+                    firstName={firstName}
+                    middleName={middleName}
+                    lastName={lastName}
+                    onFirstNameChange={setFirstName}
+                    onMiddleNameChange={setMiddleName}
+                    onLastNameChange={setLastName}
+                    required={true}
+                    layout="stacked"
+                  />
+                </div>
 
-                <div className="space-y-3">
+                {/* Group 2: Contact Details */}
+                <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-850 border border-stone-200 dark:border-stone-800 space-y-3">
+                  <div className="flex items-center space-x-2 pb-1 border-b border-stone-200/60 dark:border-stone-800">
+                    <Phone className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span className="font-bold text-xs text-stone-900 dark:text-stone-100">
+                      Contact &amp; Location
+                    </span>
+                  </div>
                   <div>
                     <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
                       Country <span className="text-rose-500 font-bold">*</span>
@@ -272,32 +256,42 @@ export const AdminLoginPage: React.FC = () => {
               </div>
             )}
 
-            {/* Email and Password */}
-            <div>
-              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                Email Address <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@example.com"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-              />
-            </div>
+            {/* Account Credentials Group */}
+            <div className={authMode === 'signup' ? 'p-4 rounded-2xl bg-stone-50 dark:bg-stone-850 border border-stone-200 dark:border-stone-800 space-y-3' : 'space-y-4'}>
+              {authMode === 'signup' && (
+                <div className="flex items-center space-x-2 pb-1 border-b border-stone-200/60 dark:border-stone-800">
+                  <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <span className="font-bold text-xs text-stone-900 dark:text-stone-100">
+                    Account Security Credentials
+                  </span>
+                </div>
+              )}
 
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
-                  Password <span className="text-rose-500">*</span>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Email Address <span className="text-rose-500">*</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="text-[11px] text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100 flex items-center space-x-1 font-medium transition"
-                >
-                  {showPassword ? (
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
+                    Password <span className="text-rose-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-[11px] text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100 flex items-center space-x-1 font-medium transition"
+                  >
+                    {showPassword ? (
                     <>
                       <EyeOff className="w-3.5 h-3.5" />
                       <span>Hide</span>
@@ -368,6 +362,7 @@ export const AdminLoginPage: React.FC = () => {
                   )}
                 </div>
               )}
+              </div>
             </div>
 
             <button
@@ -395,7 +390,7 @@ export const AdminLoginPage: React.FC = () => {
             </button>
           </form>
 
-          {/* Toggle between Sign In / Sign Up */}
+          {/* Switch link between Sign In / Sign Up */}
           <div className="mt-6 text-center text-xs text-stone-500 dark:text-stone-400">
             {authMode === 'signin' ? (
               <span>
@@ -403,12 +398,13 @@ export const AdminLoginPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
+                    navigate('/admin/login?mode=signup');
                     setAuthMode('signup');
                     setError(null);
                   }}
                   className="font-bold text-amber-600 dark:text-amber-400 hover:underline"
                 >
-                  Create one now
+                  Create customer account
                 </button>
               </span>
             ) : (
@@ -417,6 +413,7 @@ export const AdminLoginPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
+                    navigate('/admin/login?mode=signin');
                     setAuthMode('signin');
                     setError(null);
                   }}

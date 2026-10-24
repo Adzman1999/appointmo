@@ -82,6 +82,9 @@ export const QuickBookingPage: React.FC = () => {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [completedBooking, setCompletedBooking] = useState<any | null>(null);
 
+  // Step-by-step wizard chunking: 1 = Service, 2 = Branch & Schedule, 3 = Guest Details & Review
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+
   // Auto-fill customer details from logged-in customer account or previous booking session
   useEffect(() => {
     // 1. Check logged-in user in localStorage first
@@ -405,183 +408,352 @@ export const QuickBookingPage: React.FC = () => {
           </div>
         ) : (
           <form onSubmit={handleBookingSubmit} className="space-y-6">
-            {/* Step 1: Select Service */}
-            <div className="bg-stone-50/80 dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200 mb-4">
-                1. Select a Service
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {services.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setSelectedService(s)}
-                    className={`p-4 rounded-2xl border text-left transition ${
-                      selectedService?.id === s.id
-                        ? 'border-stone-900 dark:border-amber-400 ring-2 ring-stone-900 dark:ring-amber-400 bg-stone-100 dark:bg-stone-800 shadow-sm'
-                        : 'border-stone-200 dark:border-stone-800 hover:border-stone-400 dark:hover:border-stone-700 bg-white dark:bg-stone-800/90 text-stone-900 dark:text-stone-100'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-1">
-                      <span className="font-bold text-sm text-stone-900 dark:text-stone-100">{s.name}</span>
-                      <span className="font-bold text-sm text-stone-900 dark:text-amber-400">₱{s.price}</span>
-                    </div>
-                    <p className="text-xs text-stone-700 dark:text-stone-300 line-clamp-2 leading-relaxed">{s.description}</p>
-                    <div className="text-[11px] font-semibold text-stone-600 dark:text-stone-400 mt-2">{s.durationMinutes} mins • {s.category}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Step 2: Date & Available Time Slot */}
-            <div className="bg-stone-50/80 dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200 mb-4">
-                2. Choose Date &amp; Available Time
-              </h2>
-              <div className="mb-4">
-                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">Select Date</label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 font-medium"
-                />
-              </div>
-
-              {loadingSlots ? (
-                <div className="py-8 text-center text-xs text-stone-500 dark:text-stone-400 font-medium">
-                  Calculating real calendar availability...
-                </div>
-              ) : slots.length === 0 ? (
-                <div className="py-8 text-center text-xs text-stone-600 dark:text-stone-300 bg-stone-50 dark:bg-stone-800/60 rounded-2xl border border-stone-200 dark:border-stone-700 font-medium">
-                  No available openings found for this date. Please try another day or use our{' '}
-                  <button
-                    type="button"
-                    onClick={() => navigate('/demo/concierge')}
-                    className="text-stone-900 dark:text-amber-400 font-bold underline"
-                  >
-                    Concierge
-                  </button>
-                  .
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  {slots.map((slot, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setSelectedSlot(slot)}
-                      className={`p-3 rounded-xl border text-center transition ${
-                        selectedSlot?.startTime === slot.startTime && selectedSlot?.staffId === slot.staffId
-                          ? 'border-stone-900 dark:border-amber-400 bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold shadow-sm'
-                          : 'border-stone-200 dark:border-stone-700 hover:border-stone-400 dark:hover:border-stone-600 bg-white dark:bg-stone-800/80 text-stone-800 dark:text-stone-200 font-medium'
-                      }`}
-                    >
-                      <div className="font-bold text-xs">
-                        {new Date(slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                      <div className={`text-[10px] mt-0.5 truncate ${selectedSlot?.startTime === slot.startTime ? 'text-stone-300 dark:text-stone-900 font-semibold' : 'text-stone-500 dark:text-stone-400'}`}>
-                        {slot.staffName}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Step 3: Customer Information */}
-            <div className="bg-stone-50/80 dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200 mb-4">
-                3. Customer Contact Info
-              </h2>
-
-              {bookingError && (
-                <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs mb-4 flex items-center space-x-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{bookingError}</span>
-                </div>
-              )}
-
-              <div className="space-y-4 text-xs">
-                <FormalNameFields
-                  firstName={customerFirstName}
-                  middleName={customerMiddleName}
-                  lastName={customerLastName}
-                  onFirstNameChange={setCustomerFirstName}
-                  onMiddleNameChange={setCustomerMiddleName}
-                  onLastNameChange={setCustomerLastName}
-                  required={true}
-                  labels={{
-                    first: 'First Name',
-                    middle: 'Middle Initial / Name',
-                    last: 'Last Name',
-                  }}
-                />
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                      Email Address <span className="text-rose-500 font-bold">* (Required)</span>
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="beatriz@example.com"
-                      value={customerEmail}
-                      onChange={(e) => setCustomerEmail(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block font-semibold text-stone-700 dark:text-stone-300">
-                        Phone Number <span className="text-rose-500 font-bold">* (Required)</span>
-                      </label>
-                      <span className="text-[10px] text-stone-400">
-                        {getCountryByName(business?.country || 'Philippines').dialCode} • Max {getCountryByName(business?.country || 'Philippines').nationalPhoneLength} digits
-                      </span>
-                    </div>
-                    <CountryPhoneInput
-                      countryNameOrCode={business?.country || 'Philippines'}
-                      value={customerPhone}
-                      onChange={(val) => setCustomerPhone(val)}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Notes / Preferences <span className="text-stone-400 font-normal">(Optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Any special requests or instructions..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-6">
+            {/* Step Wizard Indicator */}
+            <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-3 sm:p-4 shadow-sm">
+              <div className="grid grid-cols-3 gap-2">
                 <button
-                  type="submit"
-                  disabled={
-                    bookingLoading ||
-                    !selectedSlot ||
-                    !customerFirstName.trim() ||
-                    !customerLastName.trim() ||
-                    !customerEmail.trim() ||
-                    !validateFullPhoneNumber(customerPhone, business?.country || 'Philippines', true).isValid
-                  }
-                  className="w-full bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold py-3.5 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition text-xs shadow-md disabled:opacity-50 flex items-center justify-center space-x-2"
+                  type="button"
+                  onClick={() => setCurrentStep(1)}
+                  className={`flex items-center space-x-2 p-2 sm:p-3 rounded-xl transition text-left ${
+                    currentStep === 1
+                      ? 'bg-stone-900 text-white dark:bg-amber-400 dark:text-stone-950 font-bold'
+                      : selectedService
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300'
+                      : 'text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800'
+                  }`}
                 >
-                  <span>{bookingLoading ? 'Reserving...' : 'Confirm Appointment Booking'}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 font-bold ${
+                    currentStep === 1
+                      ? 'bg-white/20 dark:bg-stone-950/20'
+                      : selectedService
+                      ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100'
+                      : 'bg-stone-200 dark:bg-stone-700'
+                  }`}>
+                    {selectedService && currentStep !== 1 ? '✓' : '1'}
+                  </span>
+                  <div className="hidden sm:block truncate">
+                    <p className="text-xs leading-none">Service</p>
+                    <p className="text-[10px] opacity-80 truncate mt-0.5">{selectedService?.name || 'Choose service'}</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!selectedService}
+                  onClick={() => selectedService && setCurrentStep(2)}
+                  className={`flex items-center space-x-2 p-2 sm:p-3 rounded-xl transition text-left disabled:opacity-40 ${
+                    currentStep === 2
+                      ? 'bg-stone-900 text-white dark:bg-amber-400 dark:text-stone-950 font-bold'
+                      : selectedSlot
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300'
+                      : 'text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800'
+                  }`}
+                >
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 font-bold ${
+                    currentStep === 2
+                      ? 'bg-white/20 dark:bg-stone-950/20'
+                      : selectedSlot
+                      ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100'
+                      : 'bg-stone-200 dark:bg-stone-700'
+                  }`}>
+                    {selectedSlot && currentStep !== 2 ? '✓' : '2'}
+                  </span>
+                  <div className="hidden sm:block truncate">
+                    <p className="text-xs leading-none">Schedule</p>
+                    <p className="text-[10px] opacity-80 truncate mt-0.5">{selectedSlot ? new Date(selectedSlot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pick date & slot'}</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!selectedSlot}
+                  onClick={() => selectedSlot && setCurrentStep(3)}
+                  className={`flex items-center space-x-2 p-2 sm:p-3 rounded-xl transition text-left disabled:opacity-40 ${
+                    currentStep === 3
+                      ? 'bg-stone-900 text-white dark:bg-amber-400 dark:text-stone-950 font-bold'
+                      : 'text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800'
+                  }`}
+                >
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 font-bold ${
+                    currentStep === 3 ? 'bg-white/20 dark:bg-stone-950/20' : 'bg-stone-200 dark:bg-stone-700'
+                  }`}>
+                    3
+                  </span>
+                  <div className="hidden sm:block truncate">
+                    <p className="text-xs leading-none">Details</p>
+                    <p className="text-[10px] opacity-80 truncate mt-0.5">Guest & Confirm</p>
+                  </div>
                 </button>
               </div>
             </div>
+
+            {/* Chunk 1: Select Service */}
+            {currentStep === 1 && (
+              <div className="bg-stone-50/80 dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm space-y-4 animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200">
+                      Step 1: Select a Service
+                    </h2>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">Choose which treatment or consultation you would like to book.</p>
+                  </div>
+                  {selectedService && (
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Selected</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {services.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedService(s);
+                        setSelectedSlot(null);
+                      }}
+                      className={`p-4 rounded-2xl border text-left transition ${
+                        selectedService?.id === s.id
+                          ? 'border-stone-900 dark:border-amber-400 ring-2 ring-stone-900 dark:ring-amber-400 bg-stone-100 dark:bg-stone-800 shadow-sm'
+                          : 'border-stone-200 dark:border-stone-800 hover:border-stone-400 dark:hover:border-stone-700 bg-white dark:bg-stone-800/90 text-stone-900 dark:text-stone-100'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-bold text-sm text-stone-900 dark:text-stone-100">{s.name}</span>
+                        <span className="font-bold text-sm text-stone-900 dark:text-amber-400">₱{s.price}</span>
+                      </div>
+                      <p className="text-xs text-stone-700 dark:text-stone-300 line-clamp-2 leading-relaxed">{s.description}</p>
+                      <div className="text-[11px] font-semibold text-stone-600 dark:text-stone-400 mt-2">{s.durationMinutes} mins • {s.category}</div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex justify-end pt-4 border-t border-stone-200 dark:border-stone-800">
+                  <button
+                    type="button"
+                    disabled={!selectedService}
+                    onClick={() => setCurrentStep(2)}
+                    className="px-6 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center space-x-2 disabled:opacity-40"
+                  >
+                    <span>Continue to Schedule</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Chunk 2: Date & Available Time Slot */}
+            {currentStep === 2 && (
+              <div className="bg-stone-50/80 dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm space-y-4 animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200">
+                      Step 2: Choose Date & Available Slot
+                    </h2>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                      Selected: <strong className="text-stone-800 dark:text-stone-200">{selectedService?.name}</strong> (₱{selectedService?.price})
+                    </p>
+                  </div>
+                  {selectedSlot && (
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Slot Chosen</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="bg-white dark:bg-stone-800/60 p-4 rounded-2xl border border-stone-200 dark:border-stone-700">
+                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">Select Appointment Date</label>
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 font-medium"
+                  />
+                </div>
+
+                {loadingSlots ? (
+                  <div className="py-8 text-center text-xs text-stone-500 dark:text-stone-400 font-medium">
+                    Calculating real calendar availability...
+                  </div>
+                ) : slots.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-stone-600 dark:text-stone-300 bg-stone-50 dark:bg-stone-800/60 rounded-2xl border border-stone-200 dark:border-stone-700 font-medium">
+                    No available openings found for this date. Please try another day or use our{' '}
+                    <button
+                      type="button"
+                      onClick={() => navigate('/demo/concierge')}
+                      className="text-stone-900 dark:text-amber-400 font-bold underline"
+                    >
+                      Concierge
+                    </button>
+                    .
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300">Available Time Openings</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      {slots.map((slot, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setSelectedSlot(slot)}
+                          className={`p-3 rounded-xl border text-center transition ${
+                            selectedSlot?.startTime === slot.startTime && selectedSlot?.staffId === slot.staffId
+                              ? 'border-stone-900 dark:border-amber-400 bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold shadow-sm'
+                              : 'border-stone-200 dark:border-stone-700 hover:border-stone-400 dark:hover:border-stone-600 bg-white dark:bg-stone-800/80 text-stone-800 dark:text-stone-200 font-medium'
+                          }`}
+                        >
+                          <div className="font-bold text-xs">
+                            {new Date(slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                          <div className={`text-[10px] mt-0.5 truncate ${selectedSlot?.startTime === slot.startTime ? 'text-stone-300 dark:text-stone-900 font-semibold' : 'text-stone-500 dark:text-stone-400'}`}>
+                            {slot.staffName}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center pt-4 border-t border-stone-200 dark:border-stone-800">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(1)}
+                    className="px-4 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 text-xs font-semibold hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+                  >
+                    Back to Services
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedSlot}
+                    onClick={() => setCurrentStep(3)}
+                    className="px-6 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center space-x-2 disabled:opacity-40"
+                  >
+                    <span>Continue to Details</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Chunk 3: Customer Information & Final Confirmation */}
+            {currentStep === 3 && (
+              <div className="bg-stone-50/80 dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 shadow-sm space-y-4 animate-in fade-in">
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200">
+                    Step 3: Customer Details & Confirmation
+                  </h2>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">Please provide your contact information to reserve this appointment slot.</p>
+                </div>
+
+                {/* Booking Summary Card */}
+                <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-bold text-amber-950 dark:text-amber-100 text-sm block">{selectedService?.name}</span>
+                    <span className="text-amber-800 dark:text-amber-300 text-xs mt-0.5 block">
+                      {new Date(selectedSlot?.startTime || '').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} at {new Date(selectedSlot?.startTime || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Specialist: {selectedSlot?.staffName}
+                    </span>
+                  </div>
+                  <span className="text-base font-extrabold text-stone-900 dark:text-amber-400">₱{selectedService?.price}</span>
+                </div>
+
+                {bookingError && (
+                  <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center space-x-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{bookingError}</span>
+                  </div>
+                )}
+
+                <div className="space-y-4 text-xs">
+                  <FormalNameFields
+                    firstName={customerFirstName}
+                    middleName={customerMiddleName}
+                    lastName={customerLastName}
+                    onFirstNameChange={setCustomerFirstName}
+                    onMiddleNameChange={setCustomerMiddleName}
+                    onLastNameChange={setCustomerLastName}
+                    required={true}
+                    labels={{
+                      first: 'First Name',
+                      middle: 'Middle Initial / Name',
+                      last: 'Last Name',
+                    }}
+                  />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                        Email Address <span className="text-rose-500 font-bold">* (Required)</span>
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="beatriz@example.com"
+                        value={customerEmail}
+                        onChange={(e) => setCustomerEmail(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block font-semibold text-stone-700 dark:text-stone-300">
+                          Phone Number <span className="text-rose-500 font-bold">* (Required)</span>
+                        </label>
+                        <span className="text-[10px] text-stone-400">
+                          {getCountryByName(business?.country || 'Philippines').dialCode} • Max {getCountryByName(business?.country || 'Philippines').nationalPhoneLength} digits
+                        </span>
+                      </div>
+                      <CountryPhoneInput
+                        countryNameOrCode={business?.country || 'Philippines'}
+                        value={customerPhone}
+                        onChange={(val) => setCustomerPhone(val)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                      Notes / Preferences <span className="text-stone-400 font-normal">(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Any special requests or instructions..."
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center pt-6 border-t border-stone-200 dark:border-stone-800">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(2)}
+                    className="px-4 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 text-xs font-semibold hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+                  >
+                    Back to Schedule
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={
+                      bookingLoading ||
+                      !selectedSlot ||
+                      !customerFirstName.trim() ||
+                      !customerLastName.trim() ||
+                      !customerEmail.trim() ||
+                      !validateFullPhoneNumber(customerPhone, business?.country || 'Philippines', true).isValid
+                    }
+                    className="bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold px-7 py-3 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition text-xs shadow-md disabled:opacity-50 flex items-center space-x-2"
+                  >
+                    <span>{bookingLoading ? 'Reserving...' : 'Confirm Appointment Booking'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </form>
         )}
       </div>
