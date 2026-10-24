@@ -9,7 +9,7 @@ import { DemoTopNav } from '../components/DemoTopNav';
 import { toast } from 'sonner';
 import { FormalNameFields } from '../components/FormalNameFields';
 import { CountryPhoneInput } from '../components/CountryPhoneInput';
-import { formatFormalName, validateFullPhoneNumber, normalizePhoneNumber, getCountryByName } from '../lib/countryConfig';
+import { formatFormalName, parseFormalName, validateFullPhoneNumber, normalizePhoneNumber, getCountryByName } from '../lib/countryConfig';
 
 interface Service {
   id: string;
@@ -84,6 +84,28 @@ export const QuickBookingPage: React.FC = () => {
 
   // Step-by-step wizard chunking: 1 = Service, 2 = Branch & Schedule, 3 = Guest Details & Review
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+
+  // Use account details only for authenticated customers; guest forms stay blank.
+  useEffect(() => {
+    if (!localStorage.getItem('appointmo_token')) return;
+
+    try {
+      const storedUser = localStorage.getItem('appointmo_user');
+      const user = storedUser ? JSON.parse(storedUser) : null;
+      if (user?.role !== 'customer') return;
+
+      if (user.name) {
+        const parsedName = parseFormalName(user.name);
+        setCustomerFirstName(parsedName.firstName);
+        setCustomerMiddleName(parsedName.middleName || '');
+        setCustomerLastName(parsedName.lastName);
+      }
+      if (user.email) setCustomerEmail(user.email);
+      if (user.phone) setCustomerPhone(user.phone);
+    } catch {
+      // Malformed or missing account details leave the form blank for manual entry.
+    }
+  }, []);
 
   // 1. Fetch Business Profile
   useEffect(() => {
