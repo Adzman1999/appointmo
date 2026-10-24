@@ -135,6 +135,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
   // Sync state whenever initialData or modal open status changes
   useEffect(() => {
     if (isOpen) {
+      setWizardStep(1);
       if (initialData) {
         setCreateName(initialData.name || '');
         setCreateTagline(initialData.tagline || '');
@@ -151,6 +152,20 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
     }
   }, [isOpen, initialData]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousOverscrollBehavior = document.documentElement.style.overscrollBehavior;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overscrollBehavior = 'none';
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overscrollBehavior = previousOverscrollBehavior;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   // Format 24-hr time string (e.g. "09:00", "18:00") into friendly display e.g. "9:00 AM - 6:00 PM"
@@ -166,6 +181,18 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
     };
     return `${formatSingle(start || '09:00')} - ${formatSingle(end || '18:00')}`;
   };
+
+  const ownerEmailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail.trim());
+  const ownerStepComplete = Boolean(
+    ownerFirstName.trim()
+      && ownerLastName.trim()
+      && ownerEmailIsValid
+      && validateStrongPassword(ownerPassword).isValid
+      && ownerPassword === ownerConfirmPassword
+  );
+  const selectedCategory = isCustomCategory ? customCategoryInput.trim() : createCategory.trim();
+  const brandStepComplete = Boolean(createName.trim() && selectedCategory);
+  const canOpenLocationStep = ownerStepComplete && brandStepComplete;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,8 +221,8 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
       return;
     }
 
-    if (!ownerEmail.trim()) {
-      setCreateError('Please provide an owner email address');
+    if (!ownerEmailIsValid) {
+      setCreateError('Please provide a valid owner email address');
       setCreatingBusiness(false);
       return;
     }
@@ -306,8 +333,8 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-stone-900/60 dark:bg-stone-950/80 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-2xl sm:max-w-3xl w-full shadow-2xl max-h-[92vh] overflow-y-auto text-stone-900 dark:text-stone-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none p-4 sm:p-6 bg-stone-900/60 dark:bg-stone-950/80 backdrop-blur-sm animate-in fade-in">
+      <div className="box-border max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-3xl border border-stone-200 bg-white p-6 text-stone-900 shadow-2xl dark:border-stone-800 dark:bg-stone-900 sm:max-w-3xl sm:p-8">
         {submittedStoreNotice ? (
           <div className="text-center py-6 sm:py-8 space-y-6 animate-in zoom-in-95">
             <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-sm">
@@ -398,8 +425,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             </button>
             <button
               type="button"
+              disabled={!ownerStepComplete}
               onClick={() => setWizardStep(2)}
-              className={`py-2 px-3 rounded-xl flex items-center justify-center space-x-1.5 transition font-bold ${
+              className={`py-2 px-3 rounded-xl flex items-center justify-center space-x-1.5 transition font-bold disabled:cursor-not-allowed disabled:opacity-40 ${
                 wizardStep === 2
                   ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-white shadow-sm'
                   : 'text-stone-500 hover:text-stone-800 dark:text-stone-400'
@@ -410,8 +438,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
             </button>
             <button
               type="button"
+              disabled={!canOpenLocationStep}
               onClick={() => setWizardStep(3)}
-              className={`py-2 px-3 rounded-xl flex items-center justify-center space-x-1.5 transition font-bold ${
+              className={`py-2 px-3 rounded-xl flex items-center justify-center space-x-1.5 transition font-bold disabled:cursor-not-allowed disabled:opacity-40 ${
                 wizardStep === 3
                   ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-white shadow-sm'
                   : 'text-stone-500 hover:text-stone-800 dark:text-stone-400'
@@ -580,15 +609,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
               <div className="flex justify-end pt-2">
                 <button
                   type="button"
-                  disabled={
-                    !ownerFirstName.trim() || 
-                    !ownerLastName.trim() || 
-                    !ownerEmail.trim() || 
-                    !validateStrongPassword(ownerPassword).isValid ||
-                    ownerPassword !== ownerConfirmPassword
-                  }
+                  disabled={!ownerStepComplete}
                   onClick={() => setWizardStep(2)}
-                  className="px-6 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center space-x-2 disabled:opacity-40"
+                  className="px-6 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center space-x-2 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span>Next: Store Brand</span>
                   <ArrowRight className="w-4 h-4" />
@@ -746,9 +769,9 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  disabled={!createName.trim() || (isCustomCategory ? !customCategoryInput.trim() : !createCategory)}
+                  disabled={!brandStepComplete}
                   onClick={() => setWizardStep(3)}
-                  className="px-6 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center space-x-2 disabled:opacity-40"
+                  className="px-6 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center space-x-2 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span>Next: Location & Hours</span>
                   <ArrowRight className="w-4 h-4" />
@@ -797,6 +820,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
                     />
                   ) : (
                     <select
+                      required
                       value={createCity}
                       onChange={(e) => setCreateCity(e.target.value)}
                       className="w-full h-10 px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
