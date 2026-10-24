@@ -8,6 +8,9 @@ import {
 import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { Pagination } from '../components/Pagination';
+import { RecordListToolbar } from '../components/RecordListToolbar';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { toast } from 'sonner';
 
 interface CustomerAppointment {
@@ -49,6 +52,12 @@ interface CustomerProfile {
   createdAt: string;
 }
 
+const matchesRecordSearch = (values: any[], search: string) => {
+  const term = search.trim().toLowerCase();
+  if (!term) return true;
+  return values.some((value) => String(value ?? '').toLowerCase().includes(term));
+};
+
 export const CustomerPortalPage: React.FC = () => {
   const navigate = useNavigate();
 
@@ -62,6 +71,14 @@ export const CustomerPortalPage: React.FC = () => {
   const [past, setPast] = useState<CustomerAppointment[]>([]);
   const [cancelled, setCancelled] = useState<CustomerAppointment[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [upcomingSearch, setUpcomingSearch] = useState('');
+  const [upcomingStatusFilter, setUpcomingStatusFilter] = useState('all');
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState('all');
+  const [reviewSearch, setReviewSearch] = useState('');
+  const [notificationSearch, setNotificationSearch] = useState('');
+  const [notificationReadFilter, setNotificationReadFilter] = useState('all');
+  const [notificationPreviewSearch, setNotificationPreviewSearch] = useState('');
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +86,8 @@ export const CustomerPortalPage: React.FC = () => {
 
   // Selected appointment for details modal
   const [selectedAppt, setSelectedAppt] = useState<CustomerAppointment | null>(null);
+  const [cancelModalAppt, setCancelModalAppt] = useState<CustomerAppointment | null>(null);
+  const [cancellingAppointmentId, setCancellingAppointmentId] = useState<string | null>(null);
   const [ratingAppt, setRatingAppt] = useState<CustomerAppointment | null>(null);
   const [storeRating, setStoreRating] = useState(5);
   const [staffRating, setStaffRating] = useState(5);
@@ -80,7 +99,18 @@ export const CustomerPortalPage: React.FC = () => {
 
   // Notification dropdown
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notificationPreviewPage, setNotificationPreviewPage] = useState(1);
   const notifRef = React.useRef<HTMLDivElement>(null);
+
+  const UPCOMING_PER_PAGE = 6;
+  const HISTORY_PER_PAGE = 8;
+  const REVIEWS_PER_PAGE = 6;
+  const NOTIFICATIONS_PER_PAGE = 8;
+  const NOTIFICATION_PREVIEW_PER_PAGE = 4;
+  const [upcomingPage, setUpcomingPage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [reviewPage, setReviewPage] = useState(1);
+  const [notificationPage, setNotificationPage] = useState(1);
 
   // Close notification popover when clicking outside
   useEffect(() => {
@@ -179,6 +209,80 @@ export const CustomerPortalPage: React.FC = () => {
   const unreadCount = notifications.filter(n => !n.isRead).length;
   const reviewableAppointments = past.filter((appt) => appt.status === 'completed' && !appt.storeRating);
   const completedVisitCount = appointments.filter((appt) => appt.status === 'completed').length;
+  const allHistoryAppointments = [...past, ...cancelled].sort(
+    (left, right) => new Date(right.startTime).getTime() - new Date(left.startTime).getTime()
+  );
+  const filteredUpcomingAppointments = upcoming.filter((appt) => {
+    const matchesSearch = matchesRecordSearch([
+      appt.bookingReference, appt.serviceName, appt.businessName, appt.branchName,
+      appt.staffName, appt.recipientName,
+    ], upcomingSearch);
+    return matchesSearch && (upcomingStatusFilter === 'all' || appt.status === upcomingStatusFilter);
+  });
+  const filteredHistoryAppointments = allHistoryAppointments.filter((appt) => {
+    const matchesSearch = matchesRecordSearch([
+      appt.bookingReference, appt.serviceName, appt.businessName, appt.branchName,
+      appt.staffName, appt.recipientName,
+    ], historySearch);
+    return matchesSearch && (historyStatusFilter === 'all' || appt.status === historyStatusFilter);
+  });
+  const filteredReviewableAppointments = reviewableAppointments.filter((appt) =>
+    matchesRecordSearch([appt.bookingReference, appt.serviceName, appt.businessName, appt.staffName], reviewSearch)
+  );
+  const filteredCustomerNotifications = notifications.filter((notification) => {
+    const matchesSearch = matchesRecordSearch([
+      notification.title, notification.message, notification.bookingReference, notification.serviceName,
+    ], notificationSearch);
+    const matchesReadState = notificationReadFilter === 'all'
+      || (notificationReadFilter === 'unread' ? !notification.isRead : notification.isRead);
+    return matchesSearch && matchesReadState;
+  });
+  const filteredCustomerNotificationPreview = notifications.filter((notification) =>
+    matchesRecordSearch([
+      notification.title, notification.message, notification.bookingReference, notification.serviceName,
+    ], notificationPreviewSearch)
+  );
+
+  const totalUpcomingPages = Math.ceil(filteredUpcomingAppointments.length / UPCOMING_PER_PAGE);
+  const paginatedUpcomingAppointments = filteredUpcomingAppointments.slice(
+    (upcomingPage - 1) * UPCOMING_PER_PAGE,
+    upcomingPage * UPCOMING_PER_PAGE
+  );
+  const totalHistoryPages = Math.ceil(filteredHistoryAppointments.length / HISTORY_PER_PAGE);
+  const paginatedHistoryAppointments = filteredHistoryAppointments.slice(
+    (historyPage - 1) * HISTORY_PER_PAGE,
+    historyPage * HISTORY_PER_PAGE
+  );
+  const totalReviewPages = Math.ceil(filteredReviewableAppointments.length / REVIEWS_PER_PAGE);
+  const paginatedReviewableAppointments = filteredReviewableAppointments.slice(
+    (reviewPage - 1) * REVIEWS_PER_PAGE,
+    reviewPage * REVIEWS_PER_PAGE
+  );
+  const totalNotificationPages = Math.ceil(filteredCustomerNotifications.length / NOTIFICATIONS_PER_PAGE);
+  const paginatedCustomerNotifications = filteredCustomerNotifications.slice(
+    (notificationPage - 1) * NOTIFICATIONS_PER_PAGE,
+    notificationPage * NOTIFICATIONS_PER_PAGE
+  );
+  const totalNotificationPreviewPages = Math.ceil(filteredCustomerNotificationPreview.length / NOTIFICATION_PREVIEW_PER_PAGE);
+  const paginatedNotificationPreview = filteredCustomerNotificationPreview.slice(
+    (notificationPreviewPage - 1) * NOTIFICATION_PREVIEW_PER_PAGE,
+    notificationPreviewPage * NOTIFICATION_PREVIEW_PER_PAGE
+  );
+
+  useEffect(() => setUpcomingPage(1), [upcomingSearch, upcomingStatusFilter]);
+  useEffect(() => setHistoryPage(1), [historySearch, historyStatusFilter]);
+  useEffect(() => setReviewPage(1), [reviewSearch]);
+  useEffect(() => {
+    setNotificationPage(1);
+  }, [notificationSearch, notificationReadFilter]);
+  useEffect(() => setNotificationPreviewPage(1), [notificationPreviewSearch]);
+  useEffect(() => {
+    setUpcomingPage((page) => Math.min(page, Math.max(totalUpcomingPages, 1)));
+    setHistoryPage((page) => Math.min(page, Math.max(totalHistoryPages, 1)));
+    setReviewPage((page) => Math.min(page, Math.max(totalReviewPages, 1)));
+    setNotificationPage((page) => Math.min(page, Math.max(totalNotificationPages, 1)));
+    setNotificationPreviewPage((page) => Math.min(page, Math.max(totalNotificationPreviewPages, 1)));
+  }, [totalUpcomingPages, totalHistoryPages, totalReviewPages, totalNotificationPages, totalNotificationPreviewPages]);
   const customerMenuItems = [
     { id: 'upcoming', title: 'Upcoming', count: upcoming.length, icon: Calendar },
     { id: 'history', title: 'History', count: past.length + cancelled.length, icon: CalendarDays },
@@ -213,9 +317,13 @@ export const CustomerPortalPage: React.FC = () => {
   };
 
   const handleCancelBooking = async (appt: CustomerAppointment) => {
-    if (!window.confirm(`Are you sure you want to cancel appointment ${appt.bookingReference}?`)) {
-      return;
-    }
+    setCancelModalAppt(appt);
+  };
+
+  const handleConfirmCancelBooking = async () => {
+    if (!cancelModalAppt) return;
+    const appt = cancelModalAppt;
+    setCancellingAppointmentId(appt.id);
     try {
       await apiFetch(`/bookings/${appt.bookingReference}/cancel`, {
         method: 'POST',
@@ -226,11 +334,14 @@ export const CustomerPortalPage: React.FC = () => {
       });
       toast.success('Appointment Cancelled');
       setActionSuccess(`Appointment ${appt.bookingReference} has been cancelled.`);
+      setCancelModalAppt(null);
       setSelectedAppt(null);
-      loadCustomerData();
+      await loadCustomerData();
     } catch (err: any) {
       toast.error('Cancellation failed', { description: err.message });
       setError(err.message || 'Failed to cancel appointment.');
+    } finally {
+      setCancellingAppointmentId(null);
     }
   };
 
@@ -346,11 +457,20 @@ export const CustomerPortalPage: React.FC = () => {
                       </button>
                     )}
                   </div>
+                  <div className="border-b border-stone-100 p-3 dark:border-stone-800">
+                    <RecordListToolbar
+                      searchValue={notificationPreviewSearch}
+                      onSearchChange={setNotificationPreviewSearch}
+                      searchPlaceholder="Search updates"
+                    />
+                  </div>
                   <div className="max-h-80 overflow-y-auto divide-y divide-stone-100 dark:divide-stone-800 text-xs">
                     {notifications.length === 0 ? (
                       <div className="p-6 text-center text-stone-500 dark:text-stone-400">No notifications yet.</div>
+                    ) : filteredCustomerNotificationPreview.length === 0 ? (
+                      <div className="p-6 text-center text-stone-500 dark:text-stone-400">No updates match this search or filter.</div>
                     ) : (
-                      notifications.map(n => (
+                      paginatedNotificationPreview.map(n => (
                         <div
                           key={n.id}
                           onClick={() => handleViewNotification(n)}
@@ -377,6 +497,16 @@ export const CustomerPortalPage: React.FC = () => {
                         </div>
                       ))
                     )}
+                  </div>
+                  <div className="px-3 pb-3">
+                    <Pagination
+                      currentPage={notificationPreviewPage}
+                      totalPages={totalNotificationPreviewPages}
+                      totalItems={filteredCustomerNotificationPreview.length}
+                      itemsPerPage={NOTIFICATION_PREVIEW_PER_PAGE}
+                      onPageChange={setNotificationPreviewPage}
+                      itemName="updates"
+                    />
                   </div>
                 </div>
               )}
@@ -515,7 +645,7 @@ export const CustomerPortalPage: React.FC = () => {
             <p className="text-xs text-stone-500 dark:text-stone-400">Loading your account appointments...</p>
           </div>
         ) : activeTab === 'upcoming' ? (
-          <div>
+          <div className="space-y-4">
             {upcoming.length === 0 ? (
               <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center max-w-md mx-auto space-y-4 shadow-sm">
                 <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
@@ -535,8 +665,29 @@ export const CustomerPortalPage: React.FC = () => {
                 </button>
               </div>
             ) : (
+              <>
+                <RecordListToolbar
+                  searchValue={upcomingSearch}
+                  onSearchChange={setUpcomingSearch}
+                  searchPlaceholder="Search booking, store, service, or specialist"
+                  filter={{
+                    label: 'Filter upcoming appointments by status',
+                    value: upcomingStatusFilter,
+                    onChange: setUpcomingStatusFilter,
+                    options: [
+                      { value: 'all', label: 'All statuses' },
+                      { value: 'pending', label: 'Pending' },
+                      { value: 'confirmed', label: 'Confirmed' },
+                    ],
+                  }}
+                />
+                {filteredUpcomingAppointments.length === 0 ? (
+                  <div className="rounded-2xl border border-stone-200 bg-white p-8 text-center text-xs text-stone-500 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400">
+                    No upcoming bookings match your search or status filter.
+                  </div>
+                ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {upcoming.map(appt => (
+                {paginatedUpcomingAppointments.map(appt => (
                   <div 
                     key={appt.id}
                     onClick={() => setSelectedAppt(appt)}
@@ -592,16 +743,50 @@ export const CustomerPortalPage: React.FC = () => {
                   </div>
                 ))}
               </div>
+                )}
+                <Pagination
+                  currentPage={upcomingPage}
+                  totalPages={totalUpcomingPages}
+                  totalItems={filteredUpcomingAppointments.length}
+                  itemsPerPage={UPCOMING_PER_PAGE}
+                  onPageChange={setUpcomingPage}
+                  itemName="upcoming appointments"
+                />
+              </>
             )}
           </div>
         ) : activeTab === 'history' ? (
           <div className="space-y-4">
-            {[...past, ...cancelled].length === 0 ? (
+            {allHistoryAppointments.length === 0 ? (
               <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center max-w-md mx-auto text-xs text-stone-500">
                 No past or archived appointments found.
               </div>
             ) : (
-              [...past, ...cancelled].map(appt => (
+              <>
+                <RecordListToolbar
+                  searchValue={historySearch}
+                  onSearchChange={setHistorySearch}
+                  searchPlaceholder="Search booking, store, service, or specialist"
+                  filter={{
+                    label: 'Filter booking history by status',
+                    value: historyStatusFilter,
+                    onChange: setHistoryStatusFilter,
+                    options: [
+                      { value: 'all', label: 'All statuses' },
+                      { value: 'completed', label: 'Completed' },
+                      { value: 'confirmed', label: 'Confirmed' },
+                      { value: 'pending', label: 'Pending' },
+                      { value: 'cancelled', label: 'Cancelled' },
+                    ],
+                  }}
+                />
+                {filteredHistoryAppointments.length === 0 ? (
+                  <div className="rounded-2xl border border-stone-200 bg-white p-8 text-center text-xs text-stone-500 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400">
+                    No booking history matches your search or status filter.
+                  </div>
+                ) : (
+              <div className="space-y-4">
+              {paginatedHistoryAppointments.map(appt => (
                 <div 
                   key={appt.id}
                   onClick={() => setSelectedAppt(appt)}
@@ -621,7 +806,18 @@ export const CustomerPortalPage: React.FC = () => {
                   </div>
                   <ChevronRight className="w-4 h-4 text-stone-400" />
                 </div>
-              ))
+              ))}
+              </div>
+                )}
+                <Pagination
+                  currentPage={historyPage}
+                  totalPages={totalHistoryPages}
+                  totalItems={filteredHistoryAppointments.length}
+                  itemsPerPage={HISTORY_PER_PAGE}
+                  onPageChange={setHistoryPage}
+                  itemName="past appointments"
+                />
+              </>
             )}
           </div>
         ) : activeTab === 'reviews' ? (
@@ -632,7 +828,20 @@ export const CustomerPortalPage: React.FC = () => {
                 <h3 className="font-bold text-stone-900 dark:text-stone-100">No visits to rate</h3>
                 <p className="text-xs text-stone-500">After a completed appointment, you can rate the store and the specialist here.</p>
               </div>
-            ) : reviewableAppointments.map((appt) => (
+            ) : (
+              <>
+                <RecordListToolbar
+                  searchValue={reviewSearch}
+                  onSearchChange={setReviewSearch}
+                  searchPlaceholder="Search visits by store, service, or specialist"
+                />
+                {filteredReviewableAppointments.length === 0 ? (
+                  <div className="rounded-2xl border border-stone-200 bg-white p-8 text-center text-xs text-stone-500 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400">
+                    No visits to rate match your search.
+                  </div>
+                ) : (
+              <div className="space-y-3">
+              {paginatedReviewableAppointments.map((appt) => (
               <div key={appt.id} className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <p className="font-bold text-sm text-stone-900 dark:text-stone-100">{appt.serviceName}</p>
@@ -642,14 +851,44 @@ export const CustomerPortalPage: React.FC = () => {
                   <Star className="w-3.5 h-3.5" /> Rate visit
                 </button>
               </div>
-            ))}
+              ))}
+              </div>
+                )}
+                <Pagination
+                  currentPage={reviewPage}
+                  totalPages={totalReviewPages}
+                  totalItems={filteredReviewableAppointments.length}
+                  itemsPerPage={REVIEWS_PER_PAGE}
+                  onPageChange={setReviewPage}
+                  itemName="visits to review"
+                />
+              </>
+            )}
           </div>
         ) : (
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 divide-y divide-stone-100 dark:divide-stone-800">
+          <div className="space-y-3">
+            <RecordListToolbar
+              searchValue={notificationSearch}
+              onSearchChange={setNotificationSearch}
+              searchPlaceholder="Search notifications"
+              filter={{
+                label: 'Filter notifications by read state',
+                value: notificationReadFilter,
+                onChange: setNotificationReadFilter,
+                options: [
+                  { value: 'all', label: 'All updates' },
+                  { value: 'unread', label: 'Unread' },
+                  { value: 'read', label: 'Read' },
+                ],
+              }}
+            />
+            <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 divide-y divide-stone-100 dark:divide-stone-800">
             {notifications.length === 0 ? (
               <div className="p-12 text-center text-xs text-stone-500">No notifications on file.</div>
+            ) : filteredCustomerNotifications.length === 0 ? (
+              <div className="p-12 text-center text-xs text-stone-500">No notifications match your search or filter.</div>
             ) : (
-              notifications.map(n => (
+              paginatedCustomerNotifications.map(n => (
                 <div
                   key={n.id}
                   onClick={() => handleViewNotification(n)}
@@ -675,10 +914,36 @@ export const CustomerPortalPage: React.FC = () => {
                 </div>
               ))
             )}
+            </div>
+            {filteredCustomerNotifications.length > 0 && (
+              <Pagination
+                currentPage={notificationPage}
+                totalPages={totalNotificationPages}
+                totalItems={filteredCustomerNotifications.length}
+                itemsPerPage={NOTIFICATIONS_PER_PAGE}
+                onPageChange={setNotificationPage}
+                itemName="notifications"
+              />
+            )}
           </div>
         )}
         </div>
       </main>
+
+      <ConfirmDialog
+        open={Boolean(cancelModalAppt)}
+        title="Cancel this appointment?"
+        description={cancelModalAppt && (
+          <>
+            Cancel <strong>{cancelModalAppt.bookingReference}</strong> for {cancelModalAppt.serviceName} at {cancelModalAppt.businessName}? The time will return to the store&apos;s available schedule.
+          </>
+        )}
+        confirmLabel="Cancel appointment"
+        cancelLabel="Keep appointment"
+        loading={Boolean(cancelModalAppt && cancellingAppointmentId === cancelModalAppt.id)}
+        onClose={() => setCancelModalAppt(null)}
+        onConfirm={handleConfirmCancelBooking}
+      />
 
       {/* NOTIFICATION FULL INFO MODAL (Matches Store Admin & Super Admin) */}
       {selectedNotif && (

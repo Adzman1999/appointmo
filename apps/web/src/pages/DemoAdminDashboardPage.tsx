@@ -13,6 +13,8 @@ import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { DemoTopNav } from '../components/DemoTopNav';
 import { Pagination } from '../components/Pagination';
+import { RecordListToolbar } from '../components/RecordListToolbar';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { SUPPORTED_COUNTRIES, getCountryByName, getCurrencySymbol, formatPhoneNumberLive, normalizePhoneNumber, formatFormalName, parseFormalName, validateFullPhoneNumber } from '../lib/countryConfig';
 import { CountryPhoneInput } from '../components/CountryPhoneInput';
 import { FormalNameFields } from '../components/FormalNameFields';
@@ -56,6 +58,12 @@ const getStaffEmploymentStatus = (staff: any) => {
   return ['active', 'suspended', 'resigned', 'retired'].includes(status)
     ? status
     : staff.isActive === false ? 'suspended' : 'active';
+};
+
+const recordMatchesSearch = (values: any[], search: string) => {
+  const term = search.trim().toLowerCase();
+  if (!term) return true;
+  return values.some((value) => String(value ?? '').toLowerCase().includes(term));
 };
 
 export const DemoAdminDashboardPage: React.FC = () => {
@@ -106,6 +114,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [storeReviewSummary, setStoreReviewSummary] = useState<any | null>(null);
   const [loadingStoreReviews, setLoadingStoreReviews] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
+  const [serviceSearch, setServiceSearch] = useState('');
+  const [staffSearch, setStaffSearch] = useState('');
+  const [reviewSearch, setReviewSearch] = useState('');
+  const [hrisSearch, setHrisSearch] = useState('');
+  const [payrollSearch, setPayrollSearch] = useState('');
+  const [payrollStatusFilter, setPayrollStatusFilter] = useState('all');
   const [editingStoreCustomer, setEditingStoreCustomer] = useState<any | null>(null);
   const [editCustomerName, setEditCustomerName] = useState('');
   const [editCustomerPhone, setEditCustomerPhone] = useState('');
@@ -354,6 +368,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const [selectedNotif, setSelectedNotif] = useState<any | null>(null);
+  const [notificationSearch, setNotificationSearch] = useState('');
+  const [pendingStaffStatus, setPendingStaffStatus] = useState<{ staff: any; status: string } | null>(null);
 
   // Click outside to close notifications dropdown
   useEffect(() => {
@@ -390,6 +406,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const REVIEWS_PER_PAGE = 8;
   const [reviewPage, setReviewPage] = useState(1);
 
+  const PAYROLL_PER_PAGE = 8;
+  const [payrollPage, setPayrollPage] = useState(1);
+
+  const NOTIFICATIONS_PER_PAGE = 5;
+  const [notificationPage, setNotificationPage] = useState(1);
+
   useEffect(() => {
     setApptPage(1);
   }, [statusFilter, search, activeSlug]);
@@ -401,6 +423,14 @@ export const DemoAdminDashboardPage: React.FC = () => {
   useEffect(() => {
     setHrisStaffPage(1);
   }, [activeSlug]);
+
+  useEffect(() => {
+    setServicePage(1);
+    setStaffPage(1);
+    setReviewPage(1);
+    setPayrollPage(1);
+    setNotificationPage(1);
+  }, [serviceSearch, staffSearch, reviewSearch, hrisSearch, payrollSearch, payrollStatusFilter, notificationSearch, activeSlug]);
 
   // Details & History Modal State
   const [selectedApptDetails, setSelectedApptDetails] = useState<any | null>(null);
@@ -1380,7 +1410,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
   };
 
   const handleUpdateStaffStatus = async (staff: any, status: string) => {
-    if (getStaffEmploymentStatus(staff) === status) return;
+    if (getStaffEmploymentStatus(staff) === status) return true;
     setUpdatingStaffStatusId(staff.id);
     try {
       await apiFetch(`/demo/admin/staff/${staff.id}/status?slug=${encodeURIComponent(activeSlug)}`, {
@@ -1394,8 +1424,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
           ? `${staff.name} can receive new bookings again.`
           : `${staff.name} is excluded from new bookings. Existing appointments are retained.`,
       });
+      return true;
     } catch (err: any) {
       toast.error('Failed to update staff status', { description: err.message || 'Please try again.' });
+      return false;
     } finally {
       setUpdatingStaffStatusId(null);
     }
@@ -1449,35 +1481,79 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const totalApptPages = Math.ceil(appointments.length / APPTS_PER_PAGE);
   const paginatedAppointments = appointments.slice((apptPage - 1) * APPTS_PER_PAGE, apptPage * APPTS_PER_PAGE);
 
-  const totalServicePages = Math.ceil(storeServices.length / SERVICES_PER_PAGE);
-  const paginatedServices = storeServices.slice((servicePage - 1) * SERVICES_PER_PAGE, servicePage * SERVICES_PER_PAGE);
+  const filteredStoreServices = storeServices.filter((service) =>
+    recordMatchesSearch([service.name, service.description, service.category], serviceSearch)
+  );
+  const totalServicePages = Math.ceil(filteredStoreServices.length / SERVICES_PER_PAGE);
+  const paginatedServices = filteredStoreServices.slice((servicePage - 1) * SERVICES_PER_PAGE, servicePage * SERVICES_PER_PAGE);
 
-  const totalStaffPages = Math.ceil(storeStaff.length / STAFF_PER_PAGE);
-  const paginatedStaff = storeStaff.slice((staffPage - 1) * STAFF_PER_PAGE, staffPage * STAFF_PER_PAGE);
+  const filteredStoreStaff = storeStaff.filter((staff) =>
+    recordMatchesSearch([staff.name, staff.position, staff.employmentType, staff.email, staff.phone, getStaffEmploymentStatus(staff)], staffSearch)
+  );
+  const totalStaffPages = Math.ceil(filteredStoreStaff.length / STAFF_PER_PAGE);
+  const paginatedStaff = filteredStoreStaff.slice((staffPage - 1) * STAFF_PER_PAGE, staffPage * STAFF_PER_PAGE);
 
-  const totalHrisStaffPages = Math.ceil(storeStaff.length / HRIS_STAFF_PER_PAGE);
-  const paginatedHrisStaff = storeStaff.slice(
+  const filteredHrisStaff = storeStaff.filter((staff) =>
+    recordMatchesSearch([staff.name, staff.position, staff.employmentType, staff.email, staff.phone, getStaffEmploymentStatus(staff)], hrisSearch)
+  );
+  const totalHrisStaffPages = Math.ceil(filteredHrisStaff.length / HRIS_STAFF_PER_PAGE);
+  const paginatedHrisStaff = filteredHrisStaff.slice(
     (hrisStaffPage - 1) * HRIS_STAFF_PER_PAGE,
     hrisStaffPage * HRIS_STAFF_PER_PAGE
   );
 
-  const filteredStoreCustomers = storeCustomers.filter((customer) => {
-    const searchTerm = customerSearch.trim().toLowerCase();
-    if (!searchTerm) return true;
-    return [customer.name, customer.email, customer.phone].some((value) =>
-      String(value || '').toLowerCase().includes(searchTerm)
-    );
-  });
+  const filteredStoreCustomers = storeCustomers.filter((customer) =>
+    recordMatchesSearch([customer.name, customer.email, customer.phone], customerSearch)
+  );
   const totalCustomerPages = Math.ceil(filteredStoreCustomers.length / CUSTOMERS_PER_PAGE);
   const paginatedStoreCustomers = filteredStoreCustomers.slice(
     (customerPage - 1) * CUSTOMERS_PER_PAGE,
     customerPage * CUSTOMERS_PER_PAGE
   );
-  const totalReviewPages = Math.ceil(storeReviews.length / REVIEWS_PER_PAGE);
-  const paginatedStoreReviews = storeReviews.slice(
+  const filteredStoreReviews = storeReviews.filter((review) =>
+    recordMatchesSearch([
+      review.customerName, review.customerEmail, review.customerPhone, review.serviceName,
+      review.staffName, review.bookingReference, review.comment,
+    ], reviewSearch)
+  );
+  const totalReviewPages = Math.ceil(filteredStoreReviews.length / REVIEWS_PER_PAGE);
+  const paginatedStoreReviews = filteredStoreReviews.slice(
     (reviewPage - 1) * REVIEWS_PER_PAGE,
     reviewPage * REVIEWS_PER_PAGE
   );
+
+  const filteredPayrollRecords = payrollRecords.filter((record) => {
+    const matchesSearch = recordMatchesSearch([
+      record.staffName, record.position, record.payPeriodStart, record.payPeriodEnd, record.paymentStatus, record.notes,
+    ], payrollSearch);
+    const matchesStatus = payrollStatusFilter === 'all'
+      || String(record.paymentStatus || '').toLowerCase() === payrollStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
+  const totalPayrollPages = Math.ceil(filteredPayrollRecords.length / PAYROLL_PER_PAGE);
+  const paginatedPayrollRecords = filteredPayrollRecords.slice(
+    (payrollPage - 1) * PAYROLL_PER_PAGE,
+    payrollPage * PAYROLL_PER_PAGE
+  );
+
+  const filteredNotifications = notifications.filter((notification) =>
+    recordMatchesSearch([notification.title, notification.message, notification.bookingReference], notificationSearch)
+  );
+  const totalNotificationPages = Math.ceil(filteredNotifications.length / NOTIFICATIONS_PER_PAGE);
+  const paginatedNotifications = filteredNotifications.slice(
+    (notificationPage - 1) * NOTIFICATIONS_PER_PAGE,
+    notificationPage * NOTIFICATIONS_PER_PAGE
+  );
+
+  useEffect(() => {
+    setServicePage((page) => Math.min(page, Math.max(1, totalServicePages)));
+    setStaffPage((page) => Math.min(page, Math.max(1, totalStaffPages)));
+    setHrisStaffPage((page) => Math.min(page, Math.max(1, totalHrisStaffPages)));
+    setCustomerPage((page) => Math.min(page, Math.max(1, totalCustomerPages)));
+    setReviewPage((page) => Math.min(page, Math.max(1, totalReviewPages)));
+    setPayrollPage((page) => Math.min(page, Math.max(1, totalPayrollPages)));
+    setNotificationPage((page) => Math.min(page, Math.max(1, totalNotificationPages)));
+  }, [totalServicePages, totalStaffPages, totalHrisStaffPages, totalCustomerPages, totalReviewPages, totalPayrollPages, totalNotificationPages]);
   const setupSectionLabels: Record<typeof setupSubTab, string> = {
     profile: 'Profile & Branding',
     services: 'Services & Pricing',
@@ -1624,13 +1700,25 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     )}
                   </div>
 
+                  <div className="border-b border-stone-100 p-3 dark:border-stone-800">
+                    <RecordListToolbar
+                      searchValue={notificationSearch}
+                      onSearchChange={setNotificationSearch}
+                      searchPlaceholder="Search notifications"
+                    />
+                  </div>
+
                   <div className="max-h-80 overflow-y-auto divide-y divide-stone-100 dark:divide-stone-800 text-xs">
                     {notifications.length === 0 ? (
                       <div className="p-6 text-center text-stone-500 dark:text-stone-400 font-medium">
                         No notifications yet.
                       </div>
+                    ) : filteredNotifications.length === 0 ? (
+                      <div className="p-6 text-center text-stone-500 dark:text-stone-400 font-medium">
+                        No notifications match your search.
+                      </div>
                     ) : (
-                      notifications.map((n) => (
+                      paginatedNotifications.map((n) => (
                         <div
                           key={n.id}
                           onClick={() => handleViewNotification(n)}
@@ -1657,6 +1745,16 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         </div>
                       ))
                     )}
+                  </div>
+                  <div className="px-3 pb-3">
+                    <Pagination
+                      currentPage={notificationPage}
+                      totalPages={totalNotificationPages}
+                      totalItems={filteredNotifications.length}
+                      itemsPerPage={NOTIFICATIONS_PER_PAGE}
+                      onPageChange={setNotificationPage}
+                      itemName="updates"
+                    />
                   </div>
                 </div>
               )}
@@ -2453,9 +2551,17 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   </button>
                 </div>
 
+                <RecordListToolbar
+                  searchValue={serviceSearch}
+                  onSearchChange={setServiceSearch}
+                  searchPlaceholder="Search service name, category, or details"
+                />
+
                 <div className="divide-y divide-stone-100 dark:divide-stone-800 text-xs">
-                  {storeServices.length === 0 ? (
-                    <div className="py-12 text-center text-stone-400">No services configured yet. Click "Add New Service" above.</div>
+                  {filteredStoreServices.length === 0 ? (
+                    <div className="py-12 text-center text-stone-400">
+                      {storeServices.length === 0 ? 'No services configured yet. Click "Add New Service" above.' : 'No services match your search.'}
+                    </div>
                   ) : (
                     paginatedServices.map((svc) => (
                       <div key={svc.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-stone-50/50 dark:hover:bg-stone-800/40 px-2 rounded-xl transition">
@@ -2494,7 +2600,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 <Pagination
                   currentPage={servicePage}
                   totalPages={totalServicePages}
-                  totalItems={storeServices.length}
+                  totalItems={filteredStoreServices.length}
                   itemsPerPage={SERVICES_PER_PAGE}
                   onPageChange={setServicePage}
                   itemName="services"
@@ -2532,9 +2638,17 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   </button>
                 </div>
 
+                <RecordListToolbar
+                  searchValue={staffSearch}
+                  onSearchChange={setStaffSearch}
+                  searchPlaceholder="Search staff name, role, contact, or status"
+                />
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  {storeStaff.length === 0 ? (
-                    <div className="col-span-2 py-12 text-center text-stone-400">No staff members listed yet.</div>
+                  {filteredStoreStaff.length === 0 ? (
+                    <div className="col-span-2 py-12 text-center text-stone-400">
+                      {storeStaff.length === 0 ? 'No staff members listed yet.' : 'No staff members match your search.'}
+                    </div>
                   ) : (
                     paginatedStaff.map((st) => (
                       <div key={st.id} className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 flex items-center justify-between">
@@ -2612,7 +2726,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 <Pagination
                   currentPage={staffPage}
                   totalPages={totalStaffPages}
-                  totalItems={storeStaff.length}
+                  totalItems={filteredStoreStaff.length}
                   itemsPerPage={STAFF_PER_PAGE}
                   onPageChange={setStaffPage}
                   itemName="specialists"
@@ -2760,16 +2874,28 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     <p className="mt-1 text-[11px] text-stone-500">Store averages are recalculated from all saved customer ratings and refresh automatically.</p>
                   </div>
 
+                  <RecordListToolbar
+                    searchValue={reviewSearch}
+                    onSearchChange={setReviewSearch}
+                    searchPlaceholder="Search customer, service, specialist, or review"
+                  />
+
                   {loadingStoreReviews ? (
                     <div className="flex items-center justify-center gap-2 py-12 text-xs text-stone-500">
                       <RefreshCw className="h-4 w-4 animate-spin text-amber-500" />
                       Loading customer reviews…
                     </div>
-                  ) : storeReviews.length === 0 ? (
+                  ) : filteredStoreReviews.length === 0 ? (
                     <div className="py-12 text-center">
-                      <Star className="mx-auto h-7 w-7 text-stone-300 dark:text-stone-600" />
-                      <p className="mt-2 text-sm font-semibold text-stone-700 dark:text-stone-300">No customer ratings yet</p>
-                      <p className="mt-1 text-xs text-stone-500">Reviews will appear here after customers rate a completed appointment.</p>
+                      {storeReviews.length === 0 ? (
+                        <>
+                          <Star className="mx-auto h-7 w-7 text-stone-300 dark:text-stone-600" />
+                          <p className="mt-2 text-sm font-semibold text-stone-700 dark:text-stone-300">No customer ratings yet</p>
+                          <p className="mt-1 text-xs text-stone-500">Reviews will appear here after customers rate a completed appointment.</p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-stone-500">No reviews match your search.</p>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -2821,11 +2947,11 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
                   )}
 
-                  {!loadingStoreReviews && storeReviews.length > 0 && (
+                  {!loadingStoreReviews && filteredStoreReviews.length > 0 && (
                     <Pagination
                       currentPage={reviewPage}
                       totalPages={totalReviewPages}
-                      totalItems={storeReviews.length}
+                      totalItems={filteredStoreReviews.length}
                       itemsPerPage={REVIEWS_PER_PAGE}
                       onPageChange={setReviewPage}
                       itemName="reviews"
@@ -3259,6 +3385,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </span>
                   </div>
 
+                  <RecordListToolbar
+                    searchValue={hrisSearch}
+                    onSearchChange={setHrisSearch}
+                    searchPlaceholder="Search employees by name, role, contact, or status"
+                  />
+
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
                       <thead>
@@ -3273,10 +3405,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-                        {storeStaff.length === 0 ? (
+                        {filteredHrisStaff.length === 0 ? (
                           <tr>
                             <td colSpan={7} className="py-8 text-center text-stone-400">
-                              No employees found. Add staff in the Staff Specialists tab first.
+                              {storeStaff.length === 0 ? 'No employees found. Add staff in the Staff Specialists tab first.' : 'No employees match your search.'}
                             </td>
                           </tr>
                         ) : (
@@ -3297,7 +3429,14 @@ export const DemoAdminDashboardPage: React.FC = () => {
                                   aria-label={`Employment status for ${staff.name}`}
                                   value={getStaffEmploymentStatus(staff)}
                                   disabled={isPending || updatingStaffStatusId === staff.id}
-                                  onChange={(event) => handleUpdateStaffStatus(staff, event.target.value)}
+                                  onChange={(event) => {
+                                    const status = event.target.value;
+                                    if (status === 'active') {
+                                      void handleUpdateStaffStatus(staff, status);
+                                    } else {
+                                      setPendingStaffStatus({ staff, status });
+                                    }
+                                  }}
                                   className={`${STANDARD_FORM_CONTROL_CLASS} max-w-[150px] disabled:cursor-wait disabled:opacity-60`}
                                 >
                                   <option value="active">Active</option>
@@ -3351,7 +3490,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   <Pagination
                     currentPage={hrisStaffPage}
                     totalPages={totalHrisStaffPages}
-                    totalItems={storeStaff.length}
+                    totalItems={filteredHrisStaff.length}
                     itemsPerPage={HRIS_STAFF_PER_PAGE}
                     onPageChange={setHrisStaffPage}
                     itemName="employees"
@@ -3375,11 +3514,29 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </button>
                   </div>
 
+                  <RecordListToolbar
+                    searchValue={payrollSearch}
+                    onSearchChange={setPayrollSearch}
+                    searchPlaceholder="Search staff, pay period, status, or memo"
+                    filter={{
+                      label: 'Filter payroll by payment status',
+                      value: payrollStatusFilter,
+                      onChange: setPayrollStatusFilter,
+                      options: [
+                        { value: 'all', label: 'All statuses' },
+                        { value: 'paid', label: 'Paid' },
+                        { value: 'pending', label: 'Pending' },
+                      ],
+                    }}
+                  />
+
                   {loadingPayroll ? (
                     <div className="py-12 text-center text-stone-400 text-xs">Loading payroll ledger...</div>
-                  ) : payrollRecords.length === 0 ? (
+                  ) : filteredPayrollRecords.length === 0 ? (
                     <div className="py-12 text-center text-stone-400 text-xs">
-                      No payroll disbursements recorded yet. Click "Record Salary & Payroll" above to create one.
+                      {payrollRecords.length === 0
+                        ? 'No payroll disbursements recorded yet. Click "Record Salary & Payroll" above to create one.'
+                        : 'No payroll records match your search or status filter.'}
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -3396,7 +3553,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-                          {payrollRecords.map((rec) => (
+                          {paginatedPayrollRecords.map((rec) => (
                             <tr key={rec.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/40 transition">
                               <td className="py-3 font-bold text-stone-900 dark:text-stone-100">
                                 {rec.staffName || 'Staff Member'}
@@ -3430,6 +3587,17 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         </tbody>
                       </table>
                     </div>
+                  )}
+
+                  {!loadingPayroll && filteredPayrollRecords.length > 0 && (
+                    <Pagination
+                      currentPage={payrollPage}
+                      totalPages={totalPayrollPages}
+                      totalItems={filteredPayrollRecords.length}
+                      itemsPerPage={PAYROLL_PER_PAGE}
+                      onPageChange={setPayrollPage}
+                      itemName="payroll records"
+                    />
                   )}
                 </div>
               </div>
@@ -4649,6 +4817,25 @@ export const DemoAdminDashboardPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingStaffStatus)}
+        title={pendingStaffStatus ? `Set ${pendingStaffStatus.staff.name} to ${pendingStaffStatus.status}?` : ''}
+        description={pendingStaffStatus && (
+          <>
+            This will stop new customer bookings for this staff member. Existing appointments stay unchanged, and you can reactivate the staff member later.
+          </>
+        )}
+        confirmLabel={pendingStaffStatus ? `Set as ${pendingStaffStatus.status}` : 'Confirm'}
+        tone={pendingStaffStatus?.status === 'suspended' ? 'caution' : 'danger'}
+        loading={Boolean(pendingStaffStatus && updatingStaffStatusId === pendingStaffStatus.staff.id)}
+        onClose={() => setPendingStaffStatus(null)}
+        onConfirm={async () => {
+          if (!pendingStaffStatus) return;
+          const saved = await handleUpdateStaffStatus(pendingStaffStatus.staff, pendingStaffStatus.status);
+          if (saved) setPendingStaffStatus(null);
+        }}
+      />
 
       {servicePendingRemoval && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-stone-900/60 p-4 backdrop-blur-sm dark:bg-black/70">

@@ -9,6 +9,7 @@ import { AppointmoLogo } from '../components/AppointmoLogo';
 import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { DemoTopNav } from '../components/DemoTopNav';
+import { Pagination } from '../components/Pagination';
 
 interface Branch {
   id: string;
@@ -49,6 +50,12 @@ export const DiscoveryPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [selectedBranch, setSelectedBranch] = useState<{ biz: Business; branch: Branch } | null>(null);
+  const BUSINESSES_PER_PAGE = 8;
+  const [businessPage, setBusinessPage] = useState(1);
+
+  useEffect(() => {
+    setBusinessPage(1);
+  }, [selectedCategory, searchQuery]);
 
   // Fetch categories on load
   useEffect(() => {
@@ -97,6 +104,11 @@ export const DiscoveryPage: React.FC = () => {
 
   // Extract all branches for Map View
   const allBranches = businesses.flatMap(b => b.branches.map(br => ({ biz: b, branch: br })));
+  const totalBusinessPages = Math.ceil(businesses.length / BUSINESSES_PER_PAGE);
+  const paginatedBusinesses = businesses.slice(
+    (businessPage - 1) * BUSINESSES_PER_PAGE,
+    businessPage * BUSINESSES_PER_PAGE
+  );
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-24 transition-colors">
@@ -268,7 +280,7 @@ export const DiscoveryPage: React.FC = () => {
               Stores are ordered by their average customer rating; review count breaks ties.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-            {businesses.map((biz) => (
+            {paginatedBusinesses.map((biz) => (
               <div
                 key={biz.id}
                 className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-7 shadow-sm hover:border-stone-400 dark:hover:border-stone-700 transition flex flex-col justify-between"
@@ -343,6 +355,14 @@ export const DiscoveryPage: React.FC = () => {
               </div>
             ))}
             </div>
+            <Pagination
+              currentPage={businessPage}
+              totalPages={totalBusinessPages}
+              totalItems={businesses.length}
+              itemsPerPage={BUSINESSES_PER_PAGE}
+              onPageChange={setBusinessPage}
+              itemName="businesses"
+            />
           </div>
         ) : (
           /* Map View: Interactive Synthetic Map Display with Synchronized Sidebar */
