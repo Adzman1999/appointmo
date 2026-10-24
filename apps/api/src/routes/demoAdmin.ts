@@ -147,8 +147,8 @@ router.get('/customer-portal', async (req: Request, res: Response) => {
         if (userRes.rows.length > 0) {
           const u = userRes.rows[0];
           // Find canonical business id
-          const defaultBiz = await query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio' LIMIT 1");
-          const bizId = u.business_id || defaultBiz.rows[0]?.id;
+          const defaultBiz = await query("SELECT id FROM businesses WHERE status = 'approved' ORDER BY created_at ASC LIMIT 1");
+          const bizId = u.business_id || defaultBiz.rows[0]?.id || (await query("SELECT id FROM businesses LIMIT 1")).rows[0]?.id;
           if (bizId) {
             const insCust = await query(`
               INSERT INTO customers (business_id, name, email, phone)
@@ -162,8 +162,8 @@ router.get('/customer-portal', async (req: Request, res: Response) => {
           }
         } else {
           // If customer signed up directly or is accessing their account, create their customer record automatically
-          const defaultBiz = await query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio' LIMIT 1");
-          const bizId = defaultBiz.rows[0]?.id;
+          const defaultBiz = await query("SELECT id FROM businesses WHERE status = 'approved' ORDER BY created_at ASC LIMIT 1");
+          const bizId = defaultBiz.rows[0]?.id || (await query("SELECT id FROM businesses LIMIT 1")).rows[0]?.id;
           if (bizId) {
             const insCust = await query(`
               INSERT INTO customers (business_id, name, email, phone)

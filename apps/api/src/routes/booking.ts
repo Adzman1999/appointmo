@@ -11,7 +11,16 @@ const router = Router();
 router.get('/business', async (req: Request, res: Response) => {
   try {
     const { slug } = req.query;
-    const targetSlug = typeof slug === 'string' && slug ? slug : 'lumiere-beauty-studio';
+    let targetSlug = typeof slug === 'string' && slug ? slug : undefined;
+
+    if (!targetSlug) {
+      const anyBiz = await query("SELECT slug FROM businesses WHERE status = 'approved' ORDER BY created_at ASC LIMIT 1");
+      targetSlug = anyBiz.rows[0]?.slug || (await query("SELECT slug FROM businesses LIMIT 1")).rows[0]?.slug;
+    }
+
+    if (!targetSlug) {
+      return res.status(404).json({ error: 'No businesses registered.' });
+    }
 
     const bizRes = await query(`
       SELECT b.id, b.name, b.slug, b.description, b.category, b.currency, b.timezone, b.logo_url AS "logoUrl",
@@ -72,7 +81,7 @@ router.get('/services', async (req: Request, res: Response) => {
       params.push(slug);
       sql += ` AND b.slug = $${params.length}`;
     } else {
-      sql += ` AND b.slug = 'lumiere-beauty-studio'`;
+      sql += ` AND b.id IN (SELECT id FROM businesses WHERE status = 'approved' LIMIT 1)`;
     }
 
     // Branch-specific service filter if branch_services table is populated
@@ -116,7 +125,7 @@ router.get('/staff', async (req: Request, res: Response) => {
       params.push(slug);
       sql += ` AND b.slug = $${params.length}`;
     } else {
-      sql += ` AND b.slug = 'lumiere-beauty-studio'`;
+      sql += ` AND b.id IN (SELECT id FROM businesses WHERE status = 'approved' LIMIT 1)`;
     }
 
     sql += ` ORDER BY sp.name ASC`;
@@ -145,8 +154,8 @@ router.get('/availability', async (req: Request, res: Response) => {
       if (sBizRes.rows.length > 0) {
         resolvedBusinessId = sBizRes.rows[0].business_id;
       } else {
-        const bizRes = await query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio'");
-        resolvedBusinessId = bizRes.rows[0].id;
+        const anyBiz = await query("SELECT id FROM businesses WHERE status = 'approved' ORDER BY created_at ASC LIMIT 1");
+        resolvedBusinessId = anyBiz.rows[0]?.id || (await query("SELECT id FROM businesses LIMIT 1")).rows[0]?.id;
       }
     }
 
@@ -196,18 +205,30 @@ router.post('/concierge', async (req: Request, res: Response) => {
     const parsed = ConciergeInquirySchema.parse(req.body);
     const querySlug = (req.query.slug as string) || (req.body.slug as string);
 
-    let businessId: string;
+    let businessId: string | undefined;
     if (querySlug && querySlug.trim()) {
       const bizRes = await query("SELECT id FROM businesses WHERE slug = $1", [querySlug.trim()]);
       if (bizRes.rows.length > 0) {
         businessId = bizRes.rows[0].id;
-      } else {
-        const defaultBiz = await query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio'");
-        businessId = defaultBiz.rows[0].id;
       }
-    } else {
-      const bizRes = await query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio'");
-      businessId = bizRes.rows[0].id;
+    }
+
+    if (!businessId) {
+      // First try approved businesses
+      const anyBiz = await query("SELECT id FROM businesses WHERE status = 'approved' ORDER BY created_at ASC LIMIT 1");
+      if (anyBiz.rows.length > 0) {
+        businessId = anyBiz.rows[0].id;
+      } else {
+        // Fallback to any business in the database
+        const fallbackBiz = await query("SELECT id FROM businesses LIMIT 1");
+        if (fallbackBiz.rows.length > 0) {
+          businessId = fallbackBiz.rows[0].id;
+        }
+      }
+    }
+
+    if (!businessId) {
+      return res.status(404).json({ error: 'No businesses found to perform concierge matching.' });
     }
 
     const result = await ConciergeService.getRecommendations(businessId, parsed);

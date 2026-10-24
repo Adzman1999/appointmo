@@ -57,9 +57,21 @@ export const ConciergePage: React.FC = () => {
     }
 
     apiFetch('/demo/admin/businesses')
-      .then((res: any) => setBusinesses(res.businesses || []))
+      .then((res: any) => {
+        const list = res.businesses || [];
+        setBusinesses(list);
+        if (list.length > 0) {
+          // If the current selectedSlug is not in the list or is hardcoded default, set to first available store
+          const found = list.some((b: any) => b.slug === slugParam);
+          if (found) {
+            setSelectedSlug(slugParam);
+          } else {
+            setSelectedSlug(list[0].slug);
+          }
+        }
+      })
       .catch((err) => console.error(err));
-  }, []);
+  }, [slugParam]);
 
   const handleInquire = async (e?: React.FormEvent, customQuery?: string, customSlug?: string) => {
     if (e) e.preventDefault();
@@ -258,20 +270,23 @@ export const ConciergePage: React.FC = () => {
 
             <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
               <span className="text-stone-400 font-medium">Try asking:</span>
-              {sampleQueries.map((sq, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => {
-                    setQuery(sq.text);
-                    setSelectedSlug(sq.slug);
-                    handleInquire(undefined, sq.text, sq.slug);
-                  }}
-                  className="px-2.5 py-1 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-amber-100 dark:hover:bg-amber-950/60 hover:text-amber-900 dark:hover:text-amber-200 transition text-[11px]"
-                >
-                  {sq.text.length > 40 ? sq.text.substring(0, 40) + '...' : sq.text}
-                </button>
-              ))}
+              {sampleQueries.map((sq, i) => {
+                const targetBizSlug = businesses.length > 0 ? (businesses.find(b => b.slug === sq.slug)?.slug || selectedSlug || businesses[0].slug) : sq.slug;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      setQuery(sq.text);
+                      setSelectedSlug(targetBizSlug);
+                      handleInquire(undefined, sq.text, targetBizSlug);
+                    }}
+                    className="px-2.5 py-1 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-amber-100 dark:hover:bg-amber-950/60 hover:text-amber-900 dark:hover:text-amber-200 transition text-[11px]"
+                  >
+                    {sq.text.length > 40 ? sq.text.substring(0, 40) + '...' : sq.text}
+                  </button>
+                );
+              })}
             </div>
           </form>
         </div>

@@ -8,8 +8,8 @@ const router = Router();
 // 1. Dashboard Metrics (Calculated from actual DB records, never hardcoded)
 router.get('/metrics', authenticateJwt, async (req: Request, res: Response) => {
   try {
-    const bizRes = await query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio'");
-    const businessId = bizRes.rows[0].id;
+    const bizRes = await query("SELECT id FROM businesses WHERE status = 'approved' ORDER BY created_at ASC LIMIT 1");
+    const businessId = bizRes.rows[0]?.id || (await query("SELECT id FROM businesses LIMIT 1")).rows[0]?.id;
 
     // Counts by status
     const statusRes = await query(`
@@ -77,8 +77,8 @@ router.get('/appointments', authenticateJwt, async (req: Request, res: Response)
   try {
     const { status, search, limit = '50', offset = '0' } = req.query;
 
-    const bizRes = await query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio'");
-    const businessId = bizRes.rows[0].id;
+    const bizRes = await query("SELECT id FROM businesses WHERE status = 'approved' ORDER BY created_at ASC LIMIT 1");
+    const businessId = bizRes.rows[0]?.id || (await query("SELECT id FROM businesses LIMIT 1")).rows[0]?.id;
 
     let sql = `
       SELECT 

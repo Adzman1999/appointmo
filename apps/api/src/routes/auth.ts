@@ -132,8 +132,8 @@ router.post('/register', async (req: Request, res: Response) => {
     await client.query('BEGIN');
 
     // Link customer to canonical or default business
-    const defaultBiz = await client.query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio' LIMIT 1");
-    const defaultBizId = defaultBiz.rows[0]?.id;
+    const defaultBiz = await client.query("SELECT id FROM businesses WHERE status = 'approved' ORDER BY created_at ASC LIMIT 1");
+    const defaultBizId = defaultBiz.rows[0]?.id || (await client.query("SELECT id FROM businesses LIMIT 1")).rows[0]?.id;
     if (defaultBizId) {
       await client.query(`
         INSERT INTO customers (business_id, name, email, phone)
