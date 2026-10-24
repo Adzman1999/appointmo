@@ -4,7 +4,7 @@ import {
   Calendar, Users, Coins, CheckCircle2, 
   Search, Filter, Clock, ArrowRight, Sparkles, Building2, 
   Check, X, AlertTriangle, Shield, Bell, ChevronRight, ChevronLeft, UserCheck,
-  RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, Store, MapPin, Lightbulb, TrendingUp, LogOut,
+  RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store, MapPin, Lightbulb, TrendingUp, LogOut,
   Settings, Image, Scissors, Briefcase, Power, Save, Globe, Share2, Mail, Phone, Sliders, ShieldCheck, ShieldAlert,
   User, Lock, Eye, EyeOff, Receipt, Wallet, Award, FileSpreadsheet
 } from 'lucide-react';
@@ -56,7 +56,18 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'appointments' | 'setup'>('appointments');
   // Store Setup Sub-Navigation Menu
   const [setupSubTab, setSetupSubTab] = useState<'profile' | 'services' | 'staff' | 'customers' | 'hris' | 'schedule' | 'policies' | 'account'>('profile');
-  const setupMenuRef = useRef<HTMLDivElement>(null);
+  const [setupDropdownOpen, setSetupDropdownOpen] = useState(false);
+  const [activeProfileSection, setActiveProfileSection] = useState('profile-brand-identity');
+  const setupDropdownRef = useRef<HTMLDivElement>(null);
+  const profileSwiperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const closeSetupDropdown = (event: MouseEvent) => {
+      if (!setupDropdownRef.current?.contains(event.target as Node)) setSetupDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', closeSetupDropdown);
+    return () => document.removeEventListener('mousedown', closeSetupDropdown);
+  }, []);
 
   const [businesses, setBusinesses] = useState<any[]>([]);
   // Resolve active store slug from URL or user context, default to lumiere-beauty-studio
@@ -1326,8 +1337,19 @@ export const DemoAdminDashboardPage: React.FC = () => {
     { id: 'customers', group: 'Customers', label: 'Customer Accounts', icon: User, count: storeCustomers.length },
     { id: 'account', group: 'Account', label: 'Admin Security', icon: ShieldCheck, count: null },
   ];
-  const scrollSetupMenu = (direction: -1 | 1) => {
-    setupMenuRef.current?.scrollBy({ left: direction * 280, behavior: 'smooth' });
+  const setupMenuGroups = ['Store', 'Team', 'Customers', 'Account'];
+  const profileSectionItems = [
+    { id: 'profile-brand-identity', label: 'Brand & Identity', icon: Building2 },
+    { id: 'profile-country-currency', label: 'Country & Currency', icon: Globe },
+    { id: 'profile-location-address', label: 'Location & Address', icon: MapPin },
+    { id: 'profile-contact-social', label: 'Contact & Social', icon: Phone },
+    { id: 'profile-operating-hours', label: 'Operating Hours', icon: Clock },
+  ];
+  const scrollProfileSwiper = (direction: -1 | 1) => {
+    profileSwiperRef.current?.scrollBy({ left: direction * 250, behavior: 'smooth' });
+  };
+  const jumpToProfileSection = (sectionId: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   return (
@@ -1568,60 +1590,56 @@ export const DemoAdminDashboardPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Swipeable settings section menu */}
-            <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-3 shadow-sm">
-              <div className="mb-3 flex items-center justify-between gap-3 px-1">
-                <div className="min-w-0">
-                  <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">Settings sections</p>
-                  <p className="mt-0.5 text-xs text-stone-600 dark:text-stone-300">
-                    <span className="font-bold text-stone-900 dark:text-stone-100">{setupSectionLabels[setupSubTab]}</span>
-                    <span className="hidden sm:inline"> · Swipe or use the arrows to move between sections</span>
-                  </p>
+            {/* Grouped icon dropdown for major settings areas */}
+            <div className="relative z-20" ref={setupDropdownRef} onKeyDown={(event) => { if (event.key === 'Escape') setSetupDropdownOpen(false); }}>
+              <button
+                type="button"
+                aria-haspopup="true"
+                aria-expanded={setupDropdownOpen}
+                onClick={() => setSetupDropdownOpen((open) => !open)}
+                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 py-3 text-left shadow-sm transition hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300">
+                    {React.createElement(setupMenuItems.find((item) => item.id === setupSubTab)?.icon || Settings, { className: 'h-5 w-5' })}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">Settings menu · {setupMenuItems.find((item) => item.id === setupSubTab)?.group}</span>
+                    <span className="mt-0.5 block truncate text-sm font-bold text-stone-900 dark:text-stone-100">{setupSectionLabels[setupSubTab]}</span>
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2 text-[11px] font-semibold text-stone-500 dark:text-stone-400">
+                  <span className="hidden sm:inline">Choose section</span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${setupDropdownOpen ? 'rotate-180' : ''}`} />
+                </span>
+              </button>
+
+              {setupDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-2 max-h-[min(65vh,34rem)] overflow-y-auto rounded-2xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 p-3 shadow-xl ring-1 ring-black/5">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {setupMenuGroups.map((group) => (
+                      <section key={group} className="rounded-xl bg-stone-50 dark:bg-stone-800/60 p-2">
+                        <h3 className="px-2 pb-1.5 pt-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">{group}</h3>
+                        <div className="space-y-1">
+                          {setupMenuItems.filter((item) => item.group === group).map((item) => {
+                            const IconComponent = item.icon;
+                            const isSelected = setupSubTab === item.id;
+                            return (
+                              <button key={item.id} type="button" aria-current={isSelected ? 'page' : undefined} onClick={() => { setSetupSubTab(item.id as typeof setupSubTab); setSetupDropdownOpen(false); }} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition ${isSelected ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-200' : 'text-stone-700 hover:bg-white dark:text-stone-300 dark:hover:bg-stone-800'}`}>
+                                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isSelected ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-stone-950' : 'bg-white text-stone-500 dark:bg-stone-900 dark:text-stone-300'}`}><IconComponent className="h-4 w-4" /></span>
+                                <span className="min-w-0 flex-1 truncate text-[11px] font-semibold">{item.label}</span>
+                                {item.count !== null && <span className="rounded-full bg-stone-200 px-1.5 py-0.5 text-[9px] font-bold text-stone-600 dark:bg-stone-700 dark:text-stone-300">{item.count}</span>}
+                                {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-300" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                  <p className="mt-2 px-1 text-[10px] text-stone-400">Select a section to open its settings.</p>
                 </div>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <span className="mr-1 hidden text-[10px] font-medium text-stone-400 sm:inline">Browse</span>
-                  <button type="button" onClick={() => scrollSetupMenu(-1)} aria-label="Previous settings sections" className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:border-amber-400 hover:text-amber-600 transition">
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={() => scrollSetupMenu(1)} aria-label="Next settings sections" className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:border-amber-400 hover:text-amber-600 transition">
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-              <div ref={setupMenuRef} role="group" aria-label="Store settings sections" tabIndex={0} className="flex gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory touch-pan-x pb-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40">
-                {setupMenuItems.map((item) => {
-                  const IconComponent = item.icon;
-                  const isSelected = setupSubTab === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      aria-pressed={isSelected}
-                      onClick={(event) => {
-                        setSetupSubTab(item.id as typeof setupSubTab);
-                        event.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                      }}
-                      className={`group min-w-[148px] snap-start rounded-xl border px-3 py-2.5 text-left transition sm:min-w-[164px] ${
-                        isSelected
-                          ? 'border-amber-400 bg-amber-50 shadow-sm dark:border-amber-700 dark:bg-amber-950/40'
-                          : 'border-stone-200 bg-stone-50/70 hover:border-stone-300 hover:bg-white dark:border-stone-800 dark:bg-stone-900 dark:hover:border-stone-700 dark:hover:bg-stone-800'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isSelected ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-stone-950' : 'bg-white text-stone-500 shadow-sm dark:bg-stone-800 dark:text-stone-300'}`}>
-                          <IconComponent className="h-4 w-4" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[9px] font-bold uppercase tracking-wider text-stone-400">{item.group}</span>
-                          <span className={`mt-0.5 block truncate text-[11px] font-bold ${isSelected ? 'text-amber-900 dark:text-amber-200' : 'text-stone-700 dark:text-stone-200'}`}>{item.label}</span>
-                        </span>
-                        {item.count !== null && <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-extrabold ${isSelected ? 'bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200' : 'bg-stone-200 text-stone-600 dark:bg-stone-800 dark:text-stone-300'}`}>{item.count}</span>}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="mt-2 px-1 text-[10px] text-stone-400 sm:hidden">Swipe the menu to see all settings</p>
+              )}
             </div>
 
             {/* Setup Views by Sub-Tab */}
@@ -1638,8 +1656,35 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       <span className="text-[11px] text-stone-500 font-mono">Slug: {activeSlug}</span>
                     </div>
 
+                    {/* Swipeable shortcuts for fields in this profile form */}
+                    <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-800/40 p-3">
+                      <div className="mb-2 flex items-center justify-between gap-3 px-1">
+                        <div>
+                          <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">Profile details</p>
+                          <p className="mt-0.5 text-[11px] text-stone-500 dark:text-stone-400">Swipe or tap to jump to the fields you want to update.</p>
+                        </div>
+                        <div className="flex shrink-0 gap-1.5">
+                          <button type="button" onClick={() => scrollProfileSwiper(-1)} aria-label="Previous profile sections" className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 hover:border-amber-400 hover:text-amber-600 transition"><ChevronLeft className="h-4 w-4" /></button>
+                          <button type="button" onClick={() => scrollProfileSwiper(1)} aria-label="Next profile sections" className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 hover:border-amber-400 hover:text-amber-600 transition"><ChevronRight className="h-4 w-4" /></button>
+                        </div>
+                      </div>
+                      <div ref={profileSwiperRef} role="tablist" aria-label="Store profile detail sections" className="flex gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory touch-pan-x pb-1">
+                        {profileSectionItems.map((item) => {
+                          const IconComponent = item.icon;
+                          const isSelected = activeProfileSection === item.id;
+                          return (
+                            <button key={item.id} type="button" role="tab" aria-selected={isSelected} onClick={(event) => { setActiveProfileSection(item.id); jumpToProfileSection(item.id); event.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); }} className={`flex min-w-[148px] snap-start items-center gap-2 rounded-xl border px-3 py-2 text-left transition sm:min-w-[164px] ${isSelected ? 'border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/50' : 'border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-900 hover:border-amber-300'}`}>
+                              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isSelected ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-stone-950' : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-300'}`}><IconComponent className="h-4 w-4" /></span>
+                              <span className={`truncate text-[11px] font-bold ${isSelected ? 'text-amber-900 dark:text-amber-200' : 'text-stone-700 dark:text-stone-200'}`}>{item.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="mt-1 px-1 text-[10px] text-stone-400 sm:hidden">Swipe to see all profile sections</p>
+                    </div>
+
                     {/* Section 1: Store Brand & Identity */}
-                    <div className="bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
+                    <div id="profile-brand-identity" className="scroll-mt-24 bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
                       <div className="flex items-center space-x-2">
                         <Building2 className="w-4 h-4 text-stone-700 dark:text-stone-300" />
                         <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
@@ -1784,7 +1829,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
 
                     {/* Section 2: Country & Currency */}
-                    <div className="bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
+                    <div id="profile-country-currency" className="scroll-mt-24 bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
                       <div className="flex items-center space-x-2">
                         <Globe className="w-4 h-4 text-stone-700 dark:text-stone-300" />
                         <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
@@ -1825,7 +1870,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
 
                     {/* Section 3: Physical Location & Address */}
-                    <div className="bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
+                    <div id="profile-location-address" className="scroll-mt-24 bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
                       <div className="flex items-center space-x-2">
                         <MapPin className="w-4 h-4 text-stone-700 dark:text-stone-300" />
                         <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
@@ -1938,7 +1983,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
 
                     {/* Section 4: Contact & Social Media Channels */}
-                    <div className="bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
+                    <div id="profile-contact-social" className="scroll-mt-24 bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
                       <div className="flex items-center space-x-2">
                         <Phone className="w-4 h-4 text-stone-700 dark:text-stone-300" />
                         <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
@@ -2022,7 +2067,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
 
                     {/* Section 5: Daily Operating Hours */}
-                    <div className="bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
+                    <div id="profile-operating-hours" className="scroll-mt-24 bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <Clock className="w-4 h-4 text-stone-700 dark:text-stone-300" />
