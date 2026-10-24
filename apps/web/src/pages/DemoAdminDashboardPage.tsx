@@ -3,8 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Calendar, Users, Coins, CheckCircle2, 
   Search, Filter, Clock, ArrowRight, Sparkles, Building2, 
-  Check, X, AlertTriangle, Shield, Bell, ChevronRight, UserCheck, 
-  RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store, MapPin, Lightbulb, TrendingUp, LogOut,
+  Check, X, AlertTriangle, Shield, Bell, ChevronRight, ChevronLeft, UserCheck,
+  RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, Store, MapPin, Lightbulb, TrendingUp, LogOut,
   Settings, Image, Scissors, Briefcase, Power, Save, Globe, Share2, Mail, Phone, Sliders, ShieldCheck, ShieldAlert,
   User, Lock, Eye, EyeOff, Receipt, Wallet, Award, FileSpreadsheet
 } from 'lucide-react';
@@ -56,6 +56,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'appointments' | 'setup'>('appointments');
   // Store Setup Sub-Navigation Menu
   const [setupSubTab, setSetupSubTab] = useState<'profile' | 'services' | 'staff' | 'customers' | 'hris' | 'schedule' | 'policies' | 'account'>('profile');
+  const setupMenuRef = useRef<HTMLDivElement>(null);
 
   const [businesses, setBusinesses] = useState<any[]>([]);
   // Resolve active store slug from URL or user context, default to lumiere-beauty-studio
@@ -1315,6 +1316,19 @@ export const DemoAdminDashboardPage: React.FC = () => {
     policies: 'Booking Policies',
     account: 'Admin Security',
   };
+  const setupMenuItems = [
+    { id: 'profile', group: 'Store', label: 'Profile & Branding', icon: Store, count: null },
+    { id: 'services', group: 'Store', label: 'Services & Pricing', icon: Scissors, count: storeServices.length },
+    { id: 'schedule', group: 'Store', label: 'Schedule & Hours', icon: Clock, count: null },
+    { id: 'policies', group: 'Store', label: 'Booking Policies', icon: Sliders, count: null },
+    { id: 'staff', group: 'Team', label: 'Staff Specialists', icon: Users, count: storeStaff.length },
+    { id: 'hris', group: 'Team', label: 'HRIS & Payroll', icon: Wallet, count: null },
+    { id: 'customers', group: 'Customers', label: 'Customer Accounts', icon: User, count: storeCustomers.length },
+    { id: 'account', group: 'Account', label: 'Admin Security', icon: ShieldCheck, count: null },
+  ];
+  const scrollSetupMenu = (direction: -1 | 1) => {
+    setupMenuRef.current?.scrollBy({ left: direction * 280, behavior: 'smooth' });
+  };
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20 transition-colors">
@@ -1554,41 +1568,60 @@ export const DemoAdminDashboardPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Compact settings menu */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 py-3.5 shadow-sm">
-              <div className="min-w-0">
-                <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">Current section</p>
-                <p className="mt-0.5 text-sm font-bold text-stone-900 dark:text-stone-100">{setupSectionLabels[setupSubTab]}</p>
-                <p className="mt-0.5 text-[11px] text-stone-500 dark:text-stone-400">Use the menu to move between store, team, customer, and account settings.</p>
+            {/* Swipeable settings section menu */}
+            <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-3 shadow-sm">
+              <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                <div className="min-w-0">
+                  <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">Settings sections</p>
+                  <p className="mt-0.5 text-xs text-stone-600 dark:text-stone-300">
+                    <span className="font-bold text-stone-900 dark:text-stone-100">{setupSectionLabels[setupSubTab]}</span>
+                    <span className="hidden sm:inline"> · Swipe or use the arrows to move between sections</span>
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <span className="mr-1 hidden text-[10px] font-medium text-stone-400 sm:inline">Browse</span>
+                  <button type="button" onClick={() => scrollSetupMenu(-1)} aria-label="Previous settings sections" className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:border-amber-400 hover:text-amber-600 transition">
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button type="button" onClick={() => scrollSetupMenu(1)} aria-label="Next settings sections" className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:border-amber-400 hover:text-amber-600 transition">
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-              <label className="w-full sm:w-72 shrink-0">
-                <span className="mb-1 block text-[10px] font-bold text-stone-600 dark:text-stone-300">Go to a section</span>
-                <span className="relative block">
-                  <select
-                    value={setupSubTab}
-                    onChange={(event) => setSetupSubTab(event.target.value as typeof setupSubTab)}
-                    className="w-full appearance-none rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 pl-3 pr-9 py-2.5 text-xs font-semibold text-stone-800 dark:text-stone-100 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 cursor-pointer"
-                  >
-                    <optgroup label="Store">
-                      <option value="profile">Profile &amp; Branding</option>
-                      <option value="services">Services &amp; Pricing ({storeServices.length})</option>
-                      <option value="schedule">Schedule &amp; Hours</option>
-                      <option value="policies">Booking Policies</option>
-                    </optgroup>
-                    <optgroup label="Team">
-                      <option value="staff">Staff Specialists ({storeStaff.length})</option>
-                      <option value="hris">HRIS &amp; Payroll</option>
-                    </optgroup>
-                    <optgroup label="Customers">
-                      <option value="customers">Customer Accounts ({storeCustomers.length})</option>
-                    </optgroup>
-                    <optgroup label="Account">
-                      <option value="account">Admin Security</option>
-                    </optgroup>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-500" />
-                </span>
-              </label>
+              <div ref={setupMenuRef} role="group" aria-label="Store settings sections" tabIndex={0} className="flex gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory touch-pan-x pb-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40">
+                {setupMenuItems.map((item) => {
+                  const IconComponent = item.icon;
+                  const isSelected = setupSubTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={(event) => {
+                        setSetupSubTab(item.id as typeof setupSubTab);
+                        event.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                      }}
+                      className={`group min-w-[148px] snap-start rounded-xl border px-3 py-2.5 text-left transition sm:min-w-[164px] ${
+                        isSelected
+                          ? 'border-amber-400 bg-amber-50 shadow-sm dark:border-amber-700 dark:bg-amber-950/40'
+                          : 'border-stone-200 bg-stone-50/70 hover:border-stone-300 hover:bg-white dark:border-stone-800 dark:bg-stone-900 dark:hover:border-stone-700 dark:hover:bg-stone-800'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isSelected ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-stone-950' : 'bg-white text-stone-500 shadow-sm dark:bg-stone-800 dark:text-stone-300'}`}>
+                          <IconComponent className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[9px] font-bold uppercase tracking-wider text-stone-400">{item.group}</span>
+                          <span className={`mt-0.5 block truncate text-[11px] font-bold ${isSelected ? 'text-amber-900 dark:text-amber-200' : 'text-stone-700 dark:text-stone-200'}`}>{item.label}</span>
+                        </span>
+                        {item.count !== null && <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-extrabold ${isSelected ? 'bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200' : 'bg-stone-200 text-stone-600 dark:bg-stone-800 dark:text-stone-300'}`}>{item.count}</span>}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 px-1 text-[10px] text-stone-400 sm:hidden">Swipe the menu to see all settings</p>
             </div>
 
             {/* Setup Views by Sub-Tab */}
@@ -1680,7 +1713,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                               setCustomCategoryInput(e.target.value);
                             }}
                             disabled={isPending}
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                            className="h-10 w-full min-w-0 box-border px-3.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                           />
                         ) : (
                           <select
@@ -1690,7 +1723,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                               setEditCategory(e.target.value);
                             }}
                             disabled={isPending}
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                            className="h-10 w-full min-w-0 box-border px-3.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                           >
                             {categoryOptions.map((cat, i) => (
                               <option key={i} value={cat}>
@@ -1767,7 +1800,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             value={editCountry}
                             onChange={(e) => handleCountryChange(e.target.value)}
                             disabled={isPending}
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                            className="h-10 w-full min-w-0 box-border px-3.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                           >
                             {SUPPORTED_COUNTRIES.map((c) => (
                               <option key={c.code} value={c.name}>
@@ -1785,7 +1818,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             type="text"
                             readOnly
                             value={`${editCurrency} (${getCurrencySymbol(editCurrency).trim()})`}
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-100 dark:bg-stone-800/80 text-stone-700 dark:text-stone-300 text-xs font-semibold"
+                            className="h-10 w-full min-w-0 box-border px-3.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-100 dark:bg-stone-800/80 text-stone-700 dark:text-stone-300 text-xs font-semibold"
                           />
                         </div>
                       </div>
@@ -1830,7 +1863,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                               setCustomCityInput(e.target.value);
                             }}
                             disabled={isPending}
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                            className="h-10 w-full min-w-0 box-border px-3.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                           />
                         ) : (
                           <select
@@ -1840,7 +1873,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                               setEditCity(e.target.value);
                             }}
                             disabled={isPending}
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
+                            className="h-10 w-full min-w-0 box-border px-3.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400"
                           >
                             {cityOptions.map((c, i) => (
                               <option key={i} value={c}>
