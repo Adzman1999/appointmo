@@ -50,6 +50,14 @@ const defaultStaffSchedule = (): StaffScheduleDay[] => STAFF_SCHEDULE_DAYS.map((
 
 const STANDARD_FORM_CONTROL_CLASS = 'box-border h-10 w-full min-w-0 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20';
 
+const getStaffEmploymentStatus = (staff: any) => {
+  const status = String(staff.status || (staff.isActive === false ? 'suspended' : 'active')).toLowerCase();
+  if (status === 'active' && staff.isActive === false) return 'suspended';
+  return ['active', 'suspended', 'resigned', 'retired'].includes(status)
+    ? status
+    : staff.isActive === false ? 'suspended' : 'active';
+};
+
 export const DemoAdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -264,6 +272,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [deductions, setDeductions] = useState('');
   const [payrollNotes, setPayrollNotes] = useState('');
   const [recordingPayroll, setRecordingPayroll] = useState(false);
+  const [updatingStaffStatusId, setUpdatingStaffStatusId] = useState<string | null>(null);
 
   // Detailed Staff Profile Modal (for HRIS management)
   const [editingStaffMember, setEditingStaffMember] = useState<any | null>(null);
@@ -372,6 +381,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const STAFF_PER_PAGE = 5;
   const [staffPage, setStaffPage] = useState(1);
 
+  const HRIS_STAFF_PER_PAGE = 8;
+  const [hrisStaffPage, setHrisStaffPage] = useState(1);
+
   const CUSTOMERS_PER_PAGE = 8;
   const [customerPage, setCustomerPage] = useState(1);
 
@@ -385,6 +397,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
   useEffect(() => {
     setCustomerPage(1);
   }, [customerSearch, activeSlug]);
+
+  useEffect(() => {
+    setHrisStaffPage(1);
+  }, [activeSlug]);
 
   // Details & History Modal State
   const [selectedApptDetails, setSelectedApptDetails] = useState<any | null>(null);
@@ -1363,11 +1379,37 @@ export const DemoAdminDashboardPage: React.FC = () => {
     }
   };
 
+  const handleUpdateStaffStatus = async (staff: any, status: string) => {
+    if (getStaffEmploymentStatus(staff) === status) return;
+    setUpdatingStaffStatusId(staff.id);
+    try {
+      await apiFetch(`/demo/admin/staff/${staff.id}/status?slug=${encodeURIComponent(activeSlug)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      await fetchDashboardData();
+      const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+      toast.success(`Staff status set to ${statusLabel}`, {
+        description: status === 'active'
+          ? `${staff.name} can receive new bookings again.`
+          : `${staff.name} is excluded from new bookings. Existing appointments are retained.`,
+      });
+    } catch (err: any) {
+      toast.error('Failed to update staff status', { description: err.message || 'Please try again.' });
+    } finally {
+      setUpdatingStaffStatusId(null);
+    }
+  };
+
   // Record Payroll / Salary Payment
   const handleRecordPayroll = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!payrollStaffId || !payPeriodStart || !payPeriodEnd) {
       toast.error('Required fields missing', { description: 'Please select staff and complete pay period dates.' });
+      return;
+    }
+    if (payPeriodEnd < payPeriodStart) {
+      toast.error('Invalid pay period', { description: 'The end date must be on or after the start date.' });
       return;
     }
     setRecordingPayroll(true);
@@ -1412,6 +1454,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   const totalStaffPages = Math.ceil(storeStaff.length / STAFF_PER_PAGE);
   const paginatedStaff = storeStaff.slice((staffPage - 1) * STAFF_PER_PAGE, staffPage * STAFF_PER_PAGE);
+
+  const totalHrisStaffPages = Math.ceil(storeStaff.length / HRIS_STAFF_PER_PAGE);
+  const paginatedHrisStaff = storeStaff.slice(
+    (hrisStaffPage - 1) * HRIS_STAFF_PER_PAGE,
+    hrisStaffPage * HRIS_STAFF_PER_PAGE
+  );
 
   const filteredStoreCustomers = storeCustomers.filter((customer) => {
     const searchTerm = customerSearch.trim().toLowerCase();
@@ -2514,8 +2562,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <div className="flex flex-wrap items-center justify-end gap-2">
                           <button
                             type="button"
-                            disabled={isPending}
+                            disabled={isPending || getStaffEmploymentStatus(st) !== 'active'}
                             onClick={() => handleOpenStaffSchedule(st)}
+                            title={getStaffEmploymentStatus(st) !== 'active' ? 'Activate this staff member before editing their booking schedule.' : undefined}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 text-[10px] font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition disabled:opacity-50"
                           >
                             <Clock className="w-3 h-3" />
@@ -2545,8 +2594,14 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             <Sliders className="w-3 h-3" />
                             <span>Edit</span>
                           </button>
-                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2.5 py-1 rounded-full">
-                            Active
+                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                            getStaffEmploymentStatus(st) === 'active'
+                              ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950'
+                              : getStaffEmploymentStatus(st) === 'suspended'
+                                ? 'text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50'
+                                : 'text-stone-600 dark:text-stone-300 bg-stone-200 dark:bg-stone-700'
+                          }`}>
+                            {getStaffEmploymentStatus(st).charAt(0).toUpperCase() + getStaffEmploymentStatus(st).slice(1)}
                           </span>
                         </div>
                       </div>
@@ -3189,7 +3244,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow self-start sm:self-auto"
                   >
                     <Coins className="w-4 h-4 text-amber-500" />
-                    <span>Record Salary Payment</span>
+                    <span>Record Salary &amp; Payroll</span>
                   </button>
                 </div>
 
@@ -3210,6 +3265,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <tr className="border-b border-stone-100 dark:border-stone-800 text-stone-400 text-[11px]">
                           <th className="py-2.5 font-semibold">Employee</th>
                           <th className="py-2.5 font-semibold">Position &amp; Type</th>
+                          <th className="py-2.5 font-semibold">Employment Status</th>
                           <th className="py-2.5 font-semibold">Monthly Base</th>
                           <th className="py-2.5 font-semibold">Commission</th>
                           <th className="py-2.5 font-semibold">Contact Info</th>
@@ -3219,12 +3275,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
                         {storeStaff.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="py-8 text-center text-stone-400">
+                            <td colSpan={7} className="py-8 text-center text-stone-400">
                               No employees found. Add staff in the Staff Specialists tab first.
                             </td>
                           </tr>
                         ) : (
-                          storeStaff.map((staff) => (
+                          paginatedHrisStaff.map((staff) => (
                             <tr key={staff.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/40 transition">
                               <td className="py-3 pr-3">
                                 <div className="font-bold text-stone-900 dark:text-stone-100">{staff.name}</div>
@@ -3235,6 +3291,20 @@ export const DemoAdminDashboardPage: React.FC = () => {
                                 <span className="inline-block mt-0.5 text-[10px] bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 px-2 py-0.5 rounded-full">
                                   {staff.employmentType || 'Full-Time'}
                                 </span>
+                              </td>
+                              <td className="py-3 pr-3">
+                                <select
+                                  aria-label={`Employment status for ${staff.name}`}
+                                  value={getStaffEmploymentStatus(staff)}
+                                  disabled={isPending || updatingStaffStatusId === staff.id}
+                                  onChange={(event) => handleUpdateStaffStatus(staff, event.target.value)}
+                                  className={`${STANDARD_FORM_CONTROL_CLASS} max-w-[150px] disabled:cursor-wait disabled:opacity-60`}
+                                >
+                                  <option value="active">Active</option>
+                                  <option value="suspended">Suspended</option>
+                                  <option value="resigned">Resigned</option>
+                                  <option value="retired">Retired</option>
+                                </select>
                               </td>
                               <td className="py-3 pr-3 font-semibold text-stone-900 dark:text-stone-100">
                                 {getCurrencySymbol(editCurrency)}{Number(staff.baseSalary || 0).toLocaleString()}
@@ -3268,7 +3338,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                                   }}
                                   className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 hover:border-amber-400 text-stone-700 dark:text-stone-300 font-semibold text-xs hover:bg-stone-50 dark:hover:bg-stone-800 transition"
                                 >
-                                  Edit HR Info
+                                  Edit
                                 </button>
                               </td>
                             </tr>
@@ -3277,6 +3347,15 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       </tbody>
                     </table>
                   </div>
+
+                  <Pagination
+                    currentPage={hrisStaffPage}
+                    totalPages={totalHrisStaffPages}
+                    totalItems={storeStaff.length}
+                    itemsPerPage={HRIS_STAFF_PER_PAGE}
+                    onPageChange={setHrisStaffPage}
+                    itemName="employees"
+                  />
                 </div>
 
                 {/* Payroll Ledger */}
@@ -3300,7 +3379,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     <div className="py-12 text-center text-stone-400 text-xs">Loading payroll ledger...</div>
                   ) : payrollRecords.length === 0 ? (
                     <div className="py-12 text-center text-stone-400 text-xs">
-                      No payroll disbursements recorded yet. Click "Record Salary Payment" above to create one.
+                      No payroll disbursements recorded yet. Click "Record Salary & Payroll" above to create one.
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -3332,7 +3411,11 @@ export const DemoAdminDashboardPage: React.FC = () => {
                                 {getCurrencySymbol(editCurrency)}{Number(rec.commissionPay).toLocaleString()}
                               </td>
                               <td className="py-3 font-bold text-emerald-700 dark:text-emerald-400">
-                                {getCurrencySymbol(editCurrency)}{Number(rec.netPay).toLocaleString()}
+                                {getCurrencySymbol(editCurrency)}{(
+                                  Number.isFinite(Number(rec.netSalary ?? rec.netPay))
+                                    ? Number(rec.netSalary ?? rec.netPay)
+                                    : 0
+                                ).toLocaleString()}
                               </td>
                               <td className="py-3">
                                 <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
@@ -4635,9 +4718,14 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   middle: 'Middle Initial / Name',
                   last: 'Staff Last Name',
                 }}
+                inputClassName={STANDARD_FORM_CONTROL_CLASS}
               />
 
-              <div className="grid grid-cols-2 gap-3">
+              <section className="space-y-3">
+                <h4 className="border-b border-stone-100 pb-2 text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:border-stone-800 dark:text-stone-400">
+                  Role &amp; Employment
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
                     Position / Title <span className="text-rose-500 font-bold">* (Required)</span>
@@ -4648,7 +4736,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     value={editStaffPosition}
                     onChange={(e) => setEditStaffPosition(e.target.value)}
                     placeholder="e.g. Senior Aesthetician"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                    className={STANDARD_FORM_CONTROL_CLASS}
                   />
                 </div>
                 <div>
@@ -4656,7 +4744,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   <select
                     value={editStaffEmploymentType}
                     onChange={(e) => setEditStaffEmploymentType(e.target.value)}
-                    className="w-full h-10 px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                    className={STANDARD_FORM_CONTROL_CLASS}
                   >
                     <option value="Full-Time">Full-Time</option>
                     <option value="Part-Time">Part-Time</option>
@@ -4664,44 +4752,59 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     <option value="Probationary">Probationary</option>
                   </select>
                 </div>
-              </div>
+                </div>
+              </section>
 
-              <div className="grid grid-cols-2 gap-3">
+              <section className="space-y-3">
+                <h4 className="border-b border-stone-100 pb-2 text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:border-stone-800 dark:text-stone-400">
+                  Compensation
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
                     Monthly Base Pay ({getCurrencySymbol(editCurrency).trim()})
                   </label>
                   <input
                     type="number"
+                    min="0"
+                    step="0.01"
                     value={editStaffBaseSalary}
                     onChange={(e) => setEditStaffBaseSalary(e.target.value)}
                     placeholder="25000"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                    className={STANDARD_FORM_CONTROL_CLASS}
                   />
                 </div>
                 <div>
                   <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Commission Rate (%)</label>
                   <input
                     type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
                     value={editStaffCommissionRate}
                     onChange={(e) => setEditStaffCommissionRate(e.target.value)}
                     placeholder="10"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                    className={STANDARD_FORM_CONTROL_CLASS}
                   />
                 </div>
-              </div>
+                </div>
 
-              <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Hire / Start Date</label>
-                <input
-                  type="date"
-                  value={editStaffHireDate}
-                  onChange={(e) => setEditStaffHireDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
-                />
-              </div>
+                <div>
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Hire / Start Date</label>
+                  <input
+                    type="date"
+                    value={editStaffHireDate}
+                    onChange={(e) => setEditStaffHireDate(e.target.value)}
+                    className={STANDARD_FORM_CONTROL_CLASS}
+                  />
+                </div>
+              </section>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <section className="space-y-3">
+                <h4 className="border-b border-stone-100 pb-2 text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:border-stone-800 dark:text-stone-400">
+                  Contact Details
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
                     Staff Work Email <span className="text-stone-400 font-normal">(Optional)</span>
@@ -4711,7 +4814,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     value={editStaffEmail}
                     onChange={(e) => setEditStaffEmail(e.target.value)}
                     placeholder="staff@store.com"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                    className={STANDARD_FORM_CONTROL_CLASS}
                   />
                 </div>
                 <div>
@@ -4732,7 +4835,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     placeholder={getCountryByName(editCountry).code === 'PH' ? '905 242 2821' : undefined}
                   />
                 </div>
-              </div>
+                </div>
+              </section>
 
               {/* Separated Emergency Contact Fields */}
               <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-3">
@@ -4754,7 +4858,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       value={editStaffEmergencyName}
                       onChange={(e) => setEditStaffEmergencyName(e.target.value)}
                       placeholder="e.g. Juan Santos (Spouse)"
-                      className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                      className={STANDARD_FORM_CONTROL_CLASS}
                     />
                   </div>
                   <div>
@@ -4802,13 +4906,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
       {/* MODAL: RECORD SALARY PAYMENT */}
       {showPayrollModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-lg w-full shadow-2xl">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
               <div className="flex items-center space-x-2">
                 <Wallet className="w-5 h-5 text-amber-500" />
                 <div>
                   <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">Record Salary &amp; Payroll</h3>
-                  <p className="text-[11px] text-stone-500">Generate a compensation payslip entry for staff member</p>
+                  <p className="text-[11px] text-stone-500">Record salary, incentives, deductions, and pay period.</p>
                 </div>
               </div>
               <button
@@ -4820,107 +4924,122 @@ export const DemoAdminDashboardPage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleRecordPayroll} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Select Employee</label>
-                <select
-                  required
-                  value={payrollStaffId}
-                  onChange={(e) => {
-                    const sid = e.target.value;
-                    setPayrollStaffId(sid);
-                    const st = storeStaff.find(s => s.id === sid);
-                    if (st) {
-                      setBasePay(String(st.baseSalary || 25000));
-                    }
-                  }}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
-                >
-                  <option value="">Choose Staff Member</option>
-                  {storeStaff.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.position || 'Specialist'})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+            <form onSubmit={handleRecordPayroll} className="space-y-5 text-xs">
+              <section className="space-y-3">
+                <h4 className="border-b border-stone-100 pb-2 text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:border-stone-800 dark:text-stone-400">
+                  Employee &amp; Pay Period
+                </h4>
                 <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Pay Period Start</label>
-                  <input
-                    type="date"
+                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Select Employee</label>
+                  <select
                     required
-                    value={payPeriodStart}
-                    onChange={(e) => setPayPeriodStart(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
-                  />
+                    value={payrollStaffId}
+                    onChange={(e) => {
+                      const sid = e.target.value;
+                      setPayrollStaffId(sid);
+                      const st = storeStaff.find(s => s.id === sid);
+                      if (st) setBasePay(String(st.baseSalary || 25000));
+                    }}
+                    className={STANDARD_FORM_CONTROL_CLASS}
+                  >
+                    <option value="">Choose Staff Member</option>
+                    {storeStaff.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.position || 'Specialist'}{getStaffEmploymentStatus(s) !== 'active' ? ` · ${getStaffEmploymentStatus(s)}` : ''})
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Pay Period End</label>
-                  <input
-                    type="date"
-                    required
-                    value={payPeriodEnd}
-                    onChange={(e) => setPayPeriodEnd(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Base Pay ({getCurrencySymbol(editCurrency).trim()})
-                  </label>
-                  <input
-                    type="number"
-                    value={basePay}
-                    onChange={(e) => setBasePay(e.target.value)}
-                    placeholder="25000"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Pay Period Start</label>
+                    <input
+                      type="date"
+                      required
+                      value={payPeriodStart}
+                      onChange={(e) => setPayPeriodStart(e.target.value)}
+                      className={STANDARD_FORM_CONTROL_CLASS}
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Pay Period End</label>
+                    <input
+                      type="date"
+                      required
+                      value={payPeriodEnd}
+                      onChange={(e) => setPayPeriodEnd(e.target.value)}
+                      className={STANDARD_FORM_CONTROL_CLASS}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Commission Pay ({getCurrencySymbol(editCurrency).trim()})
-                  </label>
-                  <input
-                    type="number"
-                    value={commissionPay}
-                    onChange={(e) => setCommissionPay(e.target.value)}
-                    placeholder="0"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
-                  />
-                </div>
-              </div>
+              </section>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Bonuses / Incentives ({getCurrencySymbol(editCurrency).trim()})
-                  </label>
-                  <input
-                    type="number"
-                    value={bonuses}
-                    onChange={(e) => setBonuses(e.target.value)}
-                    placeholder="0"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
-                  />
+              <section className="space-y-3">
+                <h4 className="border-b border-stone-100 pb-2 text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:border-stone-800 dark:text-stone-400">
+                  Compensation Breakdown
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                      Base Pay ({getCurrencySymbol(editCurrency).trim()})
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={basePay}
+                      onChange={(e) => setBasePay(e.target.value)}
+                      placeholder="25000"
+                      className={STANDARD_FORM_CONTROL_CLASS}
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                      Commission Pay ({getCurrencySymbol(editCurrency).trim()})
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={commissionPay}
+                      onChange={(e) => setCommissionPay(e.target.value)}
+                      placeholder="0"
+                      className={STANDARD_FORM_CONTROL_CLASS}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Deductions / Tax ({getCurrencySymbol(editCurrency).trim()})
-                  </label>
-                  <input
-                    type="number"
-                    value={deductions}
-                    onChange={(e) => setDeductions(e.target.value)}
-                    placeholder="0"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                      Bonuses / Incentives ({getCurrencySymbol(editCurrency).trim()})
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={bonuses}
+                      onChange={(e) => setBonuses(e.target.value)}
+                      placeholder="0"
+                      className={STANDARD_FORM_CONTROL_CLASS}
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                      Deductions / Tax ({getCurrencySymbol(editCurrency).trim()})
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={deductions}
+                      onChange={(e) => setDeductions(e.target.value)}
+                      placeholder="0"
+                      className={STANDARD_FORM_CONTROL_CLASS}
+                    />
+                  </div>
                 </div>
-              </div>
+              </section>
 
               <div>
                 <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Notes / Payslip Memo</label>
@@ -4929,19 +5048,20 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   value={payrollNotes}
                   onChange={(e) => setPayrollNotes(e.target.value)}
                   placeholder="e.g. Regular monthly payroll disbursement"
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none"
+                  maxLength={500}
+                  className={STANDARD_FORM_CONTROL_CLASS}
                 />
               </div>
 
               <div className="p-3 bg-stone-100 dark:bg-stone-800/80 rounded-xl flex justify-between items-center text-xs">
                 <span className="font-semibold text-stone-600 dark:text-stone-400">Estimated Net Pay:</span>
                 <span className="font-bold text-sm text-emerald-700 dark:text-emerald-400">
-                  {getCurrencySymbol(editCurrency)}{(
+                  {getCurrencySymbol(editCurrency)}{Math.max(0, (
                     (Number(basePay) || 0) +
                     (Number(commissionPay) || 0) +
                     (Number(bonuses) || 0) -
                     (Number(deductions) || 0)
-                  ).toLocaleString()}
+                  )).toLocaleString()}
                 </span>
               </div>
 

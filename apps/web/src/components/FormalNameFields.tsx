@@ -12,6 +12,7 @@ interface FormalNameFieldsProps {
   autoComplete?: string;
   layout?: 'grid' | 'stacked';
   className?: string;
+  inputClassName?: string;
   labels?: {
     first?: string;
     middle?: string;
@@ -31,6 +32,7 @@ export const FormalNameFields: React.FC<FormalNameFieldsProps> = ({
   autoComplete,
   layout = 'grid',
   className = '',
+  inputClassName = 'w-full h-10 px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 disabled:opacity-60 transition',
   labels,
 }) => {
   const containerClasses =
@@ -57,7 +59,7 @@ export const FormalNameFields: React.FC<FormalNameFieldsProps> = ({
           placeholder="e.g. Maria"
           value={firstName}
           onChange={(e) => onFirstNameChange(e.target.value)}
-          className="w-full h-10 px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 disabled:opacity-60 transition"
+          className={inputClassName}
         />
       </div>
 
@@ -73,7 +75,7 @@ export const FormalNameFields: React.FC<FormalNameFieldsProps> = ({
           placeholder="e.g. Clara"
           value={middleName}
           onChange={(e) => onMiddleNameChange(e.target.value)}
-          className="w-full h-10 px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 disabled:opacity-60 transition"
+          className={inputClassName}
         />
       </div>
 
@@ -94,7 +96,7 @@ export const FormalNameFields: React.FC<FormalNameFieldsProps> = ({
           placeholder="e.g. Santos"
           value={lastName}
           onChange={(e) => onLastNameChange(e.target.value)}
-          className="w-full h-10 px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 disabled:opacity-60 transition"
+          className={inputClassName}
         />
       </div>
     </div>

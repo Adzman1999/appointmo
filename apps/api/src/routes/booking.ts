@@ -118,7 +118,7 @@ router.get('/staff', async (req: Request, res: Response) => {
       SELECT DISTINCT sp.id, sp.name, sp.bio, sp.avatar_url AS "avatarUrl"
       FROM staff_profiles sp
       JOIN businesses b ON sp.business_id = b.id
-      WHERE sp.is_active = true
+      WHERE sp.is_active = true AND COALESCE(LOWER(sp.status), 'active') = 'active'
     `;
     const params: any[] = [];
 

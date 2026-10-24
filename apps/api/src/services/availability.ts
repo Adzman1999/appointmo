@@ -86,6 +86,7 @@ export class AvailabilityService {
       FROM staff_profiles sp
       JOIN staff_services ss ON sp.id = ss.staff_id
       WHERE sp.business_id = $1 AND ss.service_id = $2 AND sp.is_active = true
+        AND COALESCE(LOWER(sp.status), 'active') = 'active'
     `;
     const staffParams: any[] = [businessId, serviceId];
     if (requestedStaffId) {

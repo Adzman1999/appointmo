@@ -936,6 +936,7 @@ router.post('/appointments/:id/reassign-staff', async (req: Request, res: Respon
       SELECT sp.name FROM staff_profiles sp
       JOIN staff_services ss ON sp.id = ss.staff_id
       WHERE sp.id = $1 AND ss.service_id = $2 AND sp.is_active = true
+        AND COALESCE(LOWER(sp.status), 'active') = 'active'
     `, [staffId, appt.service_id]);
 
     if (qualRes.rows.length === 0) {
@@ -1058,7 +1059,7 @@ router.get('/settings', async (req: Request, res: Response) => {
       SELECT id, name, bio, position, employment_type AS "employmentType",
              base_salary AS "baseSalary", commission_rate AS "commissionRate",
              hire_date AS "hireDate", email, phone, emergency_contact AS "emergencyContact",
-             status
+             status, is_active AS "isActive"
       FROM staff_profiles
       WHERE business_id = $1
       ORDER BY name ASC
@@ -1511,7 +1512,37 @@ router.put('/staff/:id/schedule', async (req: Request, res: Response) => {
   }
 });
 
-// 13b. Update Staff Specialist HRIS & Compensation details
+// 13b. Update a staff member's booking availability and employment status
+router.patch('/staff/:id/status', async (req: Request, res: Response) => {
+  try {
+    const businessId = await getDemoBusinessId(req, false);
+    const status = String(req.body.status || '').trim().toLowerCase();
+    const allowedStatuses = ['active', 'suspended', 'resigned', 'retired'];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Choose active, suspended, resigned, or retired status' });
+    }
+
+    const staffRes = await query(
+      `UPDATE staff_profiles
+       SET status = $1, is_active = $2, updated_at = NOW()
+       WHERE id = $3 AND business_id = $4
+       RETURNING id, name, status, is_active AS "isActive"`,
+      [status, status === 'active', req.params.id, businessId]
+    );
+
+    if (staffRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Staff profile not found' });
+    }
+
+    res.json({ message: 'Staff employment status updated', staff: staffRes.rows[0] });
+  } catch (err: any) {
+    console.error('Update staff status error:', err);
+    res.status(500).json({ error: 'Failed to update staff status' });
+  }
+});
+
+// 13c. Update Staff Specialist HRIS & Compensation details
 router.put('/staff/:id', async (req: Request, res: Response) => {
   try {
     const businessId = await getDemoBusinessId(req, false);
@@ -1525,15 +1556,24 @@ router.put('/staff/:id', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Staff name is required' });
     }
 
+    const normalizedStatus = typeof status === 'string' ? status.trim().toLowerCase() : null;
+    if (status !== undefined && status !== null && (!normalizedStatus || !['active', 'suspended', 'resigned', 'retired'].includes(normalizedStatus))) {
+      return res.status(400).json({ error: 'Choose active, suspended, resigned, or retired status' });
+    }
+
     const spRes = await query(
       `UPDATE staff_profiles 
        SET name = $1, bio = $2, position = $3, employment_type = $4,
            base_salary = $5, commission_rate = $6, hire_date = $7,
-           email = $8, phone = $9, emergency_contact = $10, status = $11, updated_at = NOW()
+           email = $8, phone = $9, emergency_contact = $10,
+           status = COALESCE($11, status),
+           is_active = CASE WHEN $11 IS NULL THEN is_active ELSE ($11 = 'active') END,
+           updated_at = NOW()
        WHERE id = $12 AND business_id = $13
        RETURNING id, name, bio, position, employment_type AS "employmentType",
                  base_salary AS "baseSalary", commission_rate AS "commissionRate",
-                 hire_date AS "hireDate", email, phone, emergency_contact AS "emergencyContact", status`,
+                 hire_date AS "hireDate", email, phone, emergency_contact AS "emergencyContact",
+                 status, is_active AS "isActive"`,
       [
         name.trim(),
         bio?.trim() || 'Store specialist',
@@ -1545,7 +1585,7 @@ router.put('/staff/:id', async (req: Request, res: Response) => {
         email?.trim() || null,
         phone?.trim() || null,
         emergencyContact?.trim() || null,
-        status || 'active',
+        normalizedStatus,
         id,
         businessId
       ]
@@ -1562,7 +1602,7 @@ router.put('/staff/:id', async (req: Request, res: Response) => {
   }
 });
 
-// 13c. HRIS Payroll Records: Get and Record Staff Compensation / Payslip
+// 13d. HRIS Payroll Records: Get and Record Staff Compensation / Payslip
 router.get('/payroll', async (req: Request, res: Response) => {
   try {
     const businessId = await getDemoBusinessId(req);
