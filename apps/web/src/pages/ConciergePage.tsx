@@ -34,25 +34,35 @@ export const ConciergePage: React.FC = () => {
   const [customerLastName, setCustomerLastName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [authenticatedCustomer, setAuthenticatedCustomer] = useState<any | null>(null);
+  const [bookingForSomeoneElse, setBookingForSomeoneElse] = useState(false);
+  const [recipientFirstName, setRecipientFirstName] = useState('');
+  const [recipientMiddleName, setRecipientMiddleName] = useState('');
+  const [recipientLastName, setRecipientLastName] = useState('');
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [recipientPhone, setRecipientPhone] = useState('');
   const [notes, setNotes] = useState('');
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState<any | null>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Auto-fill from logged-in customer account
+    // Keep the account holder as booking owner; recipient details are separate.
     const storedUserRaw = localStorage.getItem('appointmo_user');
     if (storedUserRaw) {
       try {
         const u = JSON.parse(storedUserRaw);
-        if (u.name && !customerFirstName) {
-          const parsed = parseFormalName(u.name);
-          setCustomerFirstName(parsed.firstName);
-          setCustomerMiddleName(parsed.middleName || '');
-          setCustomerLastName(parsed.lastName);
+        if (localStorage.getItem('appointmo_token') && u.role === 'customer') {
+          setAuthenticatedCustomer(u);
+          if (u.name && !customerFirstName) {
+            const parsed = parseFormalName(u.name);
+            setCustomerFirstName(parsed.firstName);
+            setCustomerMiddleName(parsed.middleName || '');
+            setCustomerLastName(parsed.lastName);
+          }
+          if (u.email && !customerEmail) setCustomerEmail(u.email);
+          if (u.phone && !customerPhone) setCustomerPhone(u.phone);
         }
-        if (u.email && !customerEmail) setCustomerEmail(u.email);
-        if (u.phone && !customerPhone) setCustomerPhone(u.phone);
       } catch (_) {}
     }
 
@@ -119,6 +129,28 @@ export const ConciergePage: React.FC = () => {
       return;
     }
 
+    let recipientFullName: string | undefined;
+    let normalizedRecipientPhone: string | undefined;
+    if (bookingForSomeoneElse) {
+      if (!recipientFirstName.trim() || !recipientLastName.trim()) {
+        setBookingError('Enter the first and last name of the person receiving the service.');
+        return;
+      }
+      if (recipientPhone.trim()) {
+        const recipientPhoneVal = validateFullPhoneNumber(recipientPhone, 'Philippines', true);
+        if (!recipientPhoneVal.isValid) {
+          setBookingError(recipientPhoneVal.error || 'Enter a valid recipient phone number.');
+          return;
+        }
+      }
+      recipientFullName = formatFormalName({
+        firstName: recipientFirstName,
+        middleName: recipientMiddleName,
+        lastName: recipientLastName,
+      });
+      normalizedRecipientPhone = recipientPhone.trim() ? normalizePhoneNumber(recipientPhone, 'PH') : undefined;
+    }
+
     setBookingLoading(true);
     setBookingError(null);
 
@@ -139,11 +171,20 @@ export const ConciergePage: React.FC = () => {
           customerName: formalFullName,
           customerEmail: customerEmail.trim(),
           customerPhone: normalizedPhone,
+          bookingForSomeoneElse,
+          recipientName: recipientFullName,
+          recipientEmail: recipientEmail.trim() || undefined,
+          recipientPhone: normalizedRecipientPhone,
           notes: notes ? `[Concierge Note] ${notes.trim()}` : '[Concierge Recommendation]',
         }),
       });
 
       setBookingSuccess(res.booking);
+      if (authenticatedCustomer && !authenticatedCustomer.phone) {
+        const updatedCustomer = { ...authenticatedCustomer, phone: normalizedPhone };
+        setAuthenticatedCustomer(updatedCustomer);
+        localStorage.setItem('appointmo_user', JSON.stringify(updatedCustomer));
+      }
       setBookingRec(null);
       // Clear fields upon booking completion
       setCustomerFirstName('');
@@ -151,6 +192,12 @@ export const ConciergePage: React.FC = () => {
       setCustomerLastName('');
       setCustomerEmail('');
       setCustomerPhone('');
+      setBookingForSomeoneElse(false);
+      setRecipientFirstName('');
+      setRecipientMiddleName('');
+      setRecipientLastName('');
+      setRecipientEmail('');
+      setRecipientPhone('');
       setNotes('');
     } catch (err: any) {
       setBookingError(err.message || 'Could not complete booking. Slot may have been taken.');
@@ -304,15 +351,16 @@ export const ConciergePage: React.FC = () => {
           <div className="p-6 rounded-3xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 space-y-4 animate-in fade-in shadow-sm">
             <div className="flex items-center space-x-2">
               <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <h3 className="text-lg font-bold">Appointment Confirmed via Concierge!</h3>
+            <h3 className="text-lg font-bold">Booking Request Received via Concierge</h3>
             </div>
             <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
-              Your appointment is recorded directly in PostgreSQL. You can verify it right now on the Admin Demo dashboard.
+              The store will review your request. The booking contact remains responsible for managing it.
             </p>
             <div className="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-700 text-xs space-y-2 font-mono">
               <div>Booking Reference: <strong className="text-stone-900 dark:text-stone-100 font-bold">{bookingSuccess.bookingReference}</strong></div>
-              <div>Service: <span className="text-stone-800 dark:text-stone-200">{bookingRec?.serviceName || 'Confirmed Service'}</span></div>
-              <div>Price: <span className="text-stone-800 dark:text-stone-200">₱{bookingSuccess.priceSnapshot}</span></div>
+              <div>Service: <span className="text-stone-800 dark:text-stone-200">{bookingSuccess.serviceName || 'Selected Service'}</span></div>
+              {bookingSuccess.appointment?.recipientName && <div>Service recipient: <span className="text-stone-800 dark:text-stone-200">{bookingSuccess.appointment.recipientName}</span></div>}
+              <div>Price: <span className="text-stone-800 dark:text-stone-200">₱{bookingSuccess.price}</span></div>
             </div>
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <button
@@ -468,7 +516,9 @@ export const ConciergePage: React.FC = () => {
           <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-5 sm:p-7 max-w-lg w-full shadow-2xl">
             <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100 mb-1">Confirm Concierge Booking</h3>
             <p className="text-xs text-stone-500 dark:text-stone-400 mb-4">
-              Enter your synthetic customer contact info to confirm this demo appointment.
+              {authenticatedCustomer
+                ? 'Your signed-in account owns this booking. Add a recipient if someone else will receive the service.'
+                : 'Enter the contact details for the person responsible for this booking.'}
             </p>
 
             <div className="bg-stone-50 dark:bg-stone-800/60 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 mb-4 text-xs space-y-1">
@@ -487,51 +537,81 @@ export const ConciergePage: React.FC = () => {
             )}
 
             <form onSubmit={handleConfirmBooking} className="space-y-3 text-xs">
-              <FormalNameFields
-                firstName={customerFirstName}
-                middleName={customerMiddleName}
-                lastName={customerLastName}
-                onFirstNameChange={setCustomerFirstName}
-                onMiddleNameChange={setCustomerMiddleName}
-                onLastNameChange={setCustomerLastName}
-                required={true}
-                labels={{
-                  first: 'First Name',
-                  middle: 'Middle Initial / Name',
-                  last: 'Last Name',
-                }}
-              />
-
-              <div>
-                <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Email Address <span className="text-rose-500 font-bold">* (Required)</span>
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="customer@example.com"
-                  value={customerEmail}
-                  onChange={(e) => setCustomerEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300">
-                    Phone Number <span className="text-rose-500 font-bold">* (Required)</span>
-                  </label>
-                  <span className="text-[10px] text-stone-400">
-                    +63 • Max 10 digits
-                  </span>
+              {authenticatedCustomer ? (
+                <div className="rounded-2xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/60 p-4 space-y-1.5">
+                  <div className="text-[10px] uppercase tracking-wide font-bold text-stone-500">Booking owner account</div>
+                  <div className="font-bold text-stone-900 dark:text-stone-100">{authenticatedCustomer.name || customerFirstName}</div>
+                  <div className="text-stone-600 dark:text-stone-300">{authenticatedCustomer.email || customerEmail}</div>
+                  {authenticatedCustomer.phone ? (
+                    <div className="text-stone-600 dark:text-stone-300">{authenticatedCustomer.phone}</div>
+                  ) : (
+                    <label className="block space-y-1.5 pt-1">
+                      <span className="font-semibold text-stone-700 dark:text-stone-300">Add your phone number to continue</span>
+                      <CountryPhoneInput countryNameOrCode="Philippines" value={customerPhone} onChange={setCustomerPhone} required />
+                    </label>
+                  )}
                 </div>
-                <CountryPhoneInput
-                  countryNameOrCode="Philippines"
-                  value={customerPhone}
-                  onChange={(val) => setCustomerPhone(val)}
-                  required
-                />
-              </div>
+              ) : (
+                <>
+                  <div className="text-[10px] uppercase tracking-wide font-bold text-stone-500">Booking contact</div>
+                  <FormalNameFields
+                    firstName={customerFirstName}
+                    middleName={customerMiddleName}
+                    lastName={customerLastName}
+                    onFirstNameChange={setCustomerFirstName}
+                    onMiddleNameChange={setCustomerMiddleName}
+                    onLastNameChange={setCustomerLastName}
+                    required={true}
+                    labels={{ first: 'First Name', middle: 'Middle Initial / Name', last: 'Last Name' }}
+                  />
+
+                  <div>
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                      Email Address <span className="text-rose-500 font-bold">* (Required)</span>
+                    </label>
+                    <input type="email" required placeholder="customer@example.com" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition" />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                      Phone Number <span className="text-rose-500 font-bold">* (Required)</span>
+                    </label>
+                    <CountryPhoneInput countryNameOrCode="Philippines" value={customerPhone} onChange={setCustomerPhone} required />
+                  </div>
+                </>
+              )}
+
+              <label className="flex items-start gap-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800/50 p-3 cursor-pointer">
+                <input type="checkbox" checked={bookingForSomeoneElse} onChange={(event) => setBookingForSomeoneElse(event.target.checked)} className="mt-0.5 h-4 w-4 rounded text-amber-500 focus:ring-amber-400" />
+                <span>
+                  <span className="block font-semibold text-stone-800 dark:text-stone-200">I’m booking for someone else</span>
+                  <span className="block text-[10px] text-stone-500 mt-0.5">The booking stays with the contact above; the store will see who is receiving the service.</span>
+                </span>
+              </label>
+
+              {bookingForSomeoneElse && (
+                <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20 p-4 space-y-3">
+                  <div className="font-bold text-stone-800 dark:text-stone-200">Person receiving the service</div>
+                  <FormalNameFields
+                    firstName={recipientFirstName}
+                    middleName={recipientMiddleName}
+                    lastName={recipientLastName}
+                    onFirstNameChange={setRecipientFirstName}
+                    onMiddleNameChange={setRecipientMiddleName}
+                    onLastNameChange={setRecipientLastName}
+                    required={true}
+                    labels={{ first: 'Recipient First Name', middle: 'Middle Initial / Name', last: 'Recipient Last Name' }}
+                  />
+                  <div>
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Recipient email <span className="text-stone-400 font-normal">(Optional)</span></label>
+                    <input type="email" value={recipientEmail} onChange={(event) => setRecipientEmail(event.target.value)} placeholder="recipient@example.com" className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 transition" />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Recipient phone <span className="text-stone-400 font-normal">(Optional)</span></label>
+                    <CountryPhoneInput countryNameOrCode="Philippines" value={recipientPhone} onChange={setRecipientPhone} />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">Special Notes (Optional)</label>
@@ -559,7 +639,12 @@ export const ConciergePage: React.FC = () => {
                     !customerFirstName.trim() ||
                     !customerLastName.trim() ||
                     !customerEmail.trim() ||
-                    !validateFullPhoneNumber(customerPhone, 'Philippines', true).isValid
+                    !validateFullPhoneNumber(customerPhone, 'Philippines', true).isValid ||
+                    (bookingForSomeoneElse && (
+                      !recipientFirstName.trim() ||
+                      !recipientLastName.trim() ||
+                      (Boolean(recipientPhone.trim()) && !validateFullPhoneNumber(recipientPhone, 'Philippines', true).isValid)
+                    ))
                   }
                   className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-stone-900 text-white hover:bg-stone-800 transition shadow disabled:opacity-50"
                 >

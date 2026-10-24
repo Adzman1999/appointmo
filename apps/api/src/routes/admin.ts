@@ -84,6 +84,8 @@ router.get('/appointments', authenticateJwt, async (req: Request, res: Response)
       SELECT 
         a.id, a.booking_reference AS "bookingReference", a.status,
         a.start_time AS "startTime", a.end_time AS "endTime",
+        a.recipient_name AS "recipientName", a.recipient_email AS "recipientEmail",
+        a.recipient_phone AS "recipientPhone",
         a.price_snapshot AS "price", a.currency, a.notes, a.created_at AS "createdAt",
         s.name AS "serviceName", sp.name AS "staffName",
         c.name AS "customerName", c.email AS "customerEmail", c.phone AS "customerPhone"
@@ -102,7 +104,7 @@ router.get('/appointments', authenticateJwt, async (req: Request, res: Response)
 
     if (search && typeof search === 'string') {
       params.push(`%${search}%`);
-      sql += ` AND (c.name ILIKE $${params.length} OR a.booking_reference ILIKE $${params.length} OR s.name ILIKE $${params.length})`;
+      sql += ` AND (c.name ILIKE $${params.length} OR a.recipient_name ILIKE $${params.length} OR a.booking_reference ILIKE $${params.length} OR s.name ILIKE $${params.length})`;
     }
 
     sql += ' ORDER BY a.start_time DESC LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);

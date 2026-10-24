@@ -16,6 +16,9 @@ interface CustomerAppointment {
   status: string;
   startTime: string;
   endTime: string;
+  recipientName?: string | null;
+  recipientEmail?: string | null;
+  recipientPhone?: string | null;
   price: string | number;
   currency: string;
   notes?: string;
@@ -489,6 +492,12 @@ export const CustomerPortalPage: React.FC = () => {
                           <User className="w-3.5 h-3.5 text-stone-400" />
                           <span>Specialist: {appt.staffName}</span>
                         </div>
+                        {appt.recipientName && (
+                          <div className="flex items-center space-x-2 text-stone-700 dark:text-stone-300">
+                            <User className="w-3.5 h-3.5 text-stone-400" />
+                            <span>For: {appt.recipientName}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -691,6 +700,14 @@ export const CustomerPortalPage: React.FC = () => {
                 <MapPin className="w-4 h-4 text-stone-400" />
                 <span>{selectedAppt.branchName} • {selectedAppt.branchAddress}</span>
               </div>
+              {selectedAppt.recipientName && (
+                <div className="rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 p-3 space-y-1">
+                  <div className="font-bold text-stone-800 dark:text-stone-200">Person receiving the service</div>
+                  <div>{selectedAppt.recipientName}</div>
+                  {selectedAppt.recipientEmail && <div className="text-stone-500">{selectedAppt.recipientEmail}</div>}
+                  {selectedAppt.recipientPhone && <div className="text-stone-500">{selectedAppt.recipientPhone}</div>}
+                </div>
+              )}
             </div>
 
             <div className="pt-4 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between">

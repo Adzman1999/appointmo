@@ -172,8 +172,9 @@ export const BusinessDashboardPage: React.FC = () => {
                     <tr key={a.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/40">
                       <td className="py-3 px-3 font-mono font-semibold text-stone-900 dark:text-stone-100">{a.bookingReference}</td>
                       <td className="py-3 px-3">
-                        <div className="font-medium text-stone-900 dark:text-stone-100">{a.customerName}</div>
-                        <div className="text-[10px] text-stone-400 dark:text-stone-500">{a.customerPhone}</div>
+                        <div className="font-medium text-stone-900 dark:text-stone-100">{a.recipientName || a.customerName}</div>
+                        {a.recipientName && <div className="text-[10px] text-stone-400 dark:text-stone-500">Booked by {a.customerName}</div>}
+                        <div className="text-[10px] text-stone-400 dark:text-stone-500">{a.recipientPhone || a.customerPhone}</div>
                       </td>
                       <td className="py-3 px-3 text-stone-700 dark:text-stone-300">{a.serviceName}</td>
                       <td className="py-3 px-3 text-stone-600 dark:text-stone-400">{a.staffName}</td>

@@ -205,6 +205,11 @@ export class AvailabilityService {
     customerName: string;
     customerEmail: string;
     customerPhone: string;
+    bookerUserId?: string;
+    bookingForSomeoneElse?: boolean;
+    recipientName?: string;
+    recipientEmail?: string;
+    recipientPhone?: string;
     notes?: string;
   }) {
     const client = await pool.connect();
@@ -218,6 +223,40 @@ export class AvailabilityService {
       }
       const srv = serviceRes.rows[0];
       const businessId = srv.business_id;
+
+      // Authenticated customers remain the booking owner. Ignore client-supplied
+      // name/email so a booking cannot be attributed to somebody else's account.
+      let customerName = params.customerName.trim();
+      let customerEmail = params.customerEmail.trim().toLowerCase();
+      let customerPhone = params.customerPhone.trim();
+      if (params.bookerUserId) {
+        const ownerRes = await client.query(`
+          SELECT id, name, email, phone
+          FROM users
+          WHERE id = $1 AND role = 'customer' AND status = 'approved'
+          FOR SHARE
+        `, [params.bookerUserId]);
+        if (ownerRes.rows.length === 0) {
+          throw new Error('Your customer account could not be verified. Please sign in again.');
+        }
+        const owner = ownerRes.rows[0];
+        customerName = owner.name;
+        customerEmail = owner.email.trim().toLowerCase();
+        customerPhone = owner.phone?.trim() || customerPhone;
+        if (!owner.phone && customerPhone) {
+          await client.query('UPDATE users SET phone = $1, updated_at = NOW() WHERE id = $2', [customerPhone, owner.id]);
+        }
+      }
+
+      if (!customerPhone) {
+        throw new Error('Add a phone number to your account before booking.');
+      }
+      const recipientName = params.bookingForSomeoneElse ? params.recipientName?.trim() : null;
+      const recipientEmail = params.bookingForSomeoneElse ? params.recipientEmail?.trim().toLowerCase() || null : null;
+      const recipientPhone = params.bookingForSomeoneElse ? params.recipientPhone?.trim() || null : null;
+      if (params.bookingForSomeoneElse && (!recipientName || recipientName.length < 2 || (recipientPhone && recipientPhone.length < 7))) {
+        throw new Error('Enter the recipient’s name and a valid phone number if provided.');
+      }
 
       // 2. Branch
       const branchRes = await client.query('SELECT id FROM branches WHERE business_id = $1 LIMIT 1', [businessId]);
@@ -261,18 +300,18 @@ export class AvailabilityService {
       let customerId: string;
       const custRes = await client.query(
         'SELECT id FROM customers WHERE business_id = $1 AND email = $2',
-        [businessId, params.customerEmail.toLowerCase().trim()]
+        [businessId, customerEmail]
       );
       if (custRes.rows.length > 0) {
         customerId = custRes.rows[0].id;
         await client.query(
           'UPDATE customers SET name = $1, phone = $2, updated_at = NOW() WHERE id = $3',
-          [params.customerName, params.customerPhone, customerId]
+          [customerName, customerPhone, customerId]
         );
       } else {
         const newCust = await client.query(
           'INSERT INTO customers (business_id, name, email, phone) VALUES ($1, $2, $3, $4) RETURNING id',
-          [businessId, params.customerName, params.customerEmail.toLowerCase().trim(), params.customerPhone]
+          [businessId, customerName, customerEmail, customerPhone]
         );
         customerId = newCust.rows[0].id;
       }
@@ -285,15 +324,22 @@ export class AvailabilityService {
       // 6. Insert Appointment with initial status: pending
       const apptRes = await client.query(`
         INSERT INTO appointments (
-          booking_reference, business_id, branch_id, customer_id, service_id, staff_id,
+          booking_reference, business_id, branch_id, customer_id, booked_by_user_id, is_guest_booking,
+          recipient_name, recipient_email, recipient_phone, service_id, staff_id,
           start_time, end_time, status, price_snapshot, currency, notes, management_token_hash
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $10, $11, $12)
-        RETURNING id, booking_reference, start_time, end_time, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'pending', $14, $15, $16, $17)
+        RETURNING id, booking_reference, start_time, end_time, status,
+                  recipient_name AS "recipientName", recipient_email AS "recipientEmail", recipient_phone AS "recipientPhone"
       `, [
         bookingRef,
         businessId,
         branchId,
         customerId,
+        params.bookerUserId || null,
+        !params.bookerUserId,
+        recipientName,
+        recipientEmail,
+        recipientPhone,
         params.serviceId,
         staffId,
         startDate,
@@ -319,7 +365,7 @@ export class AvailabilityService {
         businessId,
         apptRes.rows[0].id,
         `New booking received: ${srv.name}`,
-        `New booking request by ${params.customerName} for ${srv.name} on ${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}. (Ref: ${bookingRef})`
+        `New booking request by ${customerName}${recipientName ? ` for ${recipientName}` : ''} for ${srv.name} on ${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}. (Ref: ${bookingRef})`
       ]);
 
       // B. Customer notification

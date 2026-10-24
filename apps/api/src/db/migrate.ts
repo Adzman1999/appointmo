@@ -119,6 +119,11 @@ export const runMigrations = async () => {
       business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
       branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
       customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      booked_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      is_guest_booking BOOLEAN NOT NULL DEFAULT false,
+      recipient_name VARCHAR(255),
+      recipient_email VARCHAR(255),
+      recipient_phone VARCHAR(50),
       service_id UUID NOT NULL REFERENCES services(id) ON DELETE RESTRICT,
       staff_id UUID NOT NULL REFERENCES staff_profiles(id) ON DELETE RESTRICT,
       start_time TIMESTAMPTZ NOT NULL,
@@ -134,9 +139,16 @@ export const runMigrations = async () => {
       CONSTRAINT valid_appointment_time CHECK (start_time < end_time)
     );
 
+    ALTER TABLE appointments ADD COLUMN IF NOT EXISTS booked_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL;
+    ALTER TABLE appointments ADD COLUMN IF NOT EXISTS is_guest_booking BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE appointments ADD COLUMN IF NOT EXISTS recipient_name VARCHAR(255);
+    ALTER TABLE appointments ADD COLUMN IF NOT EXISTS recipient_email VARCHAR(255);
+    ALTER TABLE appointments ADD COLUMN IF NOT EXISTS recipient_phone VARCHAR(50);
+
     CREATE INDEX IF NOT EXISTS idx_appointments_staff_time ON appointments (staff_id, start_time, end_time) WHERE status NOT IN ('cancelled');
     CREATE INDEX IF NOT EXISTS idx_appointments_ref ON appointments (booking_reference);
     CREATE INDEX IF NOT EXISTS idx_appointments_business ON appointments (business_id, start_time);
+    CREATE INDEX IF NOT EXISTS idx_appointments_booker ON appointments (booked_by_user_id, start_time DESC) WHERE booked_by_user_id IS NOT NULL;
 
     -- Appointment status history
     CREATE TABLE IF NOT EXISTS appointment_status_history (

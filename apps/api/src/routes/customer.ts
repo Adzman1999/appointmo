@@ -11,6 +11,9 @@ router.get('/me', authenticateJwt, async (req: Request, res: Response) => {
     if (!user || !user.email) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
+    if (user.role !== 'customer') {
+      return res.status(403).json({ error: 'Customer account required' });
+    }
 
     const cleanEmail = user.email.trim().toLowerCase();
 
@@ -18,9 +21,9 @@ router.get('/me', authenticateJwt, async (req: Request, res: Response) => {
     const userRes = await query(
       `SELECT id, name, email, phone, role, created_at AS "createdAt"
        FROM users
-       WHERE LOWER(email) = $1
+       WHERE id = $1 AND LOWER(email) = $2 AND role = 'customer'
        LIMIT 1`,
-      [cleanEmail]
+      [user.userId, cleanEmail]
     );
 
     if (userRes.rows.length === 0) {
@@ -62,6 +65,8 @@ router.get('/me', authenticateJwt, async (req: Request, res: Response) => {
       `SELECT 
         a.id, a.booking_reference AS "bookingReference", a.status,
         a.start_time AS "startTime", a.end_time AS "endTime",
+        a.recipient_name AS "recipientName", a.recipient_email AS "recipientEmail",
+        a.recipient_phone AS "recipientPhone",
         a.price_snapshot AS "price", a.currency, a.notes, a.created_at AS "createdAt",
         s.id AS "serviceId", s.name AS "serviceName", s.duration_minutes AS "durationMinutes",
         sp.id AS "staffId", sp.name AS "staffName",
@@ -73,10 +78,11 @@ router.get('/me', authenticateJwt, async (req: Request, res: Response) => {
       JOIN businesses b ON a.business_id = b.id
       JOIN branches br ON a.branch_id = br.id
       JOIN customers c ON a.customer_id = c.id
-      WHERE LOWER(c.email) = $1
-         OR ($2::uuid IS NOT NULL AND a.customer_id = $2::uuid)
+      WHERE a.booked_by_user_id = $1
+         OR (a.booked_by_user_id IS NULL AND a.is_guest_booking = false AND LOWER(c.email) = $2)
+         OR ($3::uuid IS NOT NULL AND a.customer_id = $3::uuid AND a.is_guest_booking = false)
       ORDER BY a.start_time DESC`,
-      [cleanEmail, customerProfile?.id || null]
+      [userData.id, cleanEmail, customerProfile?.id || null]
     );
 
     const appointments = apptsRes.rows.map(appt => ({
@@ -102,12 +108,10 @@ router.get('/me', authenticateJwt, async (req: Request, res: Response) => {
        FROM notifications n
        LEFT JOIN appointments a ON n.appointment_id = a.id
        LEFT JOIN services s ON a.service_id = s.id
-       LEFT JOIN customers c ON a.customer_id = c.id
        WHERE n.recipient_type = 'customer'
          AND (
-           LOWER(n.recipient_identifier) = $1
-           OR (c.id IS NOT NULL AND LOWER(c.email) = $1)
-           OR (a.id IS NOT NULL AND a.id = ANY($2::uuid[]))
+           (n.appointment_id IS NOT NULL AND n.appointment_id = ANY($2::uuid[]))
+           OR (n.appointment_id IS NULL AND LOWER(n.recipient_identifier) = $1)
          )
        ORDER BY n.created_at DESC
        LIMIT 50`,
@@ -164,14 +168,16 @@ router.post('/notifications/mark-all-read', authenticateJwt, async (req: Request
       WHERE n.recipient_type = 'customer'
         AND n.is_read = false
         AND (
-          LOWER(n.recipient_identifier) = $1
+          (n.appointment_id IS NULL AND LOWER(n.recipient_identifier) = $1)
           OR n.appointment_id IN (
             SELECT a.id FROM appointments a
-            JOIN customers c ON a.customer_id = c.id
-            WHERE LOWER(c.email) = $1
+            WHERE a.booked_by_user_id = $2
+              OR (a.booked_by_user_id IS NULL AND a.is_guest_booking = false AND a.customer_id IN (
+                SELECT id FROM customers WHERE LOWER(email) = $1
+              ))
           )
         )
-    `, [cleanEmail]);
+    `, [cleanEmail, user.userId]);
 
     res.json({ success: true });
   } catch (err: any) {

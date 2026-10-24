@@ -23,7 +23,19 @@ export const CreateGuestBookingSchema = z.object({
   customerName: z.string().min(2, 'Name must be at least 2 characters'),
   customerEmail: z.string().email('Valid email address required'),
   customerPhone: z.string().min(7, 'Valid phone number required'),
+  bookingForSomeoneElse: z.boolean().optional().default(false),
+  recipientName: z.string().optional(),
+  recipientEmail: z.union([z.string().email('Enter a valid recipient email'), z.literal('')]).optional(),
+  recipientPhone: z.string().optional(),
   notes: z.string().optional().default('')
+}).superRefine((booking, ctx) => {
+  if (!booking.bookingForSomeoneElse) return;
+  if (!booking.recipientName?.trim() || booking.recipientName.trim().length < 2) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['recipientName'], message: 'Recipient name must be at least 2 characters' });
+  }
+  if (booking.recipientPhone?.trim() && booking.recipientPhone.trim().length < 7) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['recipientPhone'], message: 'Recipient phone number must be at least 7 characters' });
+  }
 });
 
 export type CreateGuestBookingInput = z.infer<typeof CreateGuestBookingSchema>;

@@ -241,6 +241,8 @@ router.get('/customer-portal', async (req: Request, res: Response) => {
       SELECT 
         a.id, a.booking_reference AS "bookingReference", a.status,
         a.start_time AS "startTime", a.end_time AS "endTime",
+        a.recipient_name AS "recipientName", a.recipient_email AS "recipientEmail",
+        a.recipient_phone AS "recipientPhone",
         a.price_snapshot AS "price", a.currency, a.notes, a.created_at AS "createdAt",
         s.id AS "serviceId", s.name AS "serviceName", s.duration_minutes AS "durationMinutes",
         sp.id AS "staffId", sp.name AS "staffName",
@@ -577,6 +579,8 @@ router.get('/appointments', async (req: Request, res: Response) => {
       SELECT 
         a.id, a.booking_reference AS "bookingReference", a.status,
         a.start_time AS "startTime", a.end_time AS "endTime",
+        a.recipient_name AS "recipientName", a.recipient_email AS "recipientEmail",
+        a.recipient_phone AS "recipientPhone",
         a.price_snapshot AS "price", a.currency, a.notes, a.created_at AS "createdAt",
         s.id AS "serviceId", s.name AS "serviceName", s.duration_minutes AS "durationMinutes",
         sp.id AS "staffId", sp.name AS "staffName",
@@ -596,7 +600,7 @@ router.get('/appointments', async (req: Request, res: Response) => {
 
     if (search && typeof search === 'string') {
       params.push(`%${search}%`);
-      sql += ` AND (c.name ILIKE $${params.length} OR a.booking_reference ILIKE $${params.length} OR s.name ILIKE $${params.length})`;
+      sql += ` AND (c.name ILIKE $${params.length} OR a.recipient_name ILIKE $${params.length} OR a.booking_reference ILIKE $${params.length} OR s.name ILIKE $${params.length})`;
     }
 
     if (sort === 'scheduled') {
@@ -625,6 +629,8 @@ router.get('/appointments/:id', async (req: Request, res: Response) => {
       SELECT 
         a.id, a.booking_reference AS "bookingReference", a.status,
         a.start_time AS "startTime", a.end_time AS "endTime",
+        a.recipient_name AS "recipientName", a.recipient_email AS "recipientEmail",
+        a.recipient_phone AS "recipientPhone",
         a.price_snapshot AS "price", a.currency, a.notes, a.cancellation_reason AS "cancellationReason",
         a.created_at AS "createdAt", a.updated_at AS "updatedAt",
         s.id AS "serviceId", s.name AS "serviceName", s.duration_minutes AS "durationMinutes", s.category,

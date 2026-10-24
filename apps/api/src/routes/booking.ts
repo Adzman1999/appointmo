@@ -1,11 +1,17 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { query } from '../db';
 import { AvailabilityService } from '../services/availability';
 import { ConciergeService } from '../services/concierge';
+import { authenticateJwt } from '../middleware/auth';
 import { CreateGuestBookingSchema, ConciergeInquirySchema } from '@appointmo/shared';
 import crypto from 'crypto';
 
 const router = Router();
+
+const authenticateIfProvided = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.headers.authorization) return next();
+  return authenticateJwt(req, res, next);
+};
 
 // 1. Get Public Demo Business & Branch Profile
 router.get('/business', async (req: Request, res: Response) => {
@@ -173,9 +179,12 @@ router.get('/availability', async (req: Request, res: Response) => {
 });
 
 // 5. Create Guest Booking
-router.post('/bookings', async (req: Request, res: Response) => {
+router.post('/bookings', authenticateIfProvided, async (req: Request, res: Response) => {
   try {
     const parsed = CreateGuestBookingSchema.parse(req.body);
+    if (req.user && req.user.role !== 'customer') {
+      return res.status(403).json({ error: 'Only customer accounts can create account-owned bookings.' });
+    }
 
     const bookingResult = await AvailabilityService.bookGuestAppointment({
       serviceId: parsed.serviceId,
@@ -184,6 +193,11 @@ router.post('/bookings', async (req: Request, res: Response) => {
       customerName: parsed.customerName,
       customerEmail: parsed.customerEmail,
       customerPhone: parsed.customerPhone,
+      bookerUserId: req.user?.userId,
+      bookingForSomeoneElse: parsed.bookingForSomeoneElse,
+      recipientName: parsed.recipientName,
+      recipientEmail: parsed.recipientEmail,
+      recipientPhone: parsed.recipientPhone,
       notes: parsed.notes,
     });
 
@@ -259,6 +273,8 @@ router.get('/bookings/:reference', async (req: Request, res: Response) => {
         a.id, a.booking_reference AS "bookingReference", a.status,
         a.start_time AS "startTime", a.end_time AS "endTime",
         a.price_snapshot AS "price", a.currency, a.notes, a.created_at AS "createdAt",
+        a.recipient_name AS "recipientName", a.recipient_email AS "recipientEmail",
+        a.recipient_phone AS "recipientPhone",
         s.id AS "serviceId", s.name AS "serviceName", s.duration_minutes AS "durationMinutes",
         sp.id AS "staffId", sp.name AS "staffName",
         c.name AS "customerName", c.email AS "customerEmail", c.phone AS "customerPhone",
@@ -282,21 +298,24 @@ router.get('/bookings/:reference', async (req: Request, res: Response) => {
 });
 
 // 8. Secure Customer Cancellation
-router.post('/bookings/:reference/cancel', async (req: Request, res: Response) => {
+router.post('/bookings/:reference/cancel', authenticateIfProvided, async (req: Request, res: Response) => {
   try {
     const { reference } = req.params;
     const { token, reason } = req.body;
 
-    if (!token) {
-      return res.status(401).json({ error: 'Management token required' });
+    if (!token && req.user?.role !== 'customer') {
+      return res.status(401).json({ error: 'Sign in to manage this booking or provide its management token.' });
     }
 
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const tokenHash = crypto.createHash('sha256').update(typeof token === 'string' ? token : '').digest('hex');
     const isDemoToken = token === `${reference}secret` || token === 'demo_secret';
 
     const apptRes = await query(
-      'SELECT id, status FROM appointments WHERE booking_reference = $1 AND (management_token_hash = $2 OR $3 = true)',
-      [reference, tokenHash, isDemoToken]
+      `SELECT id, status FROM appointments
+       WHERE booking_reference = $1 AND (
+         management_token_hash = $2 OR $3 = true OR booked_by_user_id = $4
+       )`,
+      [reference, tokenHash, isDemoToken, req.user?.role === 'customer' ? req.user.userId : null]
     );
 
     if (apptRes.rows.length === 0) {
