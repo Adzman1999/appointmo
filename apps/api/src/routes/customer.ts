@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { query } from '../db';
+import { getCustomerChangeCutoffHours } from '../services/bookingPolicies';
 import { authenticateJwt } from '../middleware/auth';
 
 const router = Router();
@@ -68,6 +69,7 @@ router.get('/me', authenticateJwt, async (req: Request, res: Response) => {
         s.id AS "serviceId", s.name AS "serviceName", s.duration_minutes AS "durationMinutes",
         sp.id AS "staffId", sp.name AS "staffName",
         b.id AS "businessId", b.name AS "businessName", b.slug AS "businessSlug",
+        b.booking_policies AS "bookingPolicies",
         br.id AS "branchId", br.name AS "branchName", br.address AS "branchAddress",
         r.rating AS "storeRating", r.staff_rating AS "staffRating", r.comment AS "reviewComment"
       FROM appointments a
@@ -86,6 +88,8 @@ router.get('/me', authenticateJwt, async (req: Request, res: Response) => {
 
     const appointments = apptsRes.rows.map(appt => ({
       ...appt,
+      customerChangeCutoffHours: getCustomerChangeCutoffHours(appt.bookingPolicies),
+      bookingPolicies: undefined,
       managementToken: `${appt.bookingReference}secret`,
     }));
 

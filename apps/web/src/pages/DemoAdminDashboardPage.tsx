@@ -233,6 +233,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [minLeadHours, setMinLeadHours] = useState(2);
   const [maxAdvanceDays, setMaxAdvanceDays] = useState(60);
   const [slotInterval, setSlotInterval] = useState(45);
+  const [customerChangeCutoffHours, setCustomerChangeCutoffHours] = useState(0);
   const [autoReminderEmail, setAutoReminderEmail] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
 
@@ -543,6 +544,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
             if (bp.minLeadHours !== undefined) setMinLeadHours(bp.minLeadHours);
             if (bp.maxAdvanceDays !== undefined) setMaxAdvanceDays(bp.maxAdvanceDays);
             if (bp.slotInterval !== undefined) setSlotInterval(bp.slotInterval);
+            if (bp.customerChangeCutoffHours !== undefined) setCustomerChangeCutoffHours(bp.customerChangeCutoffHours);
             if (bp.autoReminderEmail !== undefined) setAutoReminderEmail(bp.autoReminderEmail);
           }
         }
@@ -868,6 +870,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
             minLeadHours: Number(minLeadHours) || 2,
             maxAdvanceDays: Number(maxAdvanceDays) || 60,
             slotInterval: Number(slotInterval) || 45,
+            customerChangeCutoffHours: Math.min(168, Math.max(0, Number(customerChangeCutoffHours) || 0)),
             autoReminderEmail,
           },
         }),
@@ -2828,28 +2831,58 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <Clock className="h-4 w-4 shrink-0 text-amber-500" />
                         Time Slot Intervals (Minutes)
                       </label>
-                      <select
-                        id="slot-interval"
-                        value={slotInterval}
-                        onChange={(e) => {
-                          setIsSettingsDirty(true);
-                          setSlotInterval(Number(e.target.value));
-                        }}
-                        disabled={isPending}
-                        className={STANDARD_FORM_CONTROL_CLASS}
-                      >
-                        <option value={15}>15 Minutes</option>
-                        <option value={30}>30 Minutes</option>
-                        <option value={45}>45 Minutes (Recommended)</option>
-                        <option value={60}>60 Minutes</option>
-                      </select>
+                      <div className="relative">
+                        <select
+                          id="slot-interval"
+                          value={slotInterval}
+                          onChange={(e) => {
+                            setIsSettingsDirty(true);
+                            setSlotInterval(Number(e.target.value));
+                          }}
+                          disabled={isPending}
+                          className={`${STANDARD_FORM_CONTROL_CLASS} appearance-none pr-10`}
+                        >
+                          <option value={15}>15 Minutes</option>
+                          <option value={30}>30 Minutes</option>
+                          <option value={45}>45 Minutes (Recommended)</option>
+                          <option value={60}>60 Minutes</option>
+                        </select>
+                        <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                      </div>
                       <p className="text-[10px] text-stone-500">
                         Grid spacing for customer slot pickers.
                       </p>
                     </div>
 
+                    {/* Customer Cancellation & Reschedule Cutoff */}
+                    <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-3">
+                      <label htmlFor="customer-change-cutoff-hours" className="flex items-center gap-2 font-bold text-stone-900 dark:text-stone-100">
+                        <Calendar className="h-4 w-4 shrink-0 text-amber-500" />
+                        Customer Change Cutoff (Hours)
+                      </label>
+                      <input
+                        id="customer-change-cutoff-hours"
+                        type="number"
+                        min="0"
+                        max="168"
+                        step="1"
+                        value={customerChangeCutoffHours}
+                        onChange={(e) => {
+                          setIsSettingsDirty(true);
+                          setCustomerChangeCutoffHours(Math.min(168, Math.max(0, Number(e.target.value) || 0)));
+                        }}
+                        disabled={isPending}
+                        className={STANDARD_FORM_CONTROL_CLASS}
+                      />
+                      <p className="text-[10px] text-stone-500">
+                        {customerChangeCutoffHours > 0
+                          ? `Customers cannot cancel or reschedule within ${customerChangeCutoffHours} hour(s) of an appointment.`
+                          : 'No advance cutoff. Set 24 hours (recommended) to block last-minute customer changes.'}
+                      </p>
+                    </div>
+
                     {/* Automated Reminders */}
-                    <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-3 md:col-span-2">
+                    <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-3">
                       <div className="flex items-center justify-between gap-4">
                         <div className="min-w-0">
                           <label htmlFor="automated-notifications" className="flex items-center gap-2 font-bold text-stone-900 dark:text-stone-100">

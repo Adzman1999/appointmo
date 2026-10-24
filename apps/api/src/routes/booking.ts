@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { query } from '../db';
 import { AvailabilityService } from '../services/availability';
 import { ConciergeService } from '../services/concierge';
+import { getCustomerChangeBlockMessage, getCustomerChangeCutoffHours } from '../services/bookingPolicies';
 import { authenticateJwt } from '../middleware/auth';
 import { CreateGuestBookingSchema, ConciergeInquirySchema } from '@appointmo/shared';
 import crypto from 'crypto';
@@ -311,9 +312,11 @@ router.post('/bookings/:reference/cancel', authenticateIfProvided, async (req: R
     const isDemoToken = token === `${reference}secret` || token === 'demo_secret';
 
     const apptRes = await query(
-      `SELECT id, status FROM appointments
-       WHERE booking_reference = $1 AND (
-         management_token_hash = $2 OR $3 = true OR booked_by_user_id = $4
+      `SELECT a.id, a.status, a.start_time AS "startTime", b.booking_policies AS "bookingPolicies"
+       FROM appointments a
+       JOIN businesses b ON b.id = a.business_id
+       WHERE a.booking_reference = $1 AND (
+         a.management_token_hash = $2 OR $3 = true OR a.booked_by_user_id = $4
        )`,
       [reference, tokenHash, isDemoToken, req.user?.role === 'customer' ? req.user.userId : null]
     );
@@ -328,6 +331,12 @@ router.post('/bookings/:reference/cancel', authenticateIfProvided, async (req: R
     }
     if (appt.status === 'completed') {
       return res.status(400).json({ error: 'Completed appointments cannot be cancelled' });
+    }
+
+    const cutoffHours = getCustomerChangeCutoffHours(appt.bookingPolicies);
+    const changeBlockMessage = getCustomerChangeBlockMessage(appt.startTime, cutoffHours);
+    if (changeBlockMessage) {
+      return res.status(400).json({ error: changeBlockMessage });
     }
 
     await query(
@@ -398,11 +407,13 @@ router.post('/bookings/:reference/reschedule', async (req: Request, res: Respons
     // 1. Fetch current appointment details
     const apptRes = await client.query(`
       SELECT a.id, a.business_id, a.booking_reference, a.status, a.staff_id, a.start_time, a.end_time,
+             b.booking_policies AS "bookingPolicies",
              s.id AS service_id, s.name AS service_name, s.duration_minutes,
              c.name AS customer_name, c.email AS customer_email
       FROM appointments a
       JOIN services s ON a.service_id = s.id
       JOIN customers c ON a.customer_id = c.id
+      JOIN businesses b ON b.id = a.business_id
       WHERE a.booking_reference = $1 AND (a.management_token_hash = $2 OR $3 = true)
     `, [reference, tokenHash, isDemoToken]);
 
@@ -419,6 +430,13 @@ router.post('/bookings/:reference/reschedule', async (req: Request, res: Respons
     if (appt.status === 'completed') {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Completed appointments cannot be rescheduled' });
+    }
+
+    const cutoffHours = getCustomerChangeCutoffHours(appt.bookingPolicies);
+    const changeBlockMessage = getCustomerChangeBlockMessage(appt.start_time, cutoffHours);
+    if (changeBlockMessage) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: changeBlockMessage });
     }
 
     const start = new Date(newStartTime);

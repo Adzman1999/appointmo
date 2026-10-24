@@ -28,6 +28,7 @@ interface CustomerAppointment {
   durationMinutes: number;
   staffId: string;
   staffName: string;
+  customerChangeCutoffHours?: number;
   businessId: string;
   businessName: string;
   businessSlug: string;
@@ -217,6 +218,12 @@ export const CustomerPortalPage: React.FC = () => {
       toast.error('Cancellation failed', { description: err.message });
       setError(err.message || 'Failed to cancel appointment.');
     }
+  };
+
+  const isCustomerChangeCutoffReached = (appt: CustomerAppointment) => {
+    const appointmentStart = new Date(appt.startTime).getTime();
+    const cutoffHours = Number(appt.customerChangeCutoffHours) || 0;
+    return appointmentStart <= Date.now() || (cutoffHours > 0 && appointmentStart - Date.now() <= cutoffHours * 60 * 60 * 1000);
   };
 
   const reviewableAppointments = past.filter((appt) => appt.status === 'completed' && !appt.storeRating);
@@ -773,7 +780,8 @@ export const CustomerPortalPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleCancelBooking(selectedAppt)}
-                  className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs"
+                  disabled={isCustomerChangeCutoffReached(selectedAppt)}
+                  className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Cancel Booking
                 </button>
@@ -792,6 +800,11 @@ export const CustomerPortalPage: React.FC = () => {
                 Close
               </button>
             </div>
+            {selectedAppt.status !== 'cancelled' && selectedAppt.status !== 'completed' && isCustomerChangeCutoffReached(selectedAppt) && (
+              <p className="mt-3 text-right text-[11px] text-stone-500">
+                The store&apos;s cancellation window for this appointment has closed.
+              </p>
+            )}
           </div>
         </div>
       )}
