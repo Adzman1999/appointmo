@@ -60,14 +60,18 @@ export const AdminLoginPage: React.FC = () => {
         localStorage.setItem('appointmo_token', res.token);
         localStorage.setItem('appointmo_user', JSON.stringify(res.user));
 
-        if (res.user.role === 'platform_admin' || res.user.role === 'owner') {
+        if (res.user.role === 'platform_admin' || (res.user.role === 'owner' && !res.user.businessId)) {
           navigate('/superadmin');
         } else if (res.user.role === 'customer') {
           navigate('/customer/portal');
-        } else {
+        } else if (['owner', 'business_admin', 'staff'].includes(res.user.role) && res.user.businessId) {
           // Store / Business Admin
           const targetSlug = res.user.businessSlug || 'lumiere-beauty-studio';
           navigate(`/admin/dashboard?slug=${encodeURIComponent(targetSlug)}`);
+        } else {
+          localStorage.removeItem('appointmo_token');
+          localStorage.removeItem('appointmo_user');
+          setError('This account is not assigned to a store dashboard. Please contact the platform administrator.');
         }
       } else {
         // Customer Sign Up: Validate requirements strictly

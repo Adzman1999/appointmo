@@ -43,7 +43,7 @@ const ProtectedBusinessDashboardRoute: React.FC<{ children: React.ReactElement }
     role = undefined;
   }
 
-  if (!token || !['owner', 'platform_admin', 'business_admin'].includes(role || '')) {
+  if (!token || !['owner', 'platform_admin', 'business_admin', 'staff'].includes(role || '')) {
     return <Navigate to="/admin/login" replace />;
   }
   return children;
