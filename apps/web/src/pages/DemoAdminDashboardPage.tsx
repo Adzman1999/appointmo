@@ -1594,8 +1594,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
             <div className="relative z-20" ref={setupDropdownRef} onKeyDown={(event) => { if (event.key === 'Escape') setSetupDropdownOpen(false); }}>
               <button
                 type="button"
-                aria-haspopup="true"
+                aria-haspopup="menu"
                 aria-expanded={setupDropdownOpen}
+                aria-label={setupDropdownOpen ? 'Close settings menu' : 'Open settings menu'}
                 onClick={() => setSetupDropdownOpen((open) => !open)}
                 className="flex w-full items-center justify-between gap-3 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 py-3 text-left shadow-sm transition hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
               >
@@ -1608,8 +1609,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     <span className="mt-0.5 block truncate text-sm font-bold text-stone-900 dark:text-stone-100">{setupSectionLabels[setupSubTab]}</span>
                   </span>
                 </span>
-                <span className="flex shrink-0 items-center gap-2 text-[11px] font-semibold text-stone-500 dark:text-stone-400">
-                  <span className="hidden sm:inline">Choose section</span>
+                <span className="flex shrink-0 items-center gap-2 rounded-lg bg-amber-50 px-2.5 py-2 text-[11px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-200">
+                  <span>{setupDropdownOpen ? 'Close menu' : 'Open menu'}</span>
                   <ChevronDown className={`h-4 w-4 transition-transform ${setupDropdownOpen ? 'rotate-180' : ''}`} />
                 </span>
               </button>
@@ -1660,8 +1661,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-800/40 p-3">
                       <div className="mb-2 flex items-center justify-between gap-3 px-1">
                         <div>
-                          <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">Profile details</p>
-                          <p className="mt-0.5 text-[11px] text-stone-500 dark:text-stone-400">Swipe or tap to jump to the fields you want to update.</p>
+                          <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">Profile section navigation</p>
+                          <p className="mt-0.5 text-[11px] text-stone-500 dark:text-stone-400">
+                            Selected form: <span className="font-bold text-stone-800 dark:text-stone-200">{profileSectionItems.find((item) => item.id === activeProfileSection)?.label}</span> · Tap a section to jump to its fields; the selected form is highlighted below.
+                          </p>
                         </div>
                         <div className="flex shrink-0 gap-1.5">
                           <button type="button" onClick={() => scrollProfileSwiper(-1)} aria-label="Previous profile sections" className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 hover:border-amber-400 hover:text-amber-600 transition"><ChevronLeft className="h-4 w-4" /></button>
@@ -1684,12 +1687,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
 
                     {/* Section 1: Store Brand & Identity */}
-                    <div id="profile-brand-identity" className="scroll-mt-24 bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
+                    <div id="profile-brand-identity" className={`scroll-mt-24 rounded-2xl border p-4 space-y-4 transition-all duration-300 ${activeProfileSection === 'profile-brand-identity' ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-400/50 dark:border-amber-600 dark:bg-amber-950/25' : 'border-stone-200 bg-stone-50/70 dark:border-stone-800 dark:bg-stone-900/50'}`}>
                       <div className="flex items-center space-x-2">
                         <Building2 className="w-4 h-4 text-stone-700 dark:text-stone-300" />
                         <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
                           1. Store Brand &amp; Identity
                         </span>
+                        {activeProfileSection === 'profile-brand-identity' && <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-amber-900 dark:bg-amber-900/80 dark:text-amber-200">Selected form</span>}
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -1829,12 +1833,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
 
                     {/* Section 2: Country & Currency */}
-                    <div id="profile-country-currency" className="scroll-mt-24 bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
+                    <div id="profile-country-currency" className={`scroll-mt-24 rounded-2xl border p-4 space-y-4 transition-all duration-300 ${activeProfileSection === 'profile-country-currency' ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-400/50 dark:border-amber-600 dark:bg-amber-950/25' : 'border-stone-200 bg-stone-50/70 dark:border-stone-800 dark:bg-stone-900/50'}`}>
                       <div className="flex items-center space-x-2">
                         <Globe className="w-4 h-4 text-stone-700 dark:text-stone-300" />
                         <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
                           2. Country &amp; Currency Settings
                         </span>
+                        {activeProfileSection === 'profile-country-currency' && <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-amber-900 dark:bg-amber-900/80 dark:text-amber-200">Selected form</span>}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                         <div>
@@ -1870,12 +1875,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
 
                     {/* Section 3: Physical Location & Address */}
-                    <div id="profile-location-address" className="scroll-mt-24 bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
+                    <div id="profile-location-address" className={`scroll-mt-24 rounded-2xl border p-4 space-y-4 transition-all duration-300 ${activeProfileSection === 'profile-location-address' ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-400/50 dark:border-amber-600 dark:bg-amber-950/25' : 'border-stone-200 bg-stone-50/70 dark:border-stone-800 dark:bg-stone-900/50'}`}>
                       <div className="flex items-center space-x-2">
                         <MapPin className="w-4 h-4 text-stone-700 dark:text-stone-300" />
                         <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
                           3. Physical Location &amp; Address
                         </span>
+                        {activeProfileSection === 'profile-location-address' && <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-amber-900 dark:bg-amber-900/80 dark:text-amber-200">Selected form</span>}
                       </div>
 
                       {/* City Selection (Strictly cities based on Country) */}
@@ -1983,12 +1989,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
 
                     {/* Section 4: Contact & Social Media Channels */}
-                    <div id="profile-contact-social" className="scroll-mt-24 bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
+                    <div id="profile-contact-social" className={`scroll-mt-24 rounded-2xl border p-4 space-y-4 transition-all duration-300 ${activeProfileSection === 'profile-contact-social' ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-400/50 dark:border-amber-600 dark:bg-amber-950/25' : 'border-stone-200 bg-stone-50/70 dark:border-stone-800 dark:bg-stone-900/50'}`}>
                       <div className="flex items-center space-x-2">
                         <Phone className="w-4 h-4 text-stone-700 dark:text-stone-300" />
                         <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
                           4. Contact &amp; Online Channels
                         </span>
+                        {activeProfileSection === 'profile-contact-social' && <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-amber-900 dark:bg-amber-900/80 dark:text-amber-200">Selected form</span>}
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -2067,7 +2074,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
 
                     {/* Section 5: Daily Operating Hours */}
-                    <div id="profile-operating-hours" className="scroll-mt-24 bg-stone-50/70 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
+                    <div id="profile-operating-hours" className={`scroll-mt-24 rounded-2xl border p-4 space-y-4 transition-all duration-300 ${activeProfileSection === 'profile-operating-hours' ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-400/50 dark:border-amber-600 dark:bg-amber-950/25' : 'border-stone-200 bg-stone-50/70 dark:border-stone-800 dark:bg-stone-900/50'}`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <Clock className="w-4 h-4 text-stone-700 dark:text-stone-300" />
@@ -2075,8 +2082,11 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             5. Daily Operating Hours
                           </span>
                         </div>
-                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-900/40">
-                          Auto-syncs to Weekly Schedule
+                        <span className="flex items-center gap-2">
+                          {activeProfileSection === 'profile-operating-hours' && <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-amber-900 dark:bg-amber-900/80 dark:text-amber-200">Selected form</span>}
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-900/40">
+                            Auto-syncs to Weekly Schedule
+                          </span>
                         </span>
                       </div>
 
