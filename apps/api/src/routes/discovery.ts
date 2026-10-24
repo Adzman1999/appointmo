@@ -18,12 +18,16 @@ router.get('/businesses', async (req: Request, res: Response) => {
         COUNT(DISTINCT s.id)::int AS "serviceCount",
         MIN(s.price)::numeric AS "minPrice",
         MAX(s.price)::numeric AS "maxPrice",
-        COALESCE(AVG(r.rating), 4.8)::numeric(3, 1) AS "rating",
-        COALESCE(COUNT(r.id), 24)::int AS "reviewCount"
+        COALESCE(review_summary.rating, 0)::numeric(3, 1) AS "rating",
+        COALESCE(review_summary."reviewCount", 0)::int AS "reviewCount"
       FROM businesses b
       LEFT JOIN branches br ON b.id = br.business_id AND br.is_active = true
       LEFT JOIN services s ON b.id = s.business_id AND s.is_active = true
-      LEFT JOIN reviews r ON b.id = r.business_id
+      LEFT JOIN LATERAL (
+        SELECT AVG(r.rating) AS rating, COUNT(*) AS "reviewCount"
+        FROM reviews r
+        WHERE r.business_id = b.id
+      ) review_summary ON true
       WHERE 1=1
     `;
     const params: any[] = [];
@@ -38,7 +42,7 @@ router.get('/businesses', async (req: Request, res: Response) => {
       sql += ` AND (b.name ILIKE $${params.length} OR b.description ILIKE $${params.length} OR b.category ILIKE $${params.length})`;
     }
 
-    sql += ` GROUP BY b.id ORDER BY b.name ASC`;
+    sql += ` GROUP BY b.id, review_summary.rating, review_summary."reviewCount" ORDER BY "rating" DESC, "reviewCount" DESC, b.name ASC`;
 
     const result = await query(sql, params);
 
@@ -101,18 +105,24 @@ router.get('/businesses/:slugOrId', async (req: Request, res: Response) => {
 
     // Staff
     const staffRes = await query(`
-      SELECT id, name, bio, avatar_url AS "avatarUrl"
-      FROM staff_profiles
-      WHERE business_id = $1 AND is_active = true
-      ORDER BY name ASC
+      SELECT sp.id, sp.name, sp.bio, sp.avatar_url AS "avatarUrl",
+             COALESCE(AVG(r.staff_rating), 0)::numeric(3, 1) AS "rating",
+             COUNT(r.id)::int AS "reviewCount"
+      FROM staff_profiles sp
+      LEFT JOIN reviews r ON r.staff_id = sp.id AND r.staff_rating IS NOT NULL
+      WHERE sp.business_id = $1 AND sp.is_active = true
+      GROUP BY sp.id
+      ORDER BY "rating" DESC, "reviewCount" DESC, sp.name ASC
     `, [business.id]);
 
     // Reviews
     const reviewsRes = await query(`
-      SELECT id, customer_name AS "customerName", rating, comment, created_at AS "createdAt"
-      FROM reviews
-      WHERE business_id = $1
-      ORDER BY created_at DESC
+      SELECT r.id, r.customer_name AS "customerName", r.rating, r.staff_rating AS "staffRating",
+             r.staff_id AS "staffId", sp.name AS "staffName", r.comment, r.created_at AS "createdAt"
+      FROM reviews r
+      LEFT JOIN staff_profiles sp ON sp.id = r.staff_id
+      WHERE r.business_id = $1
+      ORDER BY r.created_at DESC
       LIMIT 10
     `, [business.id]);
 

@@ -1053,7 +1053,7 @@ router.get('/settings', async (req: Request, res: Response) => {
       WHERE id = $1
     `, [businessId]);
     const branchesRes = await query('SELECT id, name, address, city, phone, location_description AS "locationDescription" FROM branches WHERE business_id = $1 AND is_active = true', [businessId]);
-    const servicesRes = await query('SELECT id, name, description, duration_minutes AS "durationMinutes", price, category FROM services WHERE business_id = $1 ORDER BY price ASC', [businessId]);
+    const servicesRes = await query('SELECT id, name, description, duration_minutes AS "durationMinutes", price, category FROM services WHERE business_id = $1 AND is_active = true ORDER BY price ASC', [businessId]);
     const staffRes = await query(`
       SELECT id, name, bio, position, employment_type AS "employmentType",
              base_salary AS "baseSalary", commission_rate AS "commissionRate",
@@ -1611,6 +1611,53 @@ router.post('/services', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('Create service error:', err);
     res.status(500).json({ error: 'Failed to create service: ' + err.message });
+  }
+});
+
+// Update a store-owned service; changes are reflected immediately in booking and discovery.
+router.put('/services/:id', async (req: Request, res: Response) => {
+  try {
+    const businessId = await getDemoBusinessId(req, false);
+    const { id } = req.params;
+    const { name, description, durationMinutes, price, category } = req.body;
+    const parsedDuration = Number(durationMinutes);
+    const parsedPrice = Number(price);
+    if (typeof name !== 'string' || !name.trim() || !Number.isInteger(parsedDuration) || parsedDuration < 5 ||
+        !Number.isFinite(parsedPrice) || parsedPrice < 0 || typeof category !== 'string' || !category.trim()) {
+      return res.status(400).json({ error: 'Enter a service name, category, valid duration, and non-negative price.' });
+    }
+
+    const serviceRes = await query(
+      `UPDATE services
+       SET name = $1, description = $2, duration_minutes = $3, price = $4, category = $5, updated_at = NOW()
+       WHERE id = $6 AND business_id = $7 AND is_active = true
+       RETURNING id, name, description, duration_minutes AS "durationMinutes", price, category`,
+      [name.trim(), typeof description === 'string' && description.trim() ? description.trim() : 'Professional service offering', parsedDuration, parsedPrice, category.trim(), id, businessId]
+    );
+    if (serviceRes.rows.length === 0) return res.status(404).json({ error: 'Active service not found.' });
+    res.json({ message: 'Service updated successfully', service: serviceRes.rows[0] });
+  } catch (err: any) {
+    console.error('Update service error:', err);
+    res.status(500).json({ error: 'Failed to update service.' });
+  }
+});
+
+// Archive instead of deleting so existing appointments keep their service history.
+router.delete('/services/:id', async (req: Request, res: Response) => {
+  try {
+    const businessId = await getDemoBusinessId(req, false);
+    const { id } = req.params;
+    const serviceRes = await query(
+      `UPDATE services SET is_active = false, updated_at = NOW()
+       WHERE id = $1 AND business_id = $2 AND is_active = true
+       RETURNING id, name`,
+      [id, businessId]
+    );
+    if (serviceRes.rows.length === 0) return res.status(404).json({ error: 'Active service not found.' });
+    res.json({ message: 'Service removed from the booking menu.', service: serviceRes.rows[0] });
+  } catch (err: any) {
+    console.error('Remove service error:', err);
+    res.status(500).json({ error: 'Failed to remove service.' });
   }
 });
 

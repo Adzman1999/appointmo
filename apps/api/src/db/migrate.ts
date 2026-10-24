@@ -293,7 +293,7 @@ export const runMigrations = async () => {
       PRIMARY KEY (staff_id, branch_id)
     );
 
-    -- Verified Synthetic Reviews
+    -- Customer reviews for stores, services, and staff
     CREATE TABLE IF NOT EXISTS reviews (
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
       business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
@@ -305,7 +305,14 @@ export const runMigrations = async () => {
       comment TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE reviews ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL;
+    ALTER TABLE reviews ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES customers(id) ON DELETE SET NULL;
+    ALTER TABLE reviews ADD COLUMN IF NOT EXISTS staff_id UUID REFERENCES staff_profiles(id) ON DELETE SET NULL;
+    ALTER TABLE reviews ADD COLUMN IF NOT EXISTS staff_rating SMALLINT CHECK (staff_rating >= 1 AND staff_rating <= 5);
     CREATE INDEX IF NOT EXISTS idx_reviews_business ON reviews (business_id, rating DESC);
+    CREATE INDEX IF NOT EXISTS idx_reviews_staff_rating ON reviews (staff_id, staff_rating DESC) WHERE staff_id IS NOT NULL AND staff_rating IS NOT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_one_customer_review_per_appointment
+      ON reviews (appointment_id) WHERE appointment_id IS NOT NULL AND user_id IS NOT NULL;
 
     -- Ensure approval status columns exist
     ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'approved';

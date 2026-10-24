@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Calendar, Clock, User, AlertCircle, CheckCircle2, 
-  Bell, CalendarDays, RefreshCw, Sparkles,
+  Bell, CalendarDays, RefreshCw, Sparkles, Star,
   MapPin, Phone, Mail, LogOut, ChevronRight, Check
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
@@ -35,6 +35,9 @@ interface CustomerAppointment {
   branchName: string;
   branchAddress: string;
   managementToken: string;
+  storeRating?: number | null;
+  staffRating?: number | null;
+  reviewComment?: string | null;
 }
 
 interface CustomerProfile {
@@ -49,7 +52,7 @@ export const CustomerPortalPage: React.FC = () => {
   const navigate = useNavigate();
 
   // Active view tab
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'history' | 'notifications'>('upcoming');
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'history' | 'reviews' | 'notifications'>('upcoming');
 
   // Customer & Appointments Data
   const [customer, setCustomer] = useState<CustomerProfile | null>(null);
@@ -65,6 +68,11 @@ export const CustomerPortalPage: React.FC = () => {
 
   // Selected appointment for details modal
   const [selectedAppt, setSelectedAppt] = useState<CustomerAppointment | null>(null);
+  const [ratingAppt, setRatingAppt] = useState<CustomerAppointment | null>(null);
+  const [storeRating, setStoreRating] = useState(5);
+  const [staffRating, setStaffRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   // Selected notification for full details modal (same as Admin & Super Admin)
   const [selectedNotif, setSelectedNotif] = useState<any | null>(null);
@@ -119,7 +127,8 @@ export const CustomerPortalPage: React.FC = () => {
       setNotifications(res.notifications || []);
     } catch (err: any) {
       console.error('Failed to load customer profile:', err);
-      if (err.status === 401 || err.message?.includes('Unauthorized')) {
+      const requiresCustomerSignIn = err.message?.toLowerCase().includes('customer account');
+      if (err.status === 401 || err.status === 403 || err.message?.includes('Unauthorized') || requiresCustomerSignIn) {
         handleSignOut();
       } else {
         setError(err.message || 'Failed to load your account appointments.');
@@ -207,6 +216,39 @@ export const CustomerPortalPage: React.FC = () => {
     } catch (err: any) {
       toast.error('Cancellation failed', { description: err.message });
       setError(err.message || 'Failed to cancel appointment.');
+    }
+  };
+
+  const reviewableAppointments = past.filter((appt) => appt.status === 'completed' && !appt.storeRating);
+  const openRatingForm = (appt: CustomerAppointment) => {
+    setSelectedAppt(null);
+    setRatingAppt(appt);
+    setStoreRating(5);
+    setStaffRating(5);
+    setReviewComment('');
+  };
+
+  const handleSubmitReview = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!ratingAppt) return;
+    setSubmittingReview(true);
+    try {
+      await apiFetch('/customer/reviews', {
+        method: 'POST',
+        body: JSON.stringify({
+          appointmentId: ratingAppt.id,
+          storeRating,
+          staffRating,
+          comment: reviewComment.trim(),
+        }),
+      });
+      toast.success('Thanks for rating your visit');
+      setRatingAppt(null);
+      await loadCustomerData();
+    } catch (err: any) {
+      toast.error('Could not submit your rating', { description: err.message });
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
@@ -390,43 +432,39 @@ export const CustomerPortalPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex border-b border-stone-200 dark:border-stone-800 mb-6 space-x-6 text-sm">
-          <button
-            onClick={() => setActiveTab('upcoming')}
-            className={`pb-3 font-semibold transition border-b-2 flex items-center space-x-2 ${
-              activeTab === 'upcoming'
-                ? 'border-amber-500 text-amber-600 dark:text-amber-400'
-                : 'border-transparent text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
-            }`}
-          >
-            <Calendar className="w-4 h-4" />
-            <span>Upcoming ({upcoming.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`pb-3 font-semibold transition border-b-2 flex items-center space-x-2 ${
-              activeTab === 'history'
-                ? 'border-amber-500 text-amber-600 dark:text-amber-400'
-                : 'border-transparent text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
-            }`}
-          >
-            <CalendarDays className="w-4 h-4" />
-            <span>History & Past ({past.length + cancelled.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('notifications')}
-            className={`pb-3 font-semibold transition border-b-2 flex items-center space-x-2 ${
-              activeTab === 'notifications'
-                ? 'border-amber-500 text-amber-600 dark:text-amber-400'
-                : 'border-transparent text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
-            }`}
-          >
-            <Bell className="w-4 h-4" />
-            <span>Notifications ({notifications.length})</span>
-          </button>
+        {/* Customer portal menu */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+          {[
+            { label: 'Appointments', items: [
+              { id: 'upcoming', title: 'Upcoming', count: upcoming.length, icon: Calendar },
+              { id: 'history', title: 'History & past', count: past.length + cancelled.length, icon: CalendarDays },
+            ] },
+            { label: 'Your account', items: [
+              { id: 'reviews', title: 'Rate your visits', count: reviewableAppointments.length, icon: Star },
+              { id: 'notifications', title: 'Notifications', count: notifications.length, icon: Bell },
+            ] },
+          ].map((group) => (
+            <section key={group.label} className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white/70 dark:bg-stone-900/60 p-3">
+              <h3 className="px-1 pb-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">{group.label}</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isSelected = activeTab === item.id;
+                  return (
+                    <button key={item.id} onClick={() => setActiveTab(item.id as typeof activeTab)} className={`min-w-0 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition ${
+                      isSelected
+                        ? 'border-amber-400 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
+                        : 'border-transparent text-stone-600 hover:bg-stone-50 dark:text-stone-300 dark:hover:bg-stone-800'
+                    }`}>
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="min-w-0 flex-1 truncate text-[11px] font-bold">{item.title}</span>
+                      <span className="shrink-0 rounded-full bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 text-[9px] font-bold">{item.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         </div>
 
         {/* Tab Body */}
@@ -544,6 +582,26 @@ export const CustomerPortalPage: React.FC = () => {
                 </div>
               ))
             )}
+          </div>
+        ) : activeTab === 'reviews' ? (
+          <div className="space-y-3">
+            {reviewableAppointments.length === 0 ? (
+              <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-10 text-center max-w-lg mx-auto space-y-2">
+                <Star className="w-7 h-7 text-amber-500 mx-auto" />
+                <h3 className="font-bold text-stone-900 dark:text-stone-100">No visits to rate</h3>
+                <p className="text-xs text-stone-500">After a completed appointment, you can rate the store and the specialist here.</p>
+              </div>
+            ) : reviewableAppointments.map((appt) => (
+              <div key={appt.id} className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <p className="font-bold text-sm text-stone-900 dark:text-stone-100">{appt.serviceName}</p>
+                  <p className="text-xs text-stone-500">{appt.businessName} · {appt.staffName} · {new Date(appt.startTime).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                </div>
+                <button type="button" onClick={() => openRatingForm(appt)} className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl bg-stone-900 dark:bg-amber-400 px-3.5 py-2 text-xs font-bold text-white dark:text-stone-950 hover:bg-stone-800 dark:hover:bg-amber-300">
+                  <Star className="w-3.5 h-3.5" /> Rate visit
+                </button>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 divide-y divide-stone-100 dark:divide-stone-800">
@@ -719,6 +777,12 @@ export const CustomerPortalPage: React.FC = () => {
                 >
                   Cancel Booking
                 </button>
+              ) : selectedAppt.status === 'completed' && !selectedAppt.storeRating ? (
+                <button type="button" onClick={() => openRatingForm(selectedAppt)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-bold text-xs">
+                  <Star className="w-3.5 h-3.5" /> Rate store & specialist
+                </button>
+              ) : selectedAppt.storeRating ? (
+                <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">Rated · Store {selectedAppt.storeRating}/5 · Specialist {selectedAppt.staffRating}/5</span>
               ) : <div></div>}
               <button
                 type="button"
@@ -729,6 +793,48 @@ export const CustomerPortalPage: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {ratingAppt && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm">
+          <form onSubmit={handleSubmitReview} className="w-full max-w-md rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 shadow-2xl space-y-5">
+            <div className="flex items-start justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Share your experience</span>
+                <h3 className="mt-1 font-bold text-stone-900 dark:text-stone-100">{ratingAppt.serviceName}</h3>
+                <p className="text-xs text-stone-500">{ratingAppt.businessName} · {ratingAppt.staffName}</p>
+              </div>
+              <button type="button" onClick={() => setRatingAppt(null)} className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200" aria-label="Close rating form">✕</button>
+            </div>
+
+            {[
+              { label: `Store · ${ratingAppt.businessName}`, value: storeRating, setValue: setStoreRating },
+              { label: `Specialist · ${ratingAppt.staffName}`, value: staffRating, setValue: setStaffRating },
+            ].map((rating) => (
+              <fieldset key={rating.label}>
+                <legend className="text-xs font-bold text-stone-700 dark:text-stone-300">{rating.label}</legend>
+                <div className="mt-1 flex items-center gap-1" role="group" aria-label={rating.label}>
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <button key={value} type="button" onClick={() => rating.setValue(value)} aria-label={`${value} star${value === 1 ? '' : 's'}`} className="rounded-md p-1 hover:bg-amber-50 dark:hover:bg-amber-950/40">
+                      <Star className={`h-6 w-6 ${value <= rating.value ? 'fill-amber-400 text-amber-500' : 'text-stone-300 dark:text-stone-600'}`} />
+                    </button>
+                  ))}
+                  <span className="ml-2 text-xs text-stone-500">{rating.value}/5</span>
+                </div>
+              </fieldset>
+            ))}
+
+            <label className="block text-xs font-bold text-stone-700 dark:text-stone-300">
+              Comment <span className="font-normal text-stone-400">(optional)</span>
+              <textarea value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} maxLength={1000} rows={3} placeholder="What should other customers know?" className="mt-1 w-full resize-y rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-normal text-stone-900 dark:text-stone-100 focus:border-amber-500 focus:outline-none" />
+            </label>
+
+            <div className="flex justify-end gap-2 border-t border-stone-100 dark:border-stone-800 pt-3">
+              <button type="button" disabled={submittingReview} onClick={() => setRatingAppt(null)} className="rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 disabled:opacity-50">Cancel</button>
+              <button type="submit" disabled={submittingReview} className="rounded-xl bg-stone-900 dark:bg-amber-400 px-4 py-2 text-xs font-bold text-white dark:text-stone-950 disabled:opacity-50">{submittingReview ? 'Sending…' : 'Submit rating'}</button>
+            </div>
+          </form>
         </div>
       )}
     </div>

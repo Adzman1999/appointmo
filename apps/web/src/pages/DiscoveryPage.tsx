@@ -286,10 +286,9 @@ export const DiscoveryPage: React.FC = () => {
                         <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">{biz.name}</h3>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-1 bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-full text-xs font-bold shrink-0">
-                      <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                      <span>{biz.rating}</span>
-                      <span className="text-stone-400 dark:text-stone-500 font-normal">({biz.reviewCount})</span>
+                    <div className={`flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-bold shrink-0 ${biz.reviewCount ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800' : 'bg-stone-100 dark:bg-stone-800 text-stone-500 border border-stone-200 dark:border-stone-700'}`}>
+                      <Star className={`w-3.5 h-3.5 ${biz.reviewCount ? 'fill-amber-500 text-amber-500' : 'text-stone-400'}`} />
+                      {biz.reviewCount ? <><span>{biz.rating}</span><span className="text-stone-400 dark:text-stone-500 font-normal">({biz.reviewCount})</span></> : <span>No reviews</span>}
                     </div>
                   </div>
 
@@ -411,10 +410,8 @@ export const DiscoveryPage: React.FC = () => {
                     <div className="font-semibold text-stone-900 dark:text-stone-100">Pricing &amp; Booking Rules:</div>
                     <div>• Services from <strong>₱{selectedBranch.biz.minPrice}</strong> to ₱{selectedBranch.biz.maxPrice}</div>
                     <div className="flex items-center space-x-1.5">
-                      <span>• Verified synthetic reviews:</span>
-                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                      <strong>{selectedBranch.biz.rating}</strong>
-                      <span>({selectedBranch.biz.reviewCount})</span>
+                      <span>• Customer reviews:</span>
+                      {selectedBranch.biz.reviewCount ? <><Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /><strong>{selectedBranch.biz.rating}</strong><span>({selectedBranch.biz.reviewCount})</span></> : <span>No reviews yet</span>}
                     </div>
                     <div>• Zero registration required for instant booking.</div>
                   </div>

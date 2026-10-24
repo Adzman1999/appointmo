@@ -8,11 +8,8 @@ const router = Router();
 router.get('/me', authenticateJwt, async (req: Request, res: Response) => {
   try {
     const user = req.user;
-    if (!user || !user.email) {
+    if (!user || !user.email || !user.userId) {
       return res.status(401).json({ error: 'Unauthorized' });
-    }
-    if (user.role !== 'customer') {
-      return res.status(403).json({ error: 'Customer account required' });
     }
 
     const cleanEmail = user.email.trim().toLowerCase();
@@ -27,7 +24,7 @@ router.get('/me', authenticateJwt, async (req: Request, res: Response) => {
     );
 
     if (userRes.rows.length === 0) {
-      return res.status(404).json({ error: 'User account not found' });
+      return res.status(403).json({ error: 'Sign in with a customer account to view your appointments.' });
     }
 
     const userData = userRes.rows[0];
@@ -71,13 +68,15 @@ router.get('/me', authenticateJwt, async (req: Request, res: Response) => {
         s.id AS "serviceId", s.name AS "serviceName", s.duration_minutes AS "durationMinutes",
         sp.id AS "staffId", sp.name AS "staffName",
         b.id AS "businessId", b.name AS "businessName", b.slug AS "businessSlug",
-        br.id AS "branchId", br.name AS "branchName", br.address AS "branchAddress"
+        br.id AS "branchId", br.name AS "branchName", br.address AS "branchAddress",
+        r.rating AS "storeRating", r.staff_rating AS "staffRating", r.comment AS "reviewComment"
       FROM appointments a
       JOIN services s ON a.service_id = s.id
       JOIN staff_profiles sp ON a.staff_id = sp.id
       JOIN businesses b ON a.business_id = b.id
       JOIN branches br ON a.branch_id = br.id
       JOIN customers c ON a.customer_id = c.id
+      LEFT JOIN reviews r ON r.appointment_id = a.id AND r.user_id = $1
       WHERE a.booked_by_user_id = $1
          OR (a.booked_by_user_id IS NULL AND a.is_guest_booking = false AND LOWER(c.email) = $2)
          OR ($3::uuid IS NOT NULL AND a.customer_id = $3::uuid AND a.is_guest_booking = false)
@@ -139,6 +138,77 @@ router.get('/me', authenticateJwt, async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('Failed to get customer profile:', err);
     res.status(500).json({ error: 'Failed to retrieve customer account details: ' + (err.message || 'Server error') });
+  }
+});
+
+// POST /api/customer/reviews - Rate the store and specialist for a completed booking
+router.post('/reviews', authenticateJwt, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user?.userId || !user.email) {
+      return res.status(401).json({ error: 'Sign in with your customer account to leave a review.' });
+    }
+
+    const storeRating = Number(req.body.storeRating);
+    const staffRating = Number(req.body.staffRating);
+    const comment = typeof req.body.comment === 'string' ? req.body.comment.trim().slice(0, 1000) : '';
+    const appointmentId = typeof req.body.appointmentId === 'string' ? req.body.appointmentId : '';
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointmentId);
+    if (!isUuid || !Number.isInteger(storeRating) || storeRating < 1 || storeRating > 5 ||
+        !Number.isInteger(staffRating) || staffRating < 1 || staffRating > 5) {
+      return res.status(400).json({ error: 'Choose a 1 to 5 star rating for both the store and specialist.' });
+    }
+
+    const cleanEmail = user.email.trim().toLowerCase();
+    const customerUserRes = await query(
+      `SELECT id, name FROM users WHERE id = $1 AND LOWER(email) = $2 AND role = 'customer' LIMIT 1`,
+      [user.userId, cleanEmail]
+    );
+    if (customerUserRes.rows.length === 0) {
+      return res.status(403).json({ error: 'Sign in with a customer account to leave a review.' });
+    }
+
+    const appointmentRes = await query(
+      `SELECT a.id, a.business_id AS "businessId", a.branch_id AS "branchId",
+              a.service_id AS "serviceId", a.staff_id AS "staffId", c.id AS "customerId",
+              COALESCE(NULLIF(c.name, ''), $3) AS "customerName"
+       FROM appointments a
+       JOIN customers c ON c.id = a.customer_id
+       WHERE a.id = $1
+         AND a.status = 'completed'
+         AND (
+           a.booked_by_user_id = $2
+           OR (a.booked_by_user_id IS NULL AND a.is_guest_booking = false AND LOWER(c.email) = $4)
+         )
+       LIMIT 1`,
+      [appointmentId, customerUserRes.rows[0].id, customerUserRes.rows[0].name, cleanEmail]
+    );
+    if (appointmentRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Only completed appointments booked by your account can be reviewed.' });
+    }
+
+    const appointment = appointmentRes.rows[0];
+    const reviewRes = await query(
+      `INSERT INTO reviews (
+         business_id, branch_id, service_id, appointment_id, customer_name, rating,
+         comment, user_id, customer_id, staff_id, staff_rating
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       ON CONFLICT (appointment_id) WHERE appointment_id IS NOT NULL AND user_id IS NOT NULL DO NOTHING
+       RETURNING id, rating AS "storeRating", staff_rating AS "staffRating", comment, created_at AS "createdAt"`,
+      [
+        appointment.businessId, appointment.branchId, appointment.serviceId, appointment.id,
+        appointment.customerName, storeRating, comment || null, customerUserRes.rows[0].id,
+        appointment.customerId, appointment.staffId, staffRating,
+      ]
+    );
+    if (reviewRes.rows.length === 0) {
+      return res.status(409).json({ error: 'This appointment has already been reviewed.' });
+    }
+
+    res.status(201).json({ review: reviewRes.rows[0] });
+  } catch (err: any) {
+    console.error('Failed to submit customer review:', err);
+    res.status(500).json({ error: 'Failed to submit review.' });
   }
 });
 

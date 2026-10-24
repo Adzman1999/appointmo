@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Sparkles, ArrowRight, CheckCircle2, Calendar, Clock, 
   User, AlertCircle, HelpCircle, DollarSign, ShieldCheck,
-  Building2, Award, Zap, ThumbsUp
+  Building2, Award, Zap, ThumbsUp, Star
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
@@ -424,6 +424,7 @@ export const ConciergePage: React.FC = () => {
                           }`}>
                             {rec.badge === 'Best Match' && <Award className="w-3 h-3 text-amber-600 dark:text-amber-400" />}
                             {rec.badge === 'Top Value' && <DollarSign className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
+                            {rec.badge === 'Top Rated' && <Star className="w-3 h-3 fill-emerald-600 text-emerald-600 dark:fill-emerald-300 dark:text-emerald-300" />}
                             <span>{rec.badge}</span>
                           </span>
                         )}

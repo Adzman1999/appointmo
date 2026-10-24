@@ -7,11 +7,17 @@ export interface ConciergeRecommendation {
   businessId?: string;
   businessName?: string;
   businessCategory?: string;
+  businessRating?: number;
+  businessReviewCount?: number;
+  serviceRating?: number;
+  serviceReviewCount?: number;
   price: number;
   durationMinutes: number;
   category: string;
   staffId: string;
   staffName: string;
+  staffRating?: number;
+  staffReviewCount?: number;
   slot: TimeSlot;
   matchScore: number;
   badge?: 'Best Match' | 'Top Value' | 'Soonest Available' | 'Top Rated';
@@ -30,10 +36,34 @@ export class ConciergeService {
 
     // 1. Fetch all active services for business (Synthetic catalogue only)
     const servicesRes = await query(
-      'SELECT id, name, description, duration_minutes, price, category FROM services WHERE business_id = $1 AND is_active = true',
+      `SELECT s.id, s.name, s.description, s.duration_minutes, s.price, s.category,
+              COALESCE(service_reviews.rating, 0)::numeric(3, 1) AS service_rating,
+              COALESCE(service_reviews.review_count, 0)::int AS service_review_count
+       FROM services s
+       LEFT JOIN LATERAL (
+         SELECT AVG(r.rating) AS rating, COUNT(*) AS review_count
+         FROM reviews r WHERE r.service_id = s.id
+       ) service_reviews ON true
+       WHERE s.business_id = $1 AND s.is_active = true`,
       [businessId]
     );
     const services = servicesRes.rows;
+    const businessReviewsRes = await query(
+      'SELECT COALESCE(AVG(rating), 0)::numeric(3, 1) AS rating, COUNT(*)::int AS "reviewCount" FROM reviews WHERE business_id = $1',
+      [businessId]
+    );
+    const businessRating = Number(businessReviewsRes.rows[0]?.rating || 0);
+    const businessReviewCount = Number(businessReviewsRes.rows[0]?.reviewCount || 0);
+    const staffReviewsRes = await query(
+      `SELECT staff_id AS "staffId", AVG(staff_rating)::numeric(3, 1) AS rating, COUNT(*)::int AS "reviewCount"
+       FROM reviews
+       WHERE business_id = $1 AND staff_id IS NOT NULL AND staff_rating IS NOT NULL
+       GROUP BY staff_id`,
+      [businessId]
+    );
+    const staffRatings = new Map<string, { rating: number; reviewCount: number }>(
+      staffReviewsRes.rows.map((row: any) => [row.staffId, { rating: Number(row.rating), reviewCount: Number(row.reviewCount) }])
+    );
 
     // Detect user preferences from query text
     const isSensitive = qLower.includes('sensitive') || qLower.includes('gentle') || qLower.includes('mild');
@@ -173,8 +203,16 @@ export class ConciergeService {
             filteredSlots = slots.filter(s => new Date(s.startTime).getHours() >= 17);
           }
 
-          const sortedSlots = [...slots].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-          const chosenSlot = filteredSlots.length > 0 ? filteredSlots[0] : slots[0];
+          const slotChoices = filteredSlots.length > 0 ? filteredSlots : slots;
+          const sortedSlots = [...slotChoices].sort((a, b) => {
+            const aRating = staffRatings.get(a.staffId);
+            const bRating = staffRatings.get(b.staffId);
+            const aBoost = aRating && aRating.reviewCount >= 3 ? aRating.rating : 0;
+            const bBoost = bRating && bRating.reviewCount >= 3 ? bRating.rating : 0;
+            return bBoost - aBoost || new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+          });
+          const chosenSlot = sortedSlots[0];
+          const chosenStaffRating = staffRatings.get(chosenSlot.staffId);
           const reasons = [...item.reasons];
           if (timeOfDay && filteredSlots.length > 0) {
             reasons.push(`Available in your preferred ${timeOfDay} time frame`);
@@ -182,6 +220,20 @@ export class ConciergeService {
             reasons.push(`Nearest open opening (outside preferred ${timeOfDay})`);
           }
           reasons.push(`Verified open slot with certified specialist ${chosenSlot.staffName}`);
+          if (chosenStaffRating && chosenStaffRating.reviewCount >= 3) {
+            reasons.push(`Highly rated specialist (${chosenStaffRating.rating.toFixed(1)}/5 from ${chosenStaffRating.reviewCount} reviews)`);
+          }
+          if (Number(item.service.service_review_count || 0) >= 3) {
+            reasons.push(`Customers rate this service ${Number(item.service.service_rating).toFixed(1)}/5 (${item.service.service_review_count} reviews)`);
+          }
+          if (businessReviewCount >= 3) {
+            reasons.push(`Customer rated store ${businessRating.toFixed(1)}/5 (${businessReviewCount} reviews)`);
+          }
+
+          const trustedStaffBoost = chosenStaffRating && chosenStaffRating.reviewCount >= 3
+            ? Math.min(18, chosenStaffRating.rating * 3)
+            : 0;
+          const trustedBusinessBoost = businessReviewCount >= 3 ? Math.min(8, businessRating * 1.5) : 0;
 
           const recItem: ConciergeRecommendation = {
             serviceId: item.service.id,
@@ -191,8 +243,15 @@ export class ConciergeService {
             category: item.service.category,
             staffId: chosenSlot.staffId,
             staffName: chosenSlot.staffName,
+            staffRating: chosenStaffRating?.rating || 0,
+            staffReviewCount: chosenStaffRating?.reviewCount || 0,
+            businessRating,
+            businessReviewCount,
+            serviceRating: Number(item.service.service_rating || 0),
+            serviceReviewCount: Number(item.service.service_review_count || 0),
             slot: chosenSlot,
-            matchScore: item.score * 10 + (filteredSlots.length > 0 ? 15 : 0),
+            matchScore: item.score * 10 + (filteredSlots.length > 0 ? 15 : 0) + trustedStaffBoost + trustedBusinessBoost +
+              (Number(item.service.service_review_count || 0) >= 3 ? Math.min(6, Number(item.service.service_rating || 0) * 1.2) : 0),
             matchReasons: reasons,
           };
 
@@ -211,6 +270,11 @@ export class ConciergeService {
     const sortedRecs = recommendations.sort((a, b) => b.matchScore - a.matchScore).slice(0, 3);
     if (sortedRecs.length > 0) {
       sortedRecs[0].badge = 'Best Match';
+      const topRatedIndex = sortedRecs.findIndex((item) =>
+        ((item.staffReviewCount || 0) >= 3 && (item.staffRating || 0) >= 4.5) ||
+        ((item.businessReviewCount || 0) >= 3 && (item.businessRating || 0) >= 4.5)
+      );
+      if (topRatedIndex > 0) sortedRecs[topRatedIndex].badge = 'Top Rated';
       if (sortedRecs.length > 1) {
         // Assign Top Value to lowest price among remaining
         let lowestIdx = 1;

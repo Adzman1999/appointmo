@@ -298,6 +298,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   // Quick Service Creation Form (with Time Picker & Category Selection)
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  const [removingServiceId, setRemovingServiceId] = useState<string | null>(null);
   const [newServiceName, setNewServiceName] = useState('');
   const [newServicePrice, setNewServicePrice] = useState('');
   const [newServiceDurationHours, setNewServiceDurationHours] = useState('0');
@@ -1081,7 +1083,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     e.preventDefault();
     if (isPending) {
       toast.warning('Action Blocked', {
-        description: 'Your store is currently pending review and approval (1 to 2 business days). Adding services is locked.'
+        description: 'Your store is pending review, so service changes are temporarily locked.'
       });
       return;
     }
@@ -1103,8 +1105,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
     setAddingService(true);
     try {
-      await apiFetch(`/demo/admin/services?slug=${encodeURIComponent(activeSlug)}`, {
-        method: 'POST',
+      await apiFetch(editingServiceId
+        ? `/demo/admin/services/${editingServiceId}?slug=${encodeURIComponent(activeSlug)}`
+        : `/demo/admin/services?slug=${encodeURIComponent(activeSlug)}`, {
+        method: editingServiceId ? 'PUT' : 'POST',
         body: JSON.stringify({
           name: newServiceName.trim(),
           price: Number(newServicePrice),
@@ -1113,7 +1117,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
           description: newServiceDesc.trim() || 'Store appointment service',
         }),
       });
-      toast.success('Service menu item added successfully');
+      toast.success(editingServiceId ? 'Service changes saved and synced to booking' : 'Service added and synced to booking');
       setNewServiceName('');
       setNewServicePrice('');
       setNewServiceDurationHours('0');
@@ -1124,11 +1128,41 @@ export const DemoAdminDashboardPage: React.FC = () => {
       setNewCustomCategoryInput('');
       setNewServiceDesc('');
       setShowAddServiceModal(false);
+      setEditingServiceId(null);
       fetchDashboardData();
     } catch (err: any) {
-      toast.error('Failed to add service', { description: err.message });
+      toast.error(editingServiceId ? 'Failed to save service' : 'Failed to add service', { description: err.message });
     } finally {
       setAddingService(false);
+    }
+  };
+
+  const openServiceEditor = (service: any) => {
+    setEditingServiceId(service.id);
+    setNewServiceName(service.name || '');
+    setNewServicePrice(String(service.price ?? ''));
+    setCustomDurationMinutes(String(service.durationMinutes || 45));
+    setIsCustomDuration(true);
+    const knownCategory = categoryOptions.includes(service.category);
+    setIsNewCustomCategory(!knownCategory);
+    setNewCustomCategoryInput(knownCategory ? '' : (service.category || ''));
+    setNewServiceCategory(knownCategory ? service.category : (categoryOptions[0] || 'Beauty & Wellness'));
+    setNewServiceDesc(service.description || '');
+    setShowAddServiceModal(true);
+  };
+
+  const handleRemoveService = async (service: any) => {
+    if (!window.confirm(`Remove “${service.name}” from your booking menu? Existing appointments will keep their service history.`)) return;
+    setRemovingServiceId(service.id);
+    try {
+      await apiFetch(`/demo/admin/services/${service.id}?slug=${encodeURIComponent(activeSlug)}`, { method: 'DELETE' });
+      toast.success('Service removed from booking and synced');
+      if (paginatedServices.length === 1 && servicePage > 1) setServicePage((page) => page - 1);
+      await fetchDashboardData();
+    } catch (err: any) {
+      toast.error('Failed to remove service', { description: err.message });
+    } finally {
+      setRemovingServiceId(null);
     }
   };
 
@@ -1510,45 +1544,46 @@ export const DemoAdminDashboardPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Clean Modular Sub-Navigation Menu */}
-            <div className="flex items-center space-x-2 border-b border-stone-200 dark:border-stone-800 pb-3 overflow-x-auto">
+            {/* Grouped setup menu */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 border-b border-stone-200 dark:border-stone-800 pb-4">
               {[
-                { id: 'profile', label: 'Store Profile & Branding', icon: Store, count: null },
-                { id: 'services', label: 'Services & Pricing', icon: Scissors, count: storeServices.length },
-                { id: 'staff', label: 'Staff Specialists', icon: Users, count: storeStaff.length },
-                { id: 'customers', label: 'Customer Accounts', icon: User, count: storeCustomers.length },
-                { id: 'hris', label: 'HRIS & Payroll Records', icon: Wallet, count: 'HR' },
-                { id: 'schedule', label: 'Schedule & Hours', icon: Clock, count: null },
-                { id: 'policies', label: 'Suggested Config & Policies', icon: Sliders, count: 'New' },
-                { id: 'account', label: 'Admin Account & Security', icon: ShieldCheck, count: null },
-              ].map((tab) => {
-                const IconComponent = tab.icon;
-                const isSelected = setupSubTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setSetupSubTab(tab.id as any)}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
-                      isSelected
-                        ? 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 shadow-md'
-                        : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800'
-                    }`}
-                  >
-                    <IconComponent className="w-3.5 h-3.5" />
-                    <span>{tab.label}</span>
-                    {tab.count !== null && (
-                      <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
-                        isSelected 
-                          ? 'bg-white/20 dark:bg-stone-950/20 text-white dark:text-stone-950'
-                          : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
-                      }`}>
-                        {tab.count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+                { label: 'Store', tabs: [
+                  { id: 'profile', label: 'Profile & Branding', icon: Store, count: null },
+                  { id: 'services', label: 'Services & Pricing', icon: Scissors, count: storeServices.length },
+                  { id: 'schedule', label: 'Schedule & Hours', icon: Clock, count: null },
+                  { id: 'policies', label: 'Booking Policies', icon: Sliders, count: null },
+                ] },
+                { label: 'Team', tabs: [
+                  { id: 'staff', label: 'Staff Specialists', icon: Users, count: storeStaff.length },
+                  { id: 'hris', label: 'HRIS & Payroll', icon: Wallet, count: null },
+                ] },
+                { label: 'Customers', tabs: [
+                  { id: 'customers', label: 'Customer Accounts', icon: User, count: storeCustomers.length },
+                ] },
+                { label: 'Account', tabs: [
+                  { id: 'account', label: 'Admin Security', icon: ShieldCheck, count: null },
+                ] },
+              ].map((group) => (
+                <section key={group.label} className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-900/60 p-2.5">
+                  <h3 className="px-2 pb-1.5 text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">{group.label}</h3>
+                  <div className="space-y-1">
+                    {group.tabs.map((tab) => {
+                      const IconComponent = tab.icon;
+                      const isSelected = setupSubTab === tab.id;
+                      return (
+                        <button key={tab.id} type="button" onClick={() => setSetupSubTab(tab.id as any)} className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-left text-[11px] font-bold transition ${
+                          isSelected
+                            ? 'bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 shadow-sm'
+                            : 'text-stone-600 dark:text-stone-400 hover:bg-white dark:hover:bg-stone-800'
+                        }`}>
+                          <span className="flex min-w-0 items-center gap-2"><IconComponent className="w-3.5 h-3.5 shrink-0" /><span className="truncate">{tab.label}</span></span>
+                          {tab.count !== null && <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-extrabold ${isSelected ? 'bg-white/20 dark:bg-stone-950/20' : 'bg-stone-200 dark:bg-stone-800'}`}>{tab.count}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
             </div>
 
             {/* Setup Views by Sub-Tab */}
@@ -2143,6 +2178,16 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         });
                         return;
                       }
+                      setEditingServiceId(null);
+                      setNewServiceName('');
+                      setNewServicePrice('');
+                      setNewServiceDurationHours('0');
+                      setNewServiceDurationMinutes('45');
+                      setIsCustomDuration(false);
+                      setCustomDurationMinutes('45');
+                      setIsNewCustomCategory(false);
+                      setNewCustomCategoryInput('');
+                      setNewServiceDesc('');
                       setShowAddServiceModal(true);
                     }}
                     className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow disabled:opacity-50 disabled:cursor-not-allowed self-start sm:self-auto"
@@ -2157,7 +2202,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     <div className="py-12 text-center text-stone-400">No services configured yet. Click "Add New Service" above.</div>
                   ) : (
                     paginatedServices.map((svc) => (
-                      <div key={svc.id} className="py-3.5 flex items-center justify-between hover:bg-stone-50/50 dark:hover:bg-stone-800/40 px-2 rounded-xl transition">
+                      <div key={svc.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-stone-50/50 dark:hover:bg-stone-800/40 px-2 rounded-xl transition">
                         <div>
                           <div className="font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
                             <span>{svc.name}</span>
@@ -2167,12 +2212,22 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           </div>
                           <p className="text-[11px] text-stone-500 mt-0.5">{svc.description}</p>
                         </div>
-                        <div className="text-right">
-                          <div className="font-bold text-stone-900 dark:text-stone-100 text-sm">
-                            {getCurrencySymbol(editCurrency)}{Number(svc.price).toLocaleString()}
+                        <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0">
+                          <div className="text-right">
+                            <div className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                              {getCurrencySymbol(editCurrency)}{Number(svc.price).toLocaleString()}
+                            </div>
+                            <div className="text-[10px] text-stone-500 font-medium">
+                              {svc.durationMinutes} mins session
+                            </div>
                           </div>
-                          <div className="text-[10px] text-stone-500 font-medium">
-                            {svc.durationMinutes} mins session
+                          <div className="flex items-center gap-1.5">
+                            <button type="button" disabled={isPending || removingServiceId === svc.id} onClick={() => openServiceEditor(svc)} className="px-2.5 py-1.5 rounded-lg border border-stone-200 dark:border-stone-700 text-[11px] font-semibold text-stone-700 dark:text-stone-300 hover:border-amber-500 hover:text-amber-600 disabled:opacity-50" aria-label={`Edit ${svc.name}`}>
+                              Edit
+                            </button>
+                            <button type="button" disabled={isPending || removingServiceId === svc.id} onClick={() => handleRemoveService(svc)} className="px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900/70 text-[11px] font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 disabled:opacity-50" aria-label={`Remove ${svc.name}`}>
+                              {removingServiceId === svc.id ? 'Removing…' : 'Remove'}
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -2280,7 +2335,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             className="px-2.5 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 font-semibold hover:border-amber-500 hover:text-amber-600 transition flex items-center space-x-1"
                           >
                             <Sliders className="w-3 h-3" />
-                            <span>Manage HR</span>
+                            <span>Edit</span>
                           </button>
                           <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2.5 py-1 rounded-full">
                             Active
@@ -3940,11 +3995,11 @@ export const DemoAdminDashboardPage: React.FC = () => {
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
               <div className="flex items-center space-x-2">
                 <Scissors className="w-5 h-5 text-amber-500" />
-                <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">Add Service to Menu</h3>
+                <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">{editingServiceId ? 'Edit Service' : 'Add Service to Menu'}</h3>
               </div>
               <button
                 type="button"
-                onClick={() => setShowAddServiceModal(false)}
+                onClick={() => { setShowAddServiceModal(false); setEditingServiceId(null); }}
                 className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
               >
                 <X className="w-5 h-5" />
@@ -4106,7 +4161,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
               <div className="flex space-x-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddServiceModal(false)}
+                  onClick={() => { setShowAddServiceModal(false); setEditingServiceId(null); }}
                   className="flex-1 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800"
                 >
                   Cancel
@@ -4116,7 +4171,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   disabled={addingService}
                   className="flex-1 py-2.5 rounded-xl font-bold bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow"
                 >
-                  {addingService ? 'Saving...' : 'Add Service'}
+                  {addingService ? 'Saving...' : editingServiceId ? 'Save Changes' : 'Add Service'}
                 </button>
               </div>
             </form>
