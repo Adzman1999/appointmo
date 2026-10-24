@@ -37,7 +37,9 @@ export class AvailabilityService {
   ): Promise<TimeSlot[]> {
     // 1. Get service duration
     const serviceRes = await query(`
-      SELECT s.duration_minutes, b.weekly_schedule AS "businessWeeklySchedule"
+      SELECT s.duration_minutes,
+             b.weekly_schedule AS "businessWeeklySchedule",
+             b.booking_policies AS "bookingPolicies"
       FROM services s
       JOIN businesses b ON b.id = s.business_id
       WHERE s.id = $1 AND s.business_id = $2 AND s.is_active = true
@@ -54,6 +56,16 @@ export class AvailabilityService {
         businessSchedule = null;
       }
     }
+    let bookingPolicies = serviceRes.rows[0].bookingPolicies;
+    if (typeof bookingPolicies === 'string') {
+      try {
+        bookingPolicies = JSON.parse(bookingPolicies);
+      } catch {
+        bookingPolicies = null;
+      }
+    }
+    const configuredInterval = Number(bookingPolicies?.slotInterval);
+    const slotIntervalMinutes = [15, 30, 45, 60].includes(configuredInterval) ? configuredInterval : 45;
 
     // Target date in YYYY-MM-DD
     const targetDate = new Date(`${dateStr}T00:00:00+08:00`); // Asia/Manila offset (+08:00)
@@ -137,10 +149,10 @@ export class AvailabilityService {
         end: new Date(r.end_time).getTime(),
       }));
 
-      // Generate slot intervals in 30-min steps
+      // Generate customer start times using the store's configured grid interval.
       let current = dayStart.getTime();
       const endTimeLimit = dayEnd.getTime();
-      const stepMs = 30 * 60 * 1000;
+      const stepMs = slotIntervalMinutes * 60 * 1000;
       const durationMs = durationMinutes * 60 * 1000;
 
       while (current + durationMs <= endTimeLimit) {
