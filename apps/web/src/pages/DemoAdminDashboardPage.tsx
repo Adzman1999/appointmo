@@ -54,8 +54,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   // Active Admin View Tab: 'appointments' or 'setup'
   const [activeTab, setActiveTab] = useState<'appointments' | 'setup'>('appointments');
-  // Store Setup Sub-Navigation Menu: profile, services, staff, hris, schedule, policies, account
-  const [setupSubTab, setSetupSubTab] = useState<'profile' | 'services' | 'staff' | 'hris' | 'schedule' | 'policies' | 'account'>('profile');
+  // Store Setup Sub-Navigation Menu
+  const [setupSubTab, setSetupSubTab] = useState<'profile' | 'services' | 'staff' | 'customers' | 'hris' | 'schedule' | 'policies' | 'account'>('profile');
 
   const [businesses, setBusinesses] = useState<any[]>([]);
   // Resolve active store slug from URL or user context, default to lumiere-beauty-studio
@@ -78,6 +78,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [storeServices, setStoreServices] = useState<any[]>([]);
   const [storeStaff, setStoreStaff] = useState<any[]>([]);
   const [storeWorkingHours, setStoreWorkingHours] = useState<any[]>([]);
+  const [storeCustomers, setStoreCustomers] = useState<any[]>([]);
+  const [loadingStoreCustomers, setLoadingStoreCustomers] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [editingStoreCustomer, setEditingStoreCustomer] = useState<any | null>(null);
+  const [editCustomerName, setEditCustomerName] = useState('');
+  const [editCustomerPhone, setEditCustomerPhone] = useState('');
+  const [savingCustomer, setSavingCustomer] = useState(false);
   
   // Edit Form Fields (Matching "Launch Your Own Store" Creation Form)
   const [editName, setEditName] = useState('');
@@ -344,9 +351,16 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const STAFF_PER_PAGE = 5;
   const [staffPage, setStaffPage] = useState(1);
 
+  const CUSTOMERS_PER_PAGE = 8;
+  const [customerPage, setCustomerPage] = useState(1);
+
   useEffect(() => {
     setApptPage(1);
   }, [statusFilter, search, activeSlug]);
+
+  useEffect(() => {
+    setCustomerPage(1);
+  }, [customerSearch, activeSlug]);
 
   // Details & History Modal State
   const [selectedApptDetails, setSelectedApptDetails] = useState<any | null>(null);
@@ -969,6 +983,56 @@ export const DemoAdminDashboardPage: React.FC = () => {
     }
   };
 
+  const fetchStoreCustomers = async () => {
+    setLoadingStoreCustomers(true);
+    try {
+      const res: any = await apiFetch(`/demo/admin/customers?slug=${encodeURIComponent(activeSlug)}`);
+      setStoreCustomers(res.customers || []);
+    } catch (err: any) {
+      toast.error('Failed to load customer accounts', { description: err.message });
+    } finally {
+      setLoadingStoreCustomers(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'setup' && setupSubTab === 'customers') {
+      fetchStoreCustomers();
+    }
+  }, [activeTab, setupSubTab, activeSlug]);
+
+  const openStoreCustomerEditor = (customer: any) => {
+    setEditingStoreCustomer(customer);
+    setEditCustomerName(customer.name || '');
+    setEditCustomerPhone(customer.phone || '');
+  };
+
+  const handleSaveStoreCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStoreCustomer) return;
+    setSavingCustomer(true);
+    try {
+      const res: any = await apiFetch(
+        `/demo/admin/customers/${editingStoreCustomer.id}?slug=${encodeURIComponent(activeSlug)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ name: editCustomerName.trim(), phone: editCustomerPhone.trim() }),
+        }
+      );
+      setStoreCustomers((customers) => customers.map((customer) =>
+        customer.id === res.customer.id ? { ...customer, ...res.customer } : customer
+      ));
+      toast.success('Customer contact updated', {
+        description: `Saved the contact details for ${res.customer.name}.`,
+      });
+      setEditingStoreCustomer(null);
+    } catch (err: any) {
+      toast.error('Failed to update customer account', { description: err.message });
+    } finally {
+      setSavingCustomer(false);
+    }
+  };
+
   // Update Account Profile
   const handleUpdateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1194,6 +1258,19 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   const totalStaffPages = Math.ceil(storeStaff.length / STAFF_PER_PAGE);
   const paginatedStaff = storeStaff.slice((staffPage - 1) * STAFF_PER_PAGE, staffPage * STAFF_PER_PAGE);
+
+  const filteredStoreCustomers = storeCustomers.filter((customer) => {
+    const searchTerm = customerSearch.trim().toLowerCase();
+    if (!searchTerm) return true;
+    return [customer.name, customer.email, customer.phone].some((value) =>
+      String(value || '').toLowerCase().includes(searchTerm)
+    );
+  });
+  const totalCustomerPages = Math.ceil(filteredStoreCustomers.length / CUSTOMERS_PER_PAGE);
+  const paginatedStoreCustomers = filteredStoreCustomers.slice(
+    (customerPage - 1) * CUSTOMERS_PER_PAGE,
+    customerPage * CUSTOMERS_PER_PAGE
+  );
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20 transition-colors">
@@ -1439,6 +1516,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                 { id: 'profile', label: 'Store Profile & Branding', icon: Store, count: null },
                 { id: 'services', label: 'Services & Pricing', icon: Scissors, count: storeServices.length },
                 { id: 'staff', label: 'Staff Specialists', icon: Users, count: storeStaff.length },
+                { id: 'customers', label: 'Customer Accounts', icon: User, count: storeCustomers.length },
                 { id: 'hris', label: 'HRIS & Payroll Records', icon: Wallet, count: 'HR' },
                 { id: 'schedule', label: 'Schedule & Hours', icon: Clock, count: null },
                 { id: 'policies', label: 'Suggested Config & Policies', icon: Sliders, count: 'New' },
@@ -2175,7 +2253,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             type="button"
                             disabled={isPending}
                             onClick={() => handleOpenStaffSchedule(st)}
-                            className="px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition flex items-center space-x-1 disabled:opacity-50"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 text-[10px] font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition disabled:opacity-50"
                           >
                             <Clock className="w-3 h-3" />
                             <span>Schedule &amp; Services</span>
@@ -2224,7 +2302,91 @@ export const DemoAdminDashboardPage: React.FC = () => {
               </div>
             )}
 
-            {/* Sub-Tab 4: Appointment Slots & Working Hours */}
+            {setupSubTab === 'customers' && (
+              <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4 animate-in fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-stone-100 dark:border-stone-800">
+                  <div>
+                    <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                      <User className="w-4 h-4 text-amber-500" />
+                      <span>Customer Accounts</span>
+                    </h2>
+                    <p className="text-[11px] text-stone-500 mt-0.5">View customers who booked with this store and update their contact details.</p>
+                  </div>
+                  <label className="relative block w-full sm:w-72">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                    <input
+                      value={customerSearch}
+                      onChange={(event) => setCustomerSearch(event.target.value)}
+                      placeholder="Search name, email, or phone"
+                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-xs text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:border-amber-500"
+                    />
+                  </label>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px] text-xs text-left">
+                    <thead className="text-[10px] uppercase tracking-wide text-stone-500 bg-stone-50 dark:bg-stone-800/60">
+                      <tr>
+                        <th className="px-3 py-2.5 font-bold">Customer</th>
+                        <th className="px-3 py-2.5 font-bold">Phone</th>
+                        <th className="px-3 py-2.5 font-bold">Bookings</th>
+                        <th className="px-3 py-2.5 font-bold">Upcoming</th>
+                        <th className="px-3 py-2.5 font-bold">Last booking</th>
+                        <th className="px-3 py-2.5 font-bold text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                      {loadingStoreCustomers ? (
+                        <tr><td colSpan={6} className="py-12 text-center text-stone-500">Loading customer accounts…</td></tr>
+                      ) : paginatedStoreCustomers.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-12 text-center text-stone-500">
+                            {customerSearch.trim() ? 'No customers match your search.' : 'No customer accounts yet. Customers appear here after booking with this store.'}
+                          </td>
+                        </tr>
+                      ) : paginatedStoreCustomers.map((customer) => (
+                        <tr key={customer.id} className="hover:bg-stone-50/70 dark:hover:bg-stone-800/30">
+                          <td className="px-3 py-3">
+                            <div className="font-bold text-stone-900 dark:text-stone-100">{customer.name}</div>
+                            <div className="text-[11px] text-stone-500 mt-0.5">{customer.email}</div>
+                          </td>
+                          <td className="px-3 py-3 text-stone-700 dark:text-stone-300">{customer.phone || '—'}</td>
+                          <td className="px-3 py-3 font-semibold text-stone-800 dark:text-stone-200">{Number(customer.bookingCount || 0)}</td>
+                          <td className="px-3 py-3 text-stone-700 dark:text-stone-300">{Number(customer.upcomingBookings || 0)}</td>
+                          <td className="px-3 py-3 text-stone-600 dark:text-stone-400">
+                            {customer.lastBookingAt
+                              ? new Date(customer.lastBookingAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+                              : 'No bookings yet'}
+                          </td>
+                          <td className="px-3 py-3 text-right">
+                            <button
+                              type="button"
+                              disabled={isPending}
+                              onClick={() => openStoreCustomerEditor(customer)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-semibold hover:border-amber-500 hover:text-amber-700 dark:hover:text-amber-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>Manage</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <Pagination
+                  currentPage={customerPage}
+                  totalPages={totalCustomerPages}
+                  totalItems={filteredStoreCustomers.length}
+                  itemsPerPage={CUSTOMERS_PER_PAGE}
+                  onPageChange={setCustomerPage}
+                  itemName="customers"
+                />
+              </div>
+            )}
+
+            {/* Sub-Tab 5: Appointment Slots & Working Hours */}
             {setupSubTab === 'schedule' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in">
                 <div className="lg:col-span-2 bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-5 text-xs">
@@ -3170,6 +3332,77 @@ export const DemoAdminDashboardPage: React.FC = () => {
           </>
         )}
       </main>
+
+      {editingStoreCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <form onSubmit={handleSaveStoreCustomer} className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-7 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-start justify-between gap-4 pb-3 border-b border-stone-100 dark:border-stone-800">
+              <div>
+                <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">Manage Customer</h3>
+                <p className="text-[11px] text-stone-500 mt-1">Update this customer’s contact details for {currentBusiness?.name || 'this store'}.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingStoreCustomer(null)}
+                className="p-1.5 rounded-full text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+                aria-label="Close customer editor"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <label className="block space-y-1.5">
+                <span className="font-semibold text-stone-700 dark:text-stone-300">Customer name</span>
+                <input
+                  required
+                  maxLength={255}
+                  value={editCustomerName}
+                  onChange={(event) => setEditCustomerName(event.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-amber-500"
+                />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="font-semibold text-stone-700 dark:text-stone-300">Sign-in email</span>
+                <input
+                  value={editingStoreCustomer.email || ''}
+                  readOnly
+                  className="w-full px-3 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/60 text-stone-500 dark:text-stone-400 cursor-not-allowed"
+                />
+                <span className="block text-[10px] text-stone-500">Customers manage the email and password used to sign in.</span>
+              </label>
+              <label className="block space-y-1.5">
+                <span className="font-semibold text-stone-700 dark:text-stone-300">Phone number</span>
+                <input
+                  required
+                  maxLength={50}
+                  value={editCustomerPhone}
+                  onChange={(event) => setEditCustomerPhone(event.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-amber-500"
+                />
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setEditingStoreCustomer(null)}
+                className="px-4 py-2 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-semibold text-xs hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingCustomer || isPending}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{savingCustomer ? 'Saving…' : 'Save Contact'}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* MODAL 1: VIEW DETAILS & AUDIT HISTORY */}
       {selectedApptDetails && (

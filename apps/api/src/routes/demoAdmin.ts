@@ -1077,6 +1077,59 @@ router.get('/settings', async (req: Request, res: Response) => {
   }
 });
 
+// Store-scoped customer directory and contact management
+router.get('/customers', async (req: Request, res: Response) => {
+  try {
+    const businessId = await getDemoBusinessId(req);
+    const customersRes = await query(`
+      SELECT c.id, c.name, c.email, c.phone, c.created_at AS "createdAt",
+             COUNT(a.id)::int AS "bookingCount",
+             (COUNT(a.id) FILTER (WHERE a.status = 'completed'))::int AS "completedBookings",
+             (COUNT(a.id) FILTER (
+               WHERE a.status IN ('pending', 'confirmed') AND a.start_time > NOW()
+             ))::int AS "upcomingBookings",
+             MAX(a.start_time) AS "lastBookingAt"
+      FROM customers c
+      LEFT JOIN appointments a ON a.customer_id = c.id AND a.business_id = c.business_id
+      WHERE c.business_id = $1
+      GROUP BY c.id
+      ORDER BY MAX(a.start_time) DESC NULLS LAST, c.created_at DESC
+    `, [businessId]);
+
+    res.json({ customers: customersRes.rows });
+  } catch (err: any) {
+    console.error('Fetch store customers error:', err);
+    res.status(500).json({ error: 'Failed to fetch customer accounts' });
+  }
+});
+
+router.patch('/customers/:id', async (req: Request, res: Response) => {
+  try {
+    const businessId = await getDemoBusinessId(req, false);
+    const { name, phone } = req.body || {};
+    const cleanName = typeof name === 'string' ? name.trim() : '';
+    const cleanPhone = typeof phone === 'string' ? phone.trim() : '';
+    if (!cleanName || cleanName.length > 255 || !cleanPhone || cleanPhone.length > 50) {
+      return res.status(400).json({ error: 'Enter a valid customer name and phone number' });
+    }
+
+    const customerRes = await query(`
+      UPDATE customers
+      SET name = $1, phone = $2, updated_at = NOW()
+      WHERE id = $3 AND business_id = $4
+      RETURNING id, name, email, phone, created_at AS "createdAt"
+    `, [cleanName, cleanPhone, req.params.id, businessId]);
+    if (customerRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Customer account not found for this store' });
+    }
+
+    res.json({ customer: customerRes.rows[0], message: 'Customer contact details updated' });
+  } catch (err: any) {
+    console.error('Update store customer error:', err);
+    res.status(500).json({ error: 'Failed to update customer account' });
+  }
+});
+
 // 12. Update Business Profile & Setup (Logo, description, hours, phone, address, status, policies, country, currency)
 router.put('/settings', async (req: Request, res: Response) => {
   try {
