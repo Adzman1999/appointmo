@@ -14,7 +14,7 @@ export const PlatformAdminPage: React.FC = () => {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const url = filter === 'all' ? '/demo-access/requests' : `/demo-access/requests?status=${filter}`;
+      const url = filter === 'all' ? '/access-requests/requests' : `/access-requests/requests?status=${filter}`;
       const res: any = await apiFetch(url);
       setRequests(res.requests || []);
     } catch (err: any) {
@@ -30,7 +30,7 @@ export const PlatformAdminPage: React.FC = () => {
 
   const handleApprove = async (id: string) => {
     try {
-      const res: any = await apiFetch(`/demo-access/requests/${id}/approve`, { method: 'POST' });
+      const res: any = await apiFetch(`/access-requests/requests/${id}/approve`, { method: 'POST' });
       setGeneratedInvite(res);
       setMessage('Request approved and secure invitation token generated!');
       fetchRequests();
@@ -42,7 +42,7 @@ export const PlatformAdminPage: React.FC = () => {
   const handleRevoke = async (id: string) => {
     if (!confirm('Revoke access for this request?')) return;
     try {
-      await apiFetch(`/demo-access/requests/${id}/revoke`, { method: 'POST' });
+      await apiFetch(`/access-requests/requests/${id}/revoke`, { method: 'POST' });
       setMessage('Request and associated invitations revoked.');
       fetchRequests();
     } catch (err: any) {
@@ -86,8 +86,8 @@ export const PlatformAdminPage: React.FC = () => {
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-xl font-bold text-stone-900">Demo Access Inquiries</h1>
-            <p className="text-xs text-stone-500">Contact-first gatekeeper approving visitor access to private demo</p>
+            <h1 className="text-xl font-bold text-stone-900">Access Requests</h1>
+            <p className="text-xs text-stone-500">Review and manage requests for access to the Appointmo platform</p>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -130,7 +130,7 @@ export const PlatformAdminPage: React.FC = () => {
               {generatedInvite.invitationToken}
             </div>
             <div className="text-[11px] text-amber-700">
-              Redemption URL: <span className="font-mono">{window.location.origin}/demo/redeem?token={generatedInvite.invitationToken}</span>
+              Redemption URL: <span className="font-mono">{window.location.origin}/access/redeem?token={generatedInvite.invitationToken}</span>
             </div>
           </div>
         )}

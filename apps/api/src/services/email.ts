@@ -277,7 +277,7 @@ ${textBody}
 
 Good news! Your request to explore Appointmo has been approved.
 
-You can now sign in using the email address associated with your request and access the interactive demo.
+You can now sign in using the email address associated with your request and access the Appointmo.
 
 ${actionLabel}: ${actionUrl}
 
@@ -296,7 +296,7 @@ We're excited for you to explore a smarter way to manage appointments.
         </p>
         <p style="font-size: 15px; color: #44403c; margin-bottom: 24px;">
           Good news! Your request to explore Appointmo has been approved.<br><br>
-          You can now sign in using the email address associated with your request and access the interactive demo.
+          You can now sign in using the email address associated with your request and access the Appointmo.
         </p>
         <div style="margin: 28px 0;">
           <a href="${actionUrl}" style="background-color: #1c1917; color: #ffffff; padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none; font-size: 14px; display: inline-block;">

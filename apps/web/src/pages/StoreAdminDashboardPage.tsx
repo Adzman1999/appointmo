@@ -1,17 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { 
-  Calendar, Users, Coins, CheckCircle2, 
-  Search, Filter, Clock, ArrowRight, Sparkles, Building2, 
+import {
+  Calendar, Users, CheckCircle2,
+  Search, Filter, Clock, ArrowRight, Sparkles, Building2,
   Check, X, AlertTriangle, Shield, Bell, ChevronRight, ChevronLeft, UserCheck,
   RefreshCw, Info, Edit3, XCircle, AlertCircle, Plus, ChevronDown, Store, MapPin, Lightbulb, TrendingUp, LogOut,
   Settings, Image, Scissors, Briefcase, Power, Save, Globe, Share2, Mail, Phone, Sliders, ShieldCheck, ShieldAlert,
-  User, Lock, Eye, EyeOff, Receipt, Wallet, Award, FileSpreadsheet, Star
+  User, Lock, Eye, EyeOff, Receipt, Wallet, Award, FileSpreadsheet, FileText, Star
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { DemoTopNav } from '../components/DemoTopNav';
 import { Pagination } from '../components/Pagination';
 import { RecordListToolbar } from '../components/RecordListToolbar';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -66,6 +65,70 @@ const recordMatchesSearch = (values: any[], search: string) => {
   return values.some((value) => String(value ?? '').toLowerCase().includes(term));
 };
 
+const toDateTimeLocalInput = (value?: string | null, timeZone = 'Asia/Manila') => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(date);
+    const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+    return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}`;
+  } catch {
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+  }
+};
+
+const dateTimeLocalToUtcIso = (value: string, timeZone = 'Asia/Manila'): string | null => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return null;
+  const [, yearText, monthText, dayText, hourText, minuteText] = match;
+  const [year, month, day, hour, minute] = [yearText, monthText, dayText, hourText, minuteText].map(Number);
+  const desiredWallTime = Date.UTC(year, month - 1, day, hour, minute);
+  const calendarCheck = new Date(desiredWallTime);
+  if (
+    calendarCheck.getUTCFullYear() !== year || calendarCheck.getUTCMonth() !== month - 1 ||
+    calendarCheck.getUTCDate() !== day || hour > 23 || minute > 59
+  ) return null;
+
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    });
+    let instant = desiredWallTime;
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const parts = Object.fromEntries(formatter.formatToParts(new Date(instant)).map(({ type, value }) => [type, value]));
+      const wallTimeAtInstant = Date.UTC(
+        Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+        Number(parts.hour), Number(parts.minute), Number(parts.second),
+      );
+      const nextInstant = desiredWallTime - (wallTimeAtInstant - instant);
+      if (nextInstant === instant) break;
+      instant = nextInstant;
+    }
+
+    const resolved = new Date(instant);
+    if (toDateTimeLocalInput(resolved.toISOString(), timeZone) !== value) return null;
+    return resolved.toISOString();
+  } catch {
+    return null;
+  }
+};
+
 const ACCOUNT_ROLE_LABELS: Record<string, string> = {
   business_admin: 'Store Admin',
   staff: 'Staff',
@@ -73,7 +136,7 @@ const ACCOUNT_ROLE_LABELS: Record<string, string> = {
   owner: 'Platform Owner',
 };
 
-export const DemoAdminDashboardPage: React.FC = () => {
+export const StoreAdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -83,7 +146,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [setupSubTab, setSetupSubTab] = useState<'profile' | 'services' | 'staff' | 'customers' | 'reviews' | 'hris' | 'schedule' | 'policies' | 'account'>('profile');
   const [setupDropdownOpen, setSetupDropdownOpen] = useState(false);
   const [activeProfileSection, setActiveProfileSection] = useState('profile-brand-identity');
+  const [stickyLayout, setStickyLayout] = useState({ header: 0, setupMenu: 0 });
+  const storeAdminHeaderRef = useRef<HTMLElement>(null);
   const setupDropdownRef = useRef<HTMLDivElement>(null);
+  const profileNavigationRef = useRef<HTMLDivElement>(null);
   const profileSwiperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -93,6 +159,30 @@ export const DemoAdminDashboardPage: React.FC = () => {
     document.addEventListener('mousedown', closeSetupDropdown);
     return () => document.removeEventListener('mousedown', closeSetupDropdown);
   }, []);
+
+  useLayoutEffect(() => {
+    if (activeTab !== 'setup') return;
+
+    const syncStickyLayout = () => {
+      const next = {
+        header: storeAdminHeaderRef.current?.offsetHeight ?? 0,
+        setupMenu: setupDropdownRef.current?.offsetHeight ?? 0,
+      };
+      setStickyLayout((current) =>
+        current.header === next.header && current.setupMenu === next.setupMenu ? current : next,
+      );
+    };
+
+    syncStickyLayout();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(syncStickyLayout) : null;
+    if (storeAdminHeaderRef.current) observer?.observe(storeAdminHeaderRef.current);
+    if (setupDropdownRef.current) observer?.observe(setupDropdownRef.current);
+    window.addEventListener('resize', syncStickyLayout);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', syncStickyLayout);
+    };
+  }, [activeTab]);
 
   const [businesses, setBusinesses] = useState<any[]>([]);
   // Resolve active store slug from URL or user context, default to lumiere-beauty-studio
@@ -184,7 +274,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const [editOpeningHours, setEditOpeningHours] = useState('');
   const [editWebsite, setEditWebsite] = useState('');
   const [editSocialHandle, setEditSocialHandle] = useState('');
-  const [editStatus, setEditStatus] = useState<'approved' | 'closed' | 'pending'>('approved');
+  const [editStatus, setEditStatus] = useState<'approved' | 'pending' | 'rejected'>('approved');
+  const [editOperationalStatus, setEditOperationalStatus] = useState<'open' | 'temporarily_closed'>('open');
+  const [editClosureReason, setEditClosureReason] = useState('');
+  const [editExpectedReopenAt, setEditExpectedReopenAt] = useState('');
 
   // Weekly Schedule State (Mon-Sun)
   const defaultWeeklySchedule = [
@@ -203,6 +296,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
     setEditCountry(cName);
     const cfg = getCountryByName(cName);
     setEditCurrency(cfg.currency);
+    const reopeningInstant = editExpectedReopenAt
+      ? dateTimeLocalToUtcIso(editExpectedReopenAt, editTimezone)
+      : null;
+    if (reopeningInstant) setEditExpectedReopenAt(toDateTimeLocalInput(reopeningInstant, cfg.defaultTimezone));
     setEditTimezone(cfg.defaultTimezone);
 
     // Sync province/state to country default if configured
@@ -529,7 +626,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   const fetchBusinesses = async () => {
     try {
-      const bRes: any = await apiFetch('/demo/admin/businesses');
+      const bRes: any = await apiFetch('/store/admin/businesses');
       setBusinesses(bRes.businesses || []);
     } catch (err) {
       console.error('Failed to fetch businesses', err);
@@ -538,17 +635,17 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const mRes: any = await apiFetch(`/demo/admin/metrics?slug=${encodeURIComponent(activeSlug)}`);
+      const mRes: any = await apiFetch(`/store/admin/metrics?slug=${encodeURIComponent(activeSlug)}`);
       setMetrics(mRes.metrics);
 
-      let apptUrl = `/demo/admin/appointments?slug=${encodeURIComponent(activeSlug)}&status=${statusFilter}&sort=newest`;
+      let apptUrl = `/store/admin/appointments?slug=${encodeURIComponent(activeSlug)}&status=${statusFilter}&sort=newest`;
       if (search.trim()) {
         apptUrl += `&search=${encodeURIComponent(search.trim())}`;
       }
       const aRes: any = await apiFetch(apptUrl);
       setAppointments(aRes.appointments || []);
 
-      const sRes: any = await apiFetch(`/demo/admin/settings?slug=${encodeURIComponent(activeSlug)}`);
+      const sRes: any = await apiFetch(`/store/admin/settings?slug=${encodeURIComponent(activeSlug)}`);
       setCurrentBusiness(sRes.business || null);
       setStoreServices(sRes.services || []);
       setStoreStaff(sRes.staff || []);
@@ -586,6 +683,12 @@ export const DemoAdminDashboardPage: React.FC = () => {
           setEditWebsite(sRes.business.website || '');
           setEditSocialHandle(sRes.business.socialHandle || '');
           setEditStatus(sRes.business.status || 'approved');
+          setEditOperationalStatus(sRes.business.operationalStatus || 'open');
+          setEditClosureReason(sRes.business.temporaryClosureReason || '');
+          setEditExpectedReopenAt(toDateTimeLocalInput(
+            sRes.business.expectedReopenAt,
+            sRes.business.timezone || bCountryCfg.defaultTimezone,
+          ));
 
           if (sRes.business.weeklySchedule) {
             const ws = typeof sRes.business.weeklySchedule === 'string'
@@ -632,13 +735,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
       }
     } catch (err: any) {
       console.error(err);
-      setErrorNotice(err.message || 'Failed to load demo dashboard');
+      setErrorNotice(err.message || 'Failed to load store dashboard');
     }
   };
 
   const fetchNotifications = async () => {
     try {
-      const nRes: any = await apiFetch('/demo/admin/notifications');
+      const nRes: any = await apiFetch('/store/admin/notifications');
       setNotifications(nRes.notifications || []);
       setUnreadCount(nRes.unreadCount || 0);
     } catch (err) {
@@ -682,7 +785,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     setSelectedApptDetails(null);
     setApptHistory([]);
     try {
-      const res: any = await apiFetch(`/demo/admin/appointments/${apptId}`);
+      const res: any = await apiFetch(`/store/admin/appointments/${apptId}`);
       setSelectedApptDetails(res.appointment);
       setApptHistory(res.history || []);
     } catch (err: any) {
@@ -701,7 +804,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       return;
     }
     try {
-      await apiFetch(`/demo/admin/appointments/${id}/status`, {
+      await apiFetch(`/store/admin/appointments/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status: newStatus }),
       });
@@ -780,7 +883,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     setRescheduleError(null);
 
     try {
-      await apiFetch(`/demo/admin/appointments/${rescheduleAppt.id}/reschedule`, {
+      await apiFetch(`/store/admin/appointments/${rescheduleAppt.id}/reschedule`, {
         method: 'POST',
         body: JSON.stringify({
           newStartTime: selectedRescheduleSlot.startTime,
@@ -818,7 +921,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
     setCancelLoading(true);
     try {
-      await apiFetch(`/demo/admin/appointments/${cancelModalAppt.id}/status`, {
+      await apiFetch(`/store/admin/appointments/${cancelModalAppt.id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({
           status: 'cancelled',
@@ -847,7 +950,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       setUnreadCount(prev => Math.max(0, prev - 1));
     }
     try {
-      await apiFetch(`/demo/admin/notifications/${notif.id}/read`, { method: 'PATCH' });
+      await apiFetch(`/store/admin/notifications/${notif.id}/read`, { method: 'PATCH' });
     } catch (err) {
       console.error(err);
     }
@@ -859,7 +962,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     setUnreadCount(0);
     try {
-      await apiFetch(`/demo/admin/notifications/mark-all-read`, { method: 'POST' });
+      await apiFetch(`/store/admin/notifications/mark-all-read`, { method: 'POST' });
       fetchNotifications();
     } catch (err) {
       console.error(err);
@@ -888,6 +991,21 @@ export const DemoAdminDashboardPage: React.FC = () => {
       return;
     }
 
+    if (editOperationalStatus === 'temporarily_closed' && !editClosureReason.trim()) {
+      toast.error('Closure Reason Required', { description: 'Add a short reason so customers understand why the store is closed.' });
+      return;
+    }
+
+    const expectedReopenAt = editOperationalStatus === 'temporarily_closed' && editExpectedReopenAt
+      ? dateTimeLocalToUtcIso(editExpectedReopenAt, editTimezone)
+      : null;
+    if (editOperationalStatus === 'temporarily_closed' && editExpectedReopenAt && !expectedReopenAt) {
+      toast.error('Invalid Reopening Estimate', {
+        description: 'Enter a valid date and time in the store’s timezone.',
+      });
+      return;
+    }
+
     // Phone validation if entered
     if (editPhone.trim()) {
       const phoneVal = validateFullPhoneNumber(editPhone, editCountry, false);
@@ -903,7 +1021,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
     setSavingSettings(true);
     try {
-      const res: any = await apiFetch(`/demo/admin/settings?slug=${encodeURIComponent(activeSlug)}`, {
+      const res: any = await apiFetch(`/store/admin/settings?slug=${encodeURIComponent(activeSlug)}`, {
         method: 'PUT',
         body: JSON.stringify({
           name: editName.trim(),
@@ -924,7 +1042,9 @@ export const DemoAdminDashboardPage: React.FC = () => {
           weeklySchedule,
           website: editWebsite.trim() || null,
           socialHandle: editSocialHandle.trim() || null,
-          status: editStatus,
+          operationalStatus: editOperationalStatus,
+          temporaryClosureReason: editOperationalStatus === 'temporarily_closed' ? editClosureReason.trim() : null,
+          expectedReopenAt,
           bookingPolicies: {
             requireApproval,
             minLeadHours: Number(minLeadHours) || 2,
@@ -972,7 +1092,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     });
     setAddingStaff(true);
     try {
-      await apiFetch(`/demo/admin/staff?slug=${encodeURIComponent(activeSlug)}`, {
+      await apiFetch(`/store/admin/staff?slug=${encodeURIComponent(activeSlug)}`, {
         method: 'POST',
         body: JSON.stringify({
           name: staffFullName,
@@ -1001,7 +1121,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     setStaffScheduleDraft(defaultStaffSchedule());
     setStaffScheduleServiceIds([]);
     try {
-      const res: any = await apiFetch(`/demo/admin/staff/${staff.id}/schedule?slug=${encodeURIComponent(activeSlug)}`);
+      const res: any = await apiFetch(`/store/admin/staff/${staff.id}/schedule?slug=${encodeURIComponent(activeSlug)}`);
       const scheduleByDay = new Map<number, any>(
         (res.weeklySchedule || []).map((day: any) => [Number(day.dayOfWeek), day])
       );
@@ -1031,7 +1151,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     if (!staffScheduleTarget) return;
     setSavingStaffSchedule(true);
     try {
-      await apiFetch(`/demo/admin/staff/${staffScheduleTarget.id}/schedule?slug=${encodeURIComponent(activeSlug)}`, {
+      await apiFetch(`/store/admin/staff/${staffScheduleTarget.id}/schedule?slug=${encodeURIComponent(activeSlug)}`, {
         method: 'PUT',
         body: JSON.stringify({
           serviceIds: staffScheduleServiceIds,
@@ -1054,7 +1174,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const fetchPayroll = async () => {
     setLoadingPayroll(true);
     try {
-      const res: any = await apiFetch(`/demo/admin/payroll?slug=${encodeURIComponent(activeSlug)}`);
+      const res: any = await apiFetch(`/store/admin/payroll?slug=${encodeURIComponent(activeSlug)}`);
       setPayrollRecords(res.payroll || []);
     } catch (err: any) {
       console.error('Failed to load payroll:', err);
@@ -1066,7 +1186,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const fetchStoreCustomers = async () => {
     setLoadingStoreCustomers(true);
     try {
-      const res: any = await apiFetch(`/demo/admin/customers?slug=${encodeURIComponent(activeSlug)}`);
+      const res: any = await apiFetch(`/store/admin/customers?slug=${encodeURIComponent(activeSlug)}`);
       setStoreCustomers(res.customers || []);
     } catch (err: any) {
       toast.error('Failed to load customer records', { description: err.message });
@@ -1084,7 +1204,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const fetchStoreReviews = async (silent = false) => {
     if (!silent) setLoadingStoreReviews(true);
     try {
-      const res: any = await apiFetch(`/demo/admin/reviews?slug=${encodeURIComponent(activeSlug)}`);
+      const res: any = await apiFetch(`/store/admin/reviews?slug=${encodeURIComponent(activeSlug)}`);
       setStoreReviews(res.reviews || []);
       setStoreReviewSummary(res.summary || null);
       if (!silent) setReviewPage(1);
@@ -1114,7 +1234,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     setSavingCustomer(true);
     try {
       const res: any = await apiFetch(
-        `/demo/admin/customers/${editingStoreCustomer.id}?slug=${encodeURIComponent(activeSlug)}`,
+        `/store/admin/customers/${editingStoreCustomer.id}?slug=${encodeURIComponent(activeSlug)}`,
         {
           method: 'PATCH',
           body: JSON.stringify({ name: editCustomerName.trim(), phone: editCustomerPhone.trim() }),
@@ -1291,8 +1411,8 @@ export const DemoAdminDashboardPage: React.FC = () => {
     setAddingService(true);
     try {
       await apiFetch(editingServiceId
-        ? `/demo/admin/services/${editingServiceId}?slug=${encodeURIComponent(activeSlug)}`
-        : `/demo/admin/services?slug=${encodeURIComponent(activeSlug)}`, {
+        ? `/store/admin/services/${editingServiceId}?slug=${encodeURIComponent(activeSlug)}`
+        : `/store/admin/services?slug=${encodeURIComponent(activeSlug)}`, {
         method: editingServiceId ? 'PUT' : 'POST',
         body: JSON.stringify({
           name: newServiceName.trim(),
@@ -1343,7 +1463,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
   const handleRemoveService = async (service: any) => {
     setRemovingServiceId(service.id);
     try {
-      await apiFetch(`/demo/admin/services/${service.id}?slug=${encodeURIComponent(activeSlug)}`, { method: 'DELETE' });
+      await apiFetch(`/store/admin/services/${service.id}?slug=${encodeURIComponent(activeSlug)}`, { method: 'DELETE' });
       if (paginatedServices.length === 1 && servicePage > 1) setServicePage((page) => page - 1);
       await fetchDashboardData();
       setServicePendingRemoval(null);
@@ -1407,7 +1527,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     }
 
     try {
-      await apiFetch(`/demo/admin/staff/${editingStaffMember.id}?slug=${encodeURIComponent(activeSlug)}`, {
+      await apiFetch(`/store/admin/staff/${editingStaffMember.id}?slug=${encodeURIComponent(activeSlug)}`, {
         method: 'PUT',
         body: JSON.stringify({
           name: finalStaffName,
@@ -1438,7 +1558,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     if (getStaffEmploymentStatus(staff) === status) return true;
     setUpdatingStaffStatusId(staff.id);
     try {
-      await apiFetch(`/demo/admin/staff/${staff.id}/status?slug=${encodeURIComponent(activeSlug)}`, {
+      await apiFetch(`/store/admin/staff/${staff.id}/status?slug=${encodeURIComponent(activeSlug)}`, {
         method: 'PATCH',
         body: JSON.stringify({ status }),
       });
@@ -1471,7 +1591,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
     }
     setRecordingPayroll(true);
     try {
-      await apiFetch(`/demo/admin/payroll?slug=${encodeURIComponent(activeSlug)}`, {
+      await apiFetch(`/store/admin/payroll?slug=${encodeURIComponent(activeSlug)}`, {
         method: 'POST',
         body: JSON.stringify({
           staffId: payrollStaffId,
@@ -1608,42 +1728,40 @@ export const DemoAdminDashboardPage: React.FC = () => {
     { id: 'profile-location-address', label: 'Location & Address', icon: MapPin },
     { id: 'profile-contact-social', label: 'Contact & Social', icon: Phone },
     { id: 'profile-operating-hours', label: 'Operating Hours', icon: Clock },
+    { id: 'profile-operational-status', label: 'Operational Status', icon: Power },
   ];
   const scrollProfileSwiper = (direction: -1 | 1) => {
     profileSwiperRef.current?.scrollBy({ left: direction * 250, behavior: 'smooth' });
   };
   const jumpToProfileSection = (sectionId: string) => {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+
+    const navigationBottom = profileNavigationRef.current?.getBoundingClientRect().bottom ?? 0;
+    const sectionTop = window.scrollY + section.getBoundingClientRect().top;
+    const targetScrollTop = Math.max(0, sectionTop - navigationBottom);
+    window.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
   };
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20 transition-colors">
-      {/* Top Segmented Navigation Bar with Global Reset */}
-      <DemoTopNav 
-        currentRole="admin" 
-        onResetComplete={() => {
-          fetchDashboardData();
-          fetchNotifications();
-        }}
-      />
-
       {/* Main Navbar */}
-      <header className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-3.5 px-6 shadow-sm sticky top-0 z-30">
+      <header ref={storeAdminHeaderRef} className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-3.5 px-3 sm:px-4 lg:px-6 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center space-x-3">
+          <div className="flex min-w-0 items-center space-x-3">
             <BusinessLogo
-              name={currentBusiness?.name || 'Demo Business'}
+              name={currentBusiness?.name || 'Your Store'}
               category={currentBusiness?.category || ''}
               logoUrl={currentBusiness?.logoUrl}
               size="md"
             />
             <div>
-              <div className="flex items-center space-x-2">
-                <span className="font-bold text-base text-stone-900 dark:text-stone-100">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="max-w-full break-words font-bold text-base text-stone-900 dark:text-stone-100">
                   {currentBusiness?.name || 'Loading Business...'}
                 </span>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
-                  {currentBusiness?.category || 'Demo Business'}
+                  {currentBusiness?.category || 'Your Store'}
                 </span>
                 {isPending && (
                   <span className="text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-amber-400 text-stone-950 shadow-sm flex items-center space-x-1">
@@ -1652,13 +1770,13 @@ export const DemoAdminDashboardPage: React.FC = () => {
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-stone-500 dark:text-stone-400">
+              <p className="hidden max-w-[min(52vw,36rem)] truncate text-[11px] text-stone-500 dark:text-stone-400 sm:block">
                 {currentBusiness?.description || 'Synthetic appointment provider in Metro Manila'}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-2.5">
             {/* View Switcher Tabs (Appointments vs Store Setup) */}
             <div className="flex items-center bg-stone-100 dark:bg-stone-800 p-1 rounded-2xl border border-stone-200 dark:border-stone-700">
               <button
@@ -1707,7 +1825,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
               {/* Notification Dropdown */}
               {isNotifOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xl z-50 overflow-hidden animate-in fade-in">
+                <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] max-w-80 sm:w-96 sm:max-w-none bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xl z-50 overflow-hidden animate-in fade-in">
                   <div className="p-3.5 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between bg-stone-50 dark:bg-stone-800/60">
                     <div className="flex items-center space-x-2">
                       <span className="font-bold text-xs text-stone-900 dark:text-stone-100">Studio Notifications</span>
@@ -1865,19 +1983,19 @@ export const DemoAdminDashboardPage: React.FC = () => {
               </div>
               <div className="flex items-center space-x-2">
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                  editStatus === 'approved'
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                    : editStatus === 'closed'
+                  editStatus === 'pending'
+                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                    : editOperationalStatus === 'temporarily_closed'
                     ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                    : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                 }`}>
-                  Store Status: {editStatus === 'approved' ? 'Active / Open' : editStatus === 'closed' ? 'Temporarily Closed' : 'Under Review'}
+                  Store Status: {editStatus === 'pending' ? 'Under Review' : editOperationalStatus === 'temporarily_closed' ? 'Temporarily Closed' : 'Open'}
                 </span>
               </div>
             </div>
 
             {/* Grouped icon dropdown for major settings areas */}
-            <div className="sticky top-[132px] z-40 -mx-2 rounded-2xl bg-stone-100/95 px-2 py-2 backdrop-blur-sm dark:bg-stone-950/95 lg:top-[76px]" ref={setupDropdownRef} onKeyDown={(event) => { if (event.key === 'Escape') setSetupDropdownOpen(false); }}>
+            <div style={{ top: stickyLayout.header }} className="sticky z-40 -mx-2 rounded-2xl bg-stone-100/95 px-2 py-2 backdrop-blur-sm dark:bg-stone-950/95" ref={setupDropdownRef} onKeyDown={(event) => { if (event.key === 'Escape') setSetupDropdownOpen(false); }}>
               <button
                 type="button"
                 aria-haspopup="menu"
@@ -1944,7 +2062,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     </div>
 
                     {/* Swipeable shortcuts for fields in this profile form */}
-                    <div className="sticky top-[220px] z-30 rounded-2xl border border-stone-200 dark:border-stone-700 bg-white/95 p-3 shadow-md backdrop-blur-sm dark:bg-stone-900/95 lg:top-[164px]">
+                    <div ref={profileNavigationRef} style={{ top: stickyLayout.header + stickyLayout.setupMenu }} className="sticky z-30 rounded-2xl border border-stone-200 dark:border-stone-700 bg-white/95 p-3 shadow-md backdrop-blur-sm dark:bg-stone-900/95">
                       <div className="mb-2 flex items-center justify-between gap-3 px-1">
                         <div>
                           <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-stone-400">Profile section navigation</p>
@@ -1962,7 +2080,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           const IconComponent = item.icon;
                           const isSelected = activeProfileSection === item.id;
                           return (
-                            <button key={item.id} type="button" role="tab" aria-selected={isSelected} onClick={(event) => { setActiveProfileSection(item.id); jumpToProfileSection(item.id); event.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); }} className={`flex min-w-[148px] snap-start items-center gap-2 rounded-xl border px-3 py-2 text-left transition sm:min-w-[164px] ${isSelected ? 'border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/50' : 'border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-900 hover:border-amber-300'}`}>
+                            <button key={item.id} id={`${item.id}-tab`} type="button" role="tab" aria-controls={item.id} aria-selected={isSelected} onClick={() => { setActiveProfileSection(item.id); jumpToProfileSection(item.id); }} className={`flex min-w-[148px] snap-start items-center gap-2 rounded-xl border px-3 py-2 text-left transition sm:min-w-[164px] ${isSelected ? 'border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/50' : 'border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-900 hover:border-amber-300'}`}>
                               <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isSelected ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-stone-950' : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-300'}`}><IconComponent className="h-4 w-4" /></span>
                               <span className={`truncate text-[11px] font-bold ${isSelected ? 'text-amber-900 dark:text-amber-200' : 'text-stone-700 dark:text-stone-200'}`}>{item.label}</span>
                             </button>
@@ -2318,7 +2436,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                               setIsSettingsDirty(true);
                               setEditEmail(e.target.value);
                             }}
-                            placeholder="contact@yourstore.demo"
+                            placeholder="contact@yourstore.com"
                             disabled={isPending}
                             className={`w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-amber-400 ${isPending ? 'opacity-60 cursor-not-allowed bg-stone-100 dark:bg-stone-800' : ''}`}
                           />
@@ -2430,21 +2548,23 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Operational Status Switcher */}
-                    <div className="pt-2 border-t border-stone-100 dark:border-stone-800">
-                      <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-2 text-xs">
-                        Store Operational Status
-                      </label>
+                    {/* Section 6: Operational Status */}
+                    <div id="profile-operational-status" role="tabpanel" aria-labelledby="profile-operational-status-tab" className={`scroll-mt-24 rounded-2xl border p-4 space-y-4 transition-all duration-300 ${activeProfileSection === 'profile-operational-status' ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-400/50 dark:border-amber-600 dark:bg-amber-950/25' : 'border-stone-200 bg-stone-50/70 dark:border-stone-800 dark:bg-stone-900/50'}`}>
+                      <div className="flex items-center gap-2">
+                        <Power className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+                        <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">6. Store Operational Status</span>
+                        {activeProfileSection === 'profile-operational-status' && <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-amber-900 dark:bg-amber-900/80 dark:text-amber-200">Selected form</span>}
+                      </div>
                       <div className="grid grid-cols-2 gap-3">
                         <button
                           type="button"
                           disabled={isPending}
                           onClick={() => {
                             setIsSettingsDirty(true);
-                            setEditStatus('approved');
+                            setEditOperationalStatus('open');
                           }}
                           className={`p-3 rounded-2xl border text-left text-xs transition ${
-                            editStatus === 'approved'
+                            editOperationalStatus === 'open'
                               ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200'
                               : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300'
                           } ${isPending ? 'opacity-60 cursor-not-allowed' : ''}`}
@@ -2461,10 +2581,10 @@ export const DemoAdminDashboardPage: React.FC = () => {
                           disabled={isPending}
                           onClick={() => {
                             setIsSettingsDirty(true);
-                            setEditStatus('closed');
+                            setEditOperationalStatus('temporarily_closed');
                           }}
                           className={`p-3 rounded-2xl border text-left text-xs transition ${
-                            editStatus === 'closed'
+                            editOperationalStatus === 'temporarily_closed'
                               ? 'border-rose-500 bg-rose-50/60 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200'
                               : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300'
                           } ${isPending ? 'opacity-60 cursor-not-allowed' : ''}`}
@@ -2473,9 +2593,46 @@ export const DemoAdminDashboardPage: React.FC = () => {
                             <XCircle className="w-3.5 h-3.5 text-rose-600" />
                             <span>Temporarily Closed</span>
                           </div>
-                          <p className="text-[11px] mt-1 text-stone-500">Halt new appointments while preserving existing bookings.</p>
+                          <p className="text-[11px] mt-1 text-stone-500">Pause new bookings while keeping existing appointments.</p>
                         </button>
                       </div>
+                      {editOperationalStatus === 'temporarily_closed' && (
+                        <div className="mt-3 grid grid-cols-1 gap-3 rounded-2xl border border-rose-200 bg-rose-50/60 p-4 dark:border-rose-900/70 dark:bg-rose-950/20 sm:grid-cols-2">
+                          <label className="space-y-1.5 sm:col-span-2">
+                            <span className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
+                              Closure reason <span className="text-rose-600">*</span>
+                            </span>
+                            <textarea
+                              required
+                              maxLength={500}
+                              rows={3}
+                              value={editClosureReason}
+                              onChange={(event) => {
+                                setIsSettingsDirty(true);
+                                setEditClosureReason(event.target.value);
+                              }}
+                              placeholder="Let customers know why the store is temporarily closed."
+                              disabled={isPending}
+                              className="box-border min-h-20 w-full resize-y rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-xs text-stone-900 outline-none focus:border-amber-500 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100"
+                            />
+                            <span className="block text-[10px] text-stone-500">Shown to customers on your store card and booking page. {editClosureReason.length}/500</span>
+                          </label>
+                          <label className="space-y-1.5 sm:col-span-2">
+                            <span className="block text-xs font-semibold text-stone-700 dark:text-stone-300">Estimated reopening (optional)</span>
+                            <input
+                              type="datetime-local"
+                              value={editExpectedReopenAt}
+                              onChange={(event) => {
+                                setIsSettingsDirty(true);
+                                setEditExpectedReopenAt(event.target.value);
+                              }}
+                              disabled={isPending}
+                              className={STANDARD_FORM_CONTROL_CLASS}
+                            />
+                            <span className="block text-[10px] text-stone-500">Enter the expected date and time in your store&apos;s local timezone. Leave blank if it is not known yet.</span>
+                          </label>
+                        </div>
+                      )}
                     </div>
 
                     <div className="pt-2 flex justify-end">
@@ -2768,7 +2925,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                         <User className="w-4 h-4 text-amber-500" />
                         <span>Customers</span>
                       </h2>
-                      <p className="text-[11px] text-stone-500 mt-0.5">View this store&apos;s customer and booking records, or update contact details.</p>
+                      <p className="text-[11px] text-stone-500 mt-0.5">Only customers with an appointment at this store appear here. You can update their contact details.</p>
                     </div>
                     <button
                       type="button"
@@ -2814,7 +2971,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                       ) : paginatedStoreCustomers.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="py-12 text-center text-stone-500">
-                            {customerSearch.trim() ? 'No customers match your search.' : 'No customers yet. Customers appear here after booking with this store.'}
+                            {customerSearch.trim() ? 'No customers match your search.' : 'No customers with appointments yet. Customer records appear here after a booking is made with this store.'}
                           </td>
                         </tr>
                       ) : paginatedStoreCustomers.map((customer) => (
@@ -3394,7 +3551,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
                     }}
                     className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow self-start sm:self-auto"
                   >
-                    <Coins className="w-4 h-4 text-amber-500" />
+                    <FileText className="w-4 h-4 text-amber-500" />
                     <span>Record Salary &amp; Payroll</span>
                   </button>
                 </div>
@@ -4063,7 +4220,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
       {editingStoreCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <form onSubmit={handleSaveStoreCustomer} className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-7 max-w-md w-full shadow-2xl space-y-4">
+          <form onSubmit={handleSaveStoreCustomer} className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-stone-200 bg-white p-4 shadow-2xl dark:border-stone-800 dark:bg-stone-900 sm:p-7 space-y-4">
             <div className="flex items-start justify-between gap-4 pb-3 border-b border-stone-100 dark:border-stone-800">
               <div>
                 <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">Manage Customer</h3>
@@ -4135,7 +4292,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       {/* MODAL 1: VIEW DETAILS & AUDIT HISTORY */}
       {selectedApptDetails && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-lg w-full shadow-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
               <div>
                 <span className="text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">Appointment Overview</span>
@@ -4250,7 +4407,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       {/* MODAL 2: SAFE RESCHEDULE */}
       {rescheduleAppt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-md w-full shadow-2xl">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-stone-200 bg-white p-4 shadow-2xl dark:border-stone-800 dark:bg-stone-900 sm:p-8">
             <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100 mb-1">Reschedule Appointment</h3>
             <p className="text-xs text-stone-600 dark:text-stone-300 mb-4 font-medium">
               Select an available opening for <strong>{rescheduleAppt.bookingReference}</strong> ({rescheduleAppt.serviceName}).
@@ -4350,7 +4507,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       {/* MODAL 3: CANCELLATION CONFIRMATION */}
       {cancelModalAppt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-md w-full shadow-2xl">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-stone-200 bg-white p-4 shadow-2xl dark:border-stone-800 dark:bg-stone-900 sm:p-8">
             <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-3">
               <XCircle className="w-5 h-5" />
             </div>
@@ -4396,7 +4553,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       {/* MODAL 5: SUGGESTED & BEST BUSINESS IDEAS */}
       {isIdeasModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-2xl w-full shadow-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
               <div className="flex items-center space-x-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 flex items-center justify-center">
@@ -4478,7 +4635,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       {/* MODAL 6: ADD STAFF MODAL */}
       {showAddStaffModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-5 sm:p-7 max-w-lg w-full shadow-2xl">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-stone-200 bg-white p-4 shadow-2xl dark:border-stone-800 dark:bg-stone-900 sm:p-7">
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
               <div className="flex items-center space-x-2">
                 <Users className="w-5 h-5 text-amber-500" />
@@ -4546,7 +4703,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       {/* MODAL: STAFF SERVICES & WEEKLY SCHEDULE */}
       {staffScheduleTarget && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-5 sm:p-7 max-w-4xl w-full shadow-2xl max-h-[92vh] flex flex-col">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-5 sm:p-7 max-w-4xl w-full shadow-2xl max-h-[calc(100dvh-2rem)] flex flex-col">
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
               <div className="flex items-center space-x-2">
                 <Clock className="w-5 h-5 text-amber-500" />
@@ -4661,7 +4818,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       {/* MODAL 7: ADD SERVICE MODAL */}
       {showAddServiceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 shadow-2xl sm:p-7">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 shadow-2xl sm:p-7">
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
               <div className="flex items-center space-x-2">
                 <Scissors className="w-5 h-5 text-amber-500" />
@@ -4875,7 +5032,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
 
       {servicePendingRemoval && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-stone-900/60 p-4 backdrop-blur-sm dark:bg-black/70">
-          <div role="alertdialog" aria-modal="true" aria-labelledby="remove-service-title" aria-describedby="remove-service-description" className="w-full max-w-md rounded-3xl border border-stone-200 bg-white p-6 shadow-2xl dark:border-stone-800 dark:bg-stone-900">
+          <div role="alertdialog" aria-modal="true" aria-labelledby="remove-service-title" aria-describedby="remove-service-description" className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-stone-200 bg-white p-4 shadow-2xl dark:border-stone-800 dark:bg-stone-900 sm:p-6">
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
                 <AlertTriangle className="h-5 w-5" />
@@ -4907,7 +5064,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       {/* MODAL: EDIT STAFF HRIS PROFILE */}
       {editingStaffMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-lg w-full shadow-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
               <div className="flex items-center space-x-2">
                 <Users className="w-5 h-5 text-amber-500" />
@@ -5129,7 +5286,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       {/* MODAL: RECORD SALARY PAYMENT */}
       {showPayrollModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-lg w-full shadow-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
               <div className="flex items-center space-x-2">
                 <Wallet className="w-5 h-5 text-amber-500" />
@@ -5312,7 +5469,7 @@ export const DemoAdminDashboardPage: React.FC = () => {
       {/* NOTIFICATION FULL INFO MODAL */}
       {selectedNotif && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-7 max-w-lg w-full shadow-2xl relative">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-stone-200 bg-white p-4 shadow-2xl relative dark:border-stone-800 dark:bg-stone-900 sm:p-7">
             <div className="flex items-start justify-between pb-4 border-b border-stone-100 dark:border-stone-800">
               <div className="pr-4">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">

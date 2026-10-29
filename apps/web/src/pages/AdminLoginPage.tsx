@@ -147,12 +147,12 @@ export const AdminLoginPage: React.FC = () => {
     <div className="min-h-screen bg-stone-100 dark:bg-stone-950 flex flex-col justify-between text-stone-900 dark:text-stone-100 transition-colors">
       {/* Top Navbar */}
       <header className="border-b border-stone-200 dark:border-stone-800 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
+        <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:px-4">
+          <div className="flex min-w-0 flex-1 cursor-pointer items-center space-x-3" onClick={() => navigate('/')}>
             <AppointmoLogo size="md" subtitle="Appointment Management" />
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <ThemeToggle />
             <button
               onClick={() => navigate('/')}

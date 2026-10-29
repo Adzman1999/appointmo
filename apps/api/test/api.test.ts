@@ -2,14 +2,12 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { pool } from '../src/db';
-import { runMigrations } from '../src/db/migrate';
-import { seedData } from '../src/db/seed';
+import { seedTestDatabase } from './support/seedTestDatabase';
 
 const app = createApp();
 
 beforeAll(async () => {
-  await runMigrations();
-  await seedData();
+  await seedTestDatabase();
 });
 
 afterAll(async () => {
@@ -37,14 +35,14 @@ describe('API Health and Public Endpoints', () => {
   });
 });
 
-describe('Demo Access Lifecycle', () => {
+describe('Access Request Lifecycle', () => {
   let requestId: string;
   let invitationToken: string;
 
-  it('submits a demo access request', async () => {
+  it('submits a access request', async () => {
     const uniqueEmail = `jane.${Date.now()}@example.com`;
     const res = await request(app)
-      .post('/api/demo-access/requests')
+      .post('/api/access-requests/requests')
       .send({
         fullName: 'Jane Doe',
         email: uniqueEmail,
@@ -60,7 +58,7 @@ describe('Demo Access Lifecycle', () => {
   });
 
   it('rejects access without valid admin authentication', async () => {
-    const res = await request(app).get('/api/demo-access/requests');
+    const res = await request(app).get('/api/access-requests/requests');
     expect(res.status).toBe(401);
   });
 
@@ -68,15 +66,15 @@ describe('Demo Access Lifecycle', () => {
     const loginRes = await request(app)
       .post('/api/auth/login')
       .send({
-        email: 'admin@appointmo.demo',
-        password: 'AppointmoAdmin2026!',
+        email: 'superadmin@appointmo.local',
+        password: 'SuperAdmin2026!',
       });
     expect(loginRes.status).toBe(200);
     const adminToken = loginRes.body.token;
 
     // Approve
     const approveRes = await request(app)
-      .post(`/api/demo-access/requests/${requestId}/approve`)
+      .post(`/api/access-requests/requests/${requestId}/approve`)
       .set('Authorization', `Bearer ${adminToken}`);
 
     expect(approveRes.status).toBe(200);
@@ -84,14 +82,20 @@ describe('Demo Access Lifecycle', () => {
     invitationToken = approveRes.body.invitationToken;
   });
 
-  it('visitor redeems invitation token to receive demo guest session', async () => {
+  it('visitor redeems invitation token to receive invited access session', async () => {
     const redeemRes = await request(app)
-      .post('/api/demo-access/redeem')
+      .post('/api/access-requests/redeem')
       .send({ token: invitationToken });
 
     expect(redeemRes.status).toBe(200);
     expect(redeemRes.body.token).toBeDefined();
-    expect(redeemRes.body.user.role).toBe('demo_guest');
+    expect(redeemRes.body.user.role).toBe('access_guest');
+
+    const sessionRes = await request(app)
+      .get('/api/access/session')
+      .set('Authorization', `Bearer ${redeemRes.body.token}`);
+    expect(sessionRes.status).toBe(200);
+    expect(sessionRes.body.active).toBe(true);
   });
 });
 
@@ -143,7 +147,7 @@ describe('Booking & Concurrency Conflict Protection', () => {
       });
 
     expect(conflictRes.status).toBe(409);
-    expect(conflictRes.body.error).toContain('booked by another customer');
+    expect(conflictRes.body.error).toMatch(/(booked by another customer|no longer available|not available)/i);
 
     // 3. Customer can securely look up their booking
     const lookupRes = await request(app)

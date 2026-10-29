@@ -39,13 +39,17 @@ export class AvailabilityService {
     const serviceRes = await query(`
       SELECT s.duration_minutes,
              b.weekly_schedule AS "businessWeeklySchedule",
-             b.booking_policies AS "bookingPolicies"
+             b.booking_policies AS "bookingPolicies",
+             b.operational_status AS "operationalStatus"
       FROM services s
       JOIN businesses b ON b.id = s.business_id
       WHERE s.id = $1 AND s.business_id = $2 AND s.is_active = true
     `, [serviceId, businessId]);
     if (serviceRes.rows.length === 0) {
       throw new Error('Service not found or inactive');
+    }
+    if (serviceRes.rows[0].operationalStatus === 'temporarily_closed') {
+      return [];
     }
     const durationMinutes = serviceRes.rows[0].duration_minutes;
     let businessSchedule = serviceRes.rows[0].businessWeeklySchedule;
@@ -67,9 +71,14 @@ export class AvailabilityService {
     const configuredInterval = Number(bookingPolicies?.slotInterval);
     const slotIntervalMinutes = [15, 30, 45, 60].includes(configuredInterval) ? configuredInterval : 45;
 
-    // Target date in YYYY-MM-DD
-    const targetDate = new Date(`${dateStr}T00:00:00+08:00`); // Asia/Manila offset (+08:00)
-    const dayOfWeek = targetDate.getDay(); // 0-6
+    // Read the calendar date as a date-only value so the weekday does not shift
+    // when the API server runs in UTC or a different local timezone.
+    const dateParts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+    if (!dateParts) throw new Error('Date must use YYYY-MM-DD format');
+    const [, year, month, day] = dateParts;
+    const targetDate = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    if (targetDate.toISOString().slice(0, 10) !== dateStr) throw new Error('Choose a valid appointment date');
+    const dayOfWeek = targetDate.getUTCDay(); // 0=Sunday through 6=Saturday
     const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek];
     const businessDays = Array.isArray(businessSchedule) ? businessSchedule : [];
     const businessDay = businessDays.find((day: any) => String(day?.day || '').toLowerCase() === dayName.toLowerCase())
@@ -218,12 +227,37 @@ export class AvailabilityService {
       await client.query('BEGIN');
 
       // 1. Get service details
-      const serviceRes = await client.query('SELECT s.business_id, s.name, s.duration_minutes, s.price, b.currency FROM services s JOIN businesses b ON s.business_id = b.id WHERE s.id = $1 AND s.is_active = true', [params.serviceId]);
+      const serviceRes = await client.query(`
+        SELECT s.business_id, s.name, s.duration_minutes, s.price, b.currency, b.timezone,
+               b.operational_status AS "operationalStatus",
+               b.temporary_closure_reason AS "temporaryClosureReason",
+               b.expected_reopen_at AS "expectedReopenAt"
+        FROM services s
+        JOIN businesses b ON s.business_id = b.id
+        WHERE s.id = $1 AND s.is_active = true
+      `, [params.serviceId]);
       if (serviceRes.rows.length === 0) {
         throw new Error('Selected service is not available');
       }
       const srv = serviceRes.rows[0];
       const businessId = srv.business_id;
+      if (srv.operationalStatus === 'temporarily_closed') {
+        const details = ['This store is temporarily closed and is not accepting new appointments.'];
+        if (srv.temporaryClosureReason) details.push(`Reason: ${srv.temporaryClosureReason}`);
+        if (srv.expectedReopenAt) {
+          const expectedReopenAt = new Date(srv.expectedReopenAt);
+          if (Number.isFinite(expectedReopenAt.getTime())) {
+            const timezone = srv.timezone || 'Asia/Manila';
+            const formattedReopenAt = new Intl.DateTimeFormat('en-PH', {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+              timeZone: timezone,
+            }).format(expectedReopenAt);
+            details.push(`Expected to reopen: ${formattedReopenAt} (${timezone}).`);
+          }
+        }
+        throw new Error(details.join(' '));
+      }
 
       // Authenticated customers remain the booking owner. Ignore client-supplied
       // name/email so a booking cannot be attributed to somebody else's account.
@@ -275,6 +309,18 @@ export class AvailabilityService {
       const matchingSlots = (await this.getAvailableSlots(businessId, params.serviceId, localDate, params.staffId))
         .filter((slot) => new Date(slot.startTime).getTime() === startDate.getTime());
       if (matchingSlots.length === 0) {
+        if (params.staffId) {
+          const conflict = await client.query(
+            `SELECT 1 FROM appointments
+             WHERE staff_id = $1 AND status NOT IN ('cancelled')
+               AND start_time < $2 AND end_time > $3
+             LIMIT 1`,
+            [params.staffId, endDate, startDate]
+          );
+          if (conflict.rows.length > 0) {
+            throw new Error('This time slot was just booked by another customer. Please choose another time.');
+          }
+        }
         throw new Error('This time is outside the selected staff schedule or is no longer available. Please choose another slot.');
       }
 

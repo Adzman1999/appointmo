@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { query, pool } from '../db';
 import { seedData } from '../db/seed';
+import { authenticateJwt, requireRole } from '../middleware/auth';
 import { NotificationService } from '../services/notification';
 import { AvailabilityService } from '../services/availability';
 import { EmailService } from '../services/email';
@@ -24,8 +25,8 @@ const toScheduleTime = (value: unknown): string | null => {
   return value.length === 5 ? `${value}:00` : value;
 };
 
-// Dedicated Demo Isolation Scope: Can operate against requested business slug or default to Lumière
-async function getDemoBusinessId(req?: Request, allowPending: boolean = true): Promise<string> {
+// Store data scope: Can operate against requested business slug or default to Lumière
+async function getStoreBusinessId(req?: Request, allowPending: boolean = true): Promise<string> {
   const querySlug = (req?.query?.slug as string | undefined) || (req?.body?.slug as string | undefined);
   const targetSlug = querySlug && querySlug.trim() ? querySlug.trim() : 'lumiere-beauty-studio';
 
@@ -34,7 +35,7 @@ async function getDemoBusinessId(req?: Request, allowPending: boolean = true): P
     // Fallback to first available approved business
     const anyBiz = await query("SELECT id FROM businesses WHERE status = 'approved' LIMIT 1");
     if (anyBiz.rows.length === 0) {
-      throw new Error('Synthetic demo business not initialized');
+      throw new Error('Store profile is not initialized');
     }
     return anyBiz.rows[0].id;
   }
@@ -50,7 +51,7 @@ async function getDemoBusinessId(req?: Request, allowPending: boolean = true): P
   return biz.id;
 }
 
-// 0. Get current active business info and all switchable demo businesses
+// 0. Get current active business info and all switchable businesses
 router.get('/businesses', async (req: Request, res: Response) => {
   try {
     const querySlug = req.query.slug as string | undefined;
@@ -65,243 +66,11 @@ router.get('/businesses', async (req: Request, res: Response) => {
 
     res.json({ businesses: listRes.rows });
   } catch (err: any) {
-    res.status(500).json({ error: 'Failed to fetch demo businesses' });
+    res.status(500).json({ error: 'Failed to fetch businesses' });
   }
 });
 
-// 0c. Customer Portal Demo Helper: Get Active Demo Booking for Instant Management
-router.get('/demo-active-booking', async (_req: Request, res: Response) => {
-  try {
-    // 1. Check for most recently confirmed upcoming appointment
-    const upcoming = await query(`
-      SELECT a.booking_reference AS "bookingReference",
-             s.name AS "serviceName",
-             c.id AS "customerId",
-             c.name AS "customerName",
-             c.email AS "customerEmail",
-             c.phone AS "customerPhone",
-             a.start_time AS "startTime",
-             b.name AS "businessName"
-      FROM appointments a
-      JOIN services s ON a.service_id = s.id
-      JOIN customers c ON a.customer_id = c.id
-      JOIN businesses b ON a.business_id = b.id
-      WHERE a.status = 'confirmed' AND a.start_time > NOW()
-      ORDER BY a.created_at DESC, a.start_time ASC
-      LIMIT 1
-    `);
-
-    if (upcoming.rows.length > 0) {
-      const row = upcoming.rows[0];
-      // Synthetic demo seed tokens are reference + 'secret'
-      const demoToken = `${row.bookingReference}secret`;
-      return res.json({
-        bookingReference: row.bookingReference,
-        token: demoToken,
-        serviceName: row.serviceName,
-        customerId: row.customerId,
-        customerName: row.customerName,
-        customerEmail: row.customerEmail,
-        customerPhone: row.customerPhone,
-        businessName: row.businessName,
-      });
-    }
-
-    // 2. Fallback to any active appointment
-    const anyAppt = await query(`
-      SELECT a.booking_reference AS "bookingReference",
-             s.name AS "serviceName",
-             c.id AS "customerId",
-             c.name AS "customerName",
-             c.email AS "customerEmail",
-             c.phone AS "customerPhone",
-             a.start_time AS "startTime",
-             b.name AS "businessName"
-      FROM appointments a
-      JOIN services s ON a.service_id = s.id
-      JOIN customers c ON a.customer_id = c.id
-      JOIN businesses b ON a.business_id = b.id
-      WHERE a.status != 'cancelled'
-      ORDER BY a.created_at DESC
-      LIMIT 1
-    `);
-
-    if (anyAppt.rows.length > 0) {
-      const row = anyAppt.rows[0];
-      return res.json({
-        bookingReference: row.bookingReference,
-        token: `${row.bookingReference}secret`,
-        serviceName: row.serviceName,
-        customerId: row.customerId,
-        customerName: row.customerName,
-        customerEmail: row.customerEmail,
-        customerPhone: row.customerPhone,
-        businessName: row.businessName,
-      });
-    }
-
-    res.status(404).json({ error: 'No demo appointments available' });
-  } catch (err: any) {
-    res.status(500).json({ error: 'Failed to find active demo booking' });
-  }
-});
-
-// 0d. Customer Portal Demo Dashboard: Get all appointments & history for a customer
-router.get('/customer-portal', async (req: Request, res: Response) => {
-  try {
-    const { customerId, email } = req.query;
-
-    let targetCustId = customerId as string | undefined;
-
-    if (!targetCustId && email) {
-      const cleanEmail = String(email).trim().toLowerCase();
-      const custRes = await query("SELECT id FROM customers WHERE LOWER(email) = $1 ORDER BY created_at DESC LIMIT 1", [cleanEmail]);
-      if (custRes.rows.length > 0) {
-        targetCustId = custRes.rows[0].id;
-      } else {
-        // If user exists in users table with role 'customer', automatically ensure a customer profile row exists
-        const userRes = await query("SELECT id, name, email, phone, business_id FROM users WHERE LOWER(email) = $1 LIMIT 1", [cleanEmail]);
-        if (userRes.rows.length > 0) {
-          const u = userRes.rows[0];
-          // Find canonical business id
-          const defaultBiz = await query("SELECT id FROM businesses WHERE status = 'approved' ORDER BY created_at ASC LIMIT 1");
-          const bizId = u.business_id || defaultBiz.rows[0]?.id || (await query("SELECT id FROM businesses LIMIT 1")).rows[0]?.id;
-          if (bizId) {
-            const insCust = await query(`
-              INSERT INTO customers (business_id, name, email, phone)
-              VALUES ($1, $2, $3, $4)
-              ON CONFLICT (business_id, email) DO UPDATE SET name = $2, phone = $4
-              RETURNING id
-            `, [bizId, u.name || 'Valued Customer', cleanEmail, u.phone || '+63 900 000 0000']);
-            if (insCust.rows.length > 0) {
-              targetCustId = insCust.rows[0].id;
-            }
-          }
-        } else {
-          // If customer signed up directly or is accessing their account, create their customer record automatically
-          const defaultBiz = await query("SELECT id FROM businesses WHERE status = 'approved' ORDER BY created_at ASC LIMIT 1");
-          const bizId = defaultBiz.rows[0]?.id || (await query("SELECT id FROM businesses LIMIT 1")).rows[0]?.id;
-          if (bizId) {
-            const insCust = await query(`
-              INSERT INTO customers (business_id, name, email, phone)
-              VALUES ($1, $2, $3, $4)
-              ON CONFLICT (business_id, email) DO UPDATE SET name = $2, phone = $4
-              RETURNING id
-            `, [bizId, cleanEmail.split('@')[0], cleanEmail, '+63 900 000 0000']);
-            if (insCust.rows.length > 0) {
-              targetCustId = insCust.rows[0].id;
-            }
-          }
-        }
-      }
-
-      // If specific email was requested and not found anywhere, don't fall back to a random demo customer!
-      if (!targetCustId) {
-        return res.status(404).json({ error: 'Customer account not found for this email' });
-      }
-    }
-
-    // Only if NEITHER customerId nor email was provided, fallback to demo customer
-    if (!targetCustId) {
-      const pickCust = await query(`
-        SELECT c.id FROM customers c
-        JOIN appointments a ON c.id = a.customer_id
-        WHERE a.status = 'confirmed' AND a.start_time > NOW()
-        ORDER BY a.start_time ASC
-        LIMIT 1
-      `);
-      if (pickCust.rows.length > 0) {
-        targetCustId = pickCust.rows[0].id;
-      } else {
-        const fallbackCust = await query("SELECT id FROM customers LIMIT 1");
-        if (fallbackCust.rows.length > 0) {
-          targetCustId = fallbackCust.rows[0].id;
-        }
-      }
-    }
-
-    if (!targetCustId) {
-      return res.status(404).json({ error: 'No customer account found' });
-    }
-
-    // 1. Get customer details
-    const custDetails = await query(
-      "SELECT id, name, email, phone, created_at AS \"createdAt\" FROM customers WHERE id = $1",
-      [targetCustId]
-    );
-
-    if (custDetails.rows.length === 0) {
-      return res.status(404).json({ error: 'Customer not found' });
-    }
-
-    const customer = custDetails.rows[0];
-
-    // 2. Get customer's appointments across all businesses matching customer ID or email across all branches
-    const apptsRes = await query(`
-      SELECT 
-        a.id, a.booking_reference AS "bookingReference", a.status,
-        a.start_time AS "startTime", a.end_time AS "endTime",
-        a.recipient_name AS "recipientName", a.recipient_email AS "recipientEmail",
-        a.recipient_phone AS "recipientPhone",
-        a.price_snapshot AS "price", a.currency, a.notes, a.created_at AS "createdAt",
-        s.id AS "serviceId", s.name AS "serviceName", s.duration_minutes AS "durationMinutes",
-        sp.id AS "staffId", sp.name AS "staffName",
-        b.id AS "businessId", b.name AS "businessName", b.slug AS "businessSlug",
-        br.id AS "branchId", br.name AS "branchName", br.address AS "branchAddress"
-      FROM appointments a
-      JOIN services s ON a.service_id = s.id
-      JOIN staff_profiles sp ON a.staff_id = sp.id
-      JOIN businesses b ON a.business_id = b.id
-      JOIN branches br ON a.branch_id = br.id
-      JOIN customers c ON a.customer_id = c.id
-      WHERE a.customer_id = $1 
-         OR LOWER(c.email) = LOWER($2)
-      ORDER BY a.created_at DESC, a.id DESC
-    `, [targetCustId, customer.email]);
-
-    // Format appointments and attach demo management tokens
-    const appointments = apptsRes.rows.map(appt => ({
-      ...appt,
-      managementToken: `${appt.bookingReference}secret`
-    }));
-
-    // Categorize: upcoming includes both 'confirmed' and 'pending' bookings scheduled in future
-    const upcoming = appointments.filter(a => (a.status === 'confirmed' || a.status === 'pending') && new Date(a.startTime) > new Date());
-    const past = appointments.filter(a => a.status === 'completed' || (new Date(a.startTime) <= new Date() && a.status !== 'cancelled' && a.status !== 'pending'));
-    const cancelled = appointments.filter(a => a.status === 'cancelled');
-
-    // 3. Customer Notifications across all bookings of this customer
-    const notifsRes = await query(`
-      SELECT n.id, n.type, n.title, n.message, n.is_read AS "isRead", n.created_at AS "createdAt",
-             a.booking_reference AS "bookingReference"
-      FROM notifications n
-      JOIN appointments a ON n.appointment_id = a.id
-      JOIN customers c ON a.customer_id = c.id
-      WHERE (a.customer_id = $1 OR LOWER(c.email) = LOWER($2)) AND n.recipient_type = 'customer'
-      ORDER BY n.created_at DESC
-      LIMIT 20
-    `, [targetCustId, customer.email]);
-
-    res.json({
-      customer,
-      summary: {
-        totalBookings: appointments.length,
-        upcomingCount: upcoming.length,
-        pastCount: past.length,
-        cancelledCount: cancelled.length,
-      },
-      appointments,
-      upcoming,
-      past,
-      cancelled,
-      notifications: notifsRes.rows
-    });
-  } catch (err: any) {
-    res.status(500).json({ error: 'Failed to load customer portal: ' + err.message });
-  }
-});
-
-// 0b. Create New Fictional Demo Business from Admin Studio Wizard
+// 0b. Create New Store from Admin Studio Wizard
 router.post('/create-business', async (req: Request, res: Response) => {
   const client = await pool.connect();
   try {
@@ -346,7 +115,7 @@ router.post('/create-business', async (req: Request, res: Response) => {
     `, [
       trimmedName, 
       slug, 
-      description?.trim() || `Demo appointment provider offering ${trimmedCategory}`, 
+      description?.trim() || `Appointment provider offering ${trimmedCategory}`,
       trimmedCategory,
       currency || 'PHP', 
       timezone || 'Asia/Manila', 
@@ -509,7 +278,7 @@ router.post('/create-business', async (req: Request, res: Response) => {
 // 1. Live Calculated Dashboard Metrics
 router.get('/metrics', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req);
+    const businessId = await getStoreBusinessId(req);
 
     const statusRes = await query(`
       SELECT status, COUNT(*)::int AS count
@@ -565,7 +334,7 @@ router.get('/metrics', async (req: Request, res: Response) => {
       },
     });
   } catch (err: any) {
-    res.status(500).json({ error: 'Failed to fetch demo dashboard metrics: ' + err.message });
+    res.status(500).json({ error: 'Failed to fetch store dashboard metrics: ' + err.message });
   }
 });
 
@@ -573,7 +342,7 @@ router.get('/metrics', async (req: Request, res: Response) => {
 router.get('/appointments', async (req: Request, res: Response) => {
   try {
     const { status, search, limit = '50', offset = '0', sort = 'newest' } = req.query;
-    const businessId = await getDemoBusinessId(req);
+    const businessId = await getStoreBusinessId(req);
 
     let sql = `
       SELECT 
@@ -616,7 +385,7 @@ router.get('/appointments', async (req: Request, res: Response) => {
     const result = await query(sql, params);
     res.json({ appointments: result.rows });
   } catch (err: any) {
-    res.status(500).json({ error: 'Failed to fetch demo appointments' });
+    res.status(500).json({ error: 'Failed to fetch appointments' });
   }
 });
 
@@ -644,7 +413,7 @@ router.get('/appointments/:id', async (req: Request, res: Response) => {
     `, [id]);
 
     if (apptRes.rows.length === 0) {
-      return res.status(404).json({ error: 'Appointment not found in demo business records' });
+      return res.status(404).json({ error: 'Appointment not found in store records' });
     }
 
     const appt = apptRes.rows[0];
@@ -689,7 +458,7 @@ router.patch('/appointments/:id/status', async (req: Request, res: Response) => 
 
     if (existingRes.rows.length === 0) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Appointment not found in demo business records' });
+      return res.status(404).json({ error: 'Appointment not found in store records' });
     }
 
     const appt = existingRes.rows[0];
@@ -748,7 +517,7 @@ router.patch('/appointments/:id/status', async (req: Request, res: Response) => 
     res.json({ message: `Appointment status updated from ${prevStatus} to ${status}`, newStatus: status });
   } catch (err: any) {
     await client.query('ROLLBACK');
-    res.status(500).json({ error: 'Failed to update demo appointment status' });
+    res.status(500).json({ error: 'Failed to update appointment status' });
   } finally {
     client.release();
   }
@@ -780,7 +549,7 @@ router.post('/appointments/:id/reschedule', async (req: Request, res: Response) 
 
     if (apptRes.rows.length === 0) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Appointment not found in demo business records' });
+      return res.status(404).json({ error: 'Appointment not found in store records' });
     }
 
     const appt = apptRes.rows[0];
@@ -811,19 +580,8 @@ router.post('/appointments/:id/reschedule', async (req: Request, res: Response) 
     }
     const end = new Date(start.getTime() + appt.duration_minutes * 60 * 1000);
 
-    const scheduledSlots = await AvailabilityService.getAvailableSlots(
-      businessId,
-      appt.service_id,
-      AvailabilityService.getManilaDateString(start),
-      targetStaffId,
-      actualApptId
-    );
-    if (!scheduledSlots.some((slot) => new Date(slot.startTime).getTime() === start.getTime())) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'The selected staff member is not scheduled for this time. Choose another slot.' });
-    }
-
-    // Concurrency Lock: Check for conflict (excluding this appointment itself)
+    // Check conflicts before schedule availability so a taken slot returns a
+    // conflict response even though it no longer appears in the open slots list.
     const conflictRes = await client.query(`
       SELECT id FROM appointments
       WHERE staff_id = $1 AND id != $2 AND status NOT IN ('cancelled')
@@ -834,6 +592,18 @@ router.post('/appointments/:id/reschedule', async (req: Request, res: Response) 
     if (conflictRes.rows.length > 0) {
       await client.query('ROLLBACK');
       return res.status(409).json({ error: 'The selected rescheduled time slot conflicts with an existing booking. Please choose another time.' });
+    }
+
+    const scheduledSlots = await AvailabilityService.getAvailableSlots(
+      businessId,
+      appt.service_id,
+      AvailabilityService.getManilaDateString(start),
+      targetStaffId,
+      actualApptId
+    );
+    if (!scheduledSlots.some((slot) => new Date(slot.startTime).getTime() === start.getTime())) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'The selected staff member is not scheduled for this time. Choose another slot.' });
     }
 
     // 2. Perform reschedule update
@@ -919,7 +689,7 @@ router.post('/appointments/:id/reassign-staff', async (req: Request, res: Respon
 
     if (apptRes.rows.length === 0) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Appointment not found in demo business records' });
+      return res.status(404).json({ error: 'Appointment not found in store records' });
     }
 
     const appt = apptRes.rows[0];
@@ -995,7 +765,7 @@ router.post('/appointments/:id/reassign-staff', async (req: Request, res: Respon
 // 7. Admin Notifications Feed (Live polling & persistence)
 router.get('/notifications', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req);
+    const businessId = await getStoreBusinessId(req);
     const data = await NotificationService.getAdminNotifications(businessId);
     res.json(data);
   } catch (err: any) {
@@ -1017,7 +787,7 @@ router.patch('/notifications/:id/read', async (req: Request, res: Response) => {
 // 9. Mark All Admin Notifications as Read
 router.post('/notifications/mark-all-read', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req);
+    const businessId = await getStoreBusinessId(req);
     await NotificationService.markAllAsRead('admin', 'admin', businessId);
     res.json({ success: true });
   } catch (err: any) {
@@ -1025,30 +795,33 @@ router.post('/notifications/mark-all-read', async (req: Request, res: Response) 
   }
 });
 
-// 10. Safe Demo Dataset Reset
-router.post('/reset', async (req: Request, res: Response) => {
+// 10. Prepare Local Seed Data
+router.post('/reset', authenticateJwt, requireRole(['platform_admin']), async (req: Request, res: Response) => {
   try {
-    console.log('Resetting synthetic demo dataset (Lumière Beauty Studio)...');
+    console.log(`Ensuring local seed accounts requested by ${req.user?.email}...`);
     await seedData();
     res.json({
-      message: 'Synthetic demo data successfully restored to original clean state (125 bookings, 6 services, 3 staff).',
+      message: 'Local seed accounts and the baseline store are ready. Existing appointments and customer records were preserved.',
     });
   } catch (err: any) {
-    console.error('Demo reset error:', err);
-    res.status(500).json({ error: 'Failed to reset demo dataset' });
+    console.error('Seed account setup error:', err);
+    res.status(500).json({ error: 'Failed to prepare local seed data' });
   }
 });
 
-// 11. Services and Working Hours Overview for Admin Demo
+// 11. Services and Working Hours Overview for Store Admin
 router.get('/settings', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req);
+    const businessId = await getStoreBusinessId(req);
 
     const bizRes = await query(`
       SELECT id, name, slug, category, description, currency, timezone, logo_url AS "logoUrl",
              phone, email, address, city, country, state_province AS "stateProvince", postal_code AS "postalCode",
              opening_hours AS "openingHours", weekly_schedule AS "weeklySchedule",
              website, instagram, COALESCE(social_handle, instagram) AS "socialHandle", tagline, status,
+             operational_status AS "operationalStatus",
+             temporary_closure_reason AS "temporaryClosureReason",
+             expected_reopen_at AS "expectedReopenAt",
              booking_policies AS "bookingPolicies"
       FROM businesses
       WHERE id = $1
@@ -1087,7 +860,7 @@ router.get('/settings', async (req: Request, res: Response) => {
 // Store-scoped customer directory and contact management
 router.get('/customers', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req);
+    const businessId = await getStoreBusinessId(req);
     const customersRes = await query(`
       SELECT c.id, c.business_id AS "businessId", c.name, c.email, c.phone,
              c.created_at AS "createdAt", c.updated_at AS "updatedAt",
@@ -1101,7 +874,7 @@ router.get('/customers', async (req: Request, res: Response) => {
              ))::int AS "upcomingBookings",
              MAX(a.start_time) AS "lastBookingAt"
       FROM customers c
-      LEFT JOIN appointments a ON a.customer_id = c.id AND a.business_id = c.business_id
+      JOIN appointments a ON a.customer_id = c.id AND a.business_id = c.business_id
       WHERE c.business_id = $1
       GROUP BY c.id
       ORDER BY MAX(a.start_time) DESC NULLS LAST, c.created_at DESC
@@ -1116,7 +889,7 @@ router.get('/customers', async (req: Request, res: Response) => {
 
 router.patch('/customers/:id', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req, false);
+    const businessId = await getStoreBusinessId(req, false);
     const { name, phone } = req.body || {};
     const cleanName = typeof name === 'string' ? name.trim() : '';
     const cleanPhone = typeof phone === 'string' ? phone.trim() : '';
@@ -1125,10 +898,14 @@ router.patch('/customers/:id', async (req: Request, res: Response) => {
     }
 
     const customerRes = await query(`
-      UPDATE customers
+      UPDATE customers AS c
       SET name = $1, phone = $2, updated_at = NOW()
-      WHERE id = $3 AND business_id = $4
-      RETURNING id, name, email, phone, created_at AS "createdAt"
+      WHERE c.id = $3 AND c.business_id = $4
+        AND EXISTS (
+          SELECT 1 FROM appointments a
+          WHERE a.customer_id = c.id AND a.business_id = c.business_id
+        )
+      RETURNING c.id, c.name, c.email, c.phone, c.created_at AS "createdAt"
     `, [cleanName, cleanPhone, req.params.id, businessId]);
     if (customerRes.rows.length === 0) {
       return res.status(404).json({ error: 'Customer account not found for this store' });
@@ -1143,7 +920,7 @@ router.patch('/customers/:id', async (req: Request, res: Response) => {
 
 router.get('/reviews', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req);
+    const businessId = await getStoreBusinessId(req);
     const [summaryRes, reviewsRes] = await Promise.all([
       query(`
         SELECT COALESCE(AVG(r.rating), 0)::numeric(3, 1) AS rating,
@@ -1180,10 +957,11 @@ router.get('/reviews', async (req: Request, res: Response) => {
 // 12. Update Business Profile & Setup (Logo, description, hours, phone, address, status, policies, country, currency)
 router.put('/settings', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req, false);
+    const businessId = await getStoreBusinessId(req, false);
     const {
       name, description, logoUrl, phone, email, address, city, country, stateProvince, postalCode, openingHours, weeklySchedule,
-      website, instagram, socialHandle, tagline, status, bookingPolicies, currency, timezone
+      website, instagram, socialHandle, tagline, bookingPolicies, currency, timezone,
+      operationalStatus, temporaryClosureReason, expectedReopenAt
     } = req.body;
 
     const fields: string[] = [];
@@ -1262,9 +1040,31 @@ router.put('/settings', async (req: Request, res: Response) => {
       fields.push(`tagline = $${idx++}`);
       values.push(tagline ? String(tagline).trim() : null);
     }
-    if (status !== undefined) {
-      fields.push(`status = $${idx++}`);
-      values.push(status);
+    if (operationalStatus !== undefined) {
+      if (!['open', 'temporarily_closed'].includes(operationalStatus)) {
+        return res.status(400).json({ error: 'Choose open or temporarily closed as the store operational status.' });
+      }
+
+      const isTemporarilyClosed = operationalStatus === 'temporarily_closed';
+      const cleanClosureReason = typeof temporaryClosureReason === 'string' ? temporaryClosureReason.trim() : '';
+      if (isTemporarilyClosed && (!cleanClosureReason || cleanClosureReason.length > 500)) {
+        return res.status(400).json({ error: 'A closure reason of 1 to 500 characters is required.' });
+      }
+
+      let reopenAt: Date | null = null;
+      if (isTemporarilyClosed && expectedReopenAt !== undefined && expectedReopenAt !== null && expectedReopenAt !== '') {
+        reopenAt = new Date(expectedReopenAt);
+        if (!Number.isFinite(reopenAt.getTime()) || reopenAt.getTime() <= Date.now()) {
+          return res.status(400).json({ error: 'Expected reopening time must be a valid future date and time.' });
+        }
+      }
+
+      fields.push(`operational_status = $${idx++}`);
+      values.push(operationalStatus);
+      fields.push(`temporary_closure_reason = $${idx++}`);
+      values.push(isTemporarilyClosed ? cleanClosureReason : null);
+      fields.push(`expected_reopen_at = $${idx++}`);
+      values.push(reopenAt);
     }
     if (bookingPolicies !== undefined) {
       fields.push(`booking_policies = $${idx++}`);
@@ -1286,6 +1086,9 @@ router.put('/settings', async (req: Request, res: Response) => {
                 phone, email, address, city, country, state_province AS "stateProvince", postal_code AS "postalCode",
                 opening_hours AS "openingHours", weekly_schedule AS "weeklySchedule",
                 website, instagram, COALESCE(social_handle, instagram) AS "socialHandle", tagline, status,
+                operational_status AS "operationalStatus",
+                temporary_closure_reason AS "temporaryClosureReason",
+                expected_reopen_at AS "expectedReopenAt",
                 booking_policies AS "bookingPolicies"
     `;
 
@@ -1300,7 +1103,7 @@ router.put('/settings', async (req: Request, res: Response) => {
 // 13. Create or Add Staff Specialist with HRIS & Compensation details
 router.post('/staff', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req, false);
+    const businessId = await getStoreBusinessId(req, false);
     const { 
       name, bio, position, employmentType, baseSalary, commissionRate, 
       hireDate, email, phone, emergencyContact, serviceIds 
@@ -1358,7 +1161,7 @@ router.post('/staff', async (req: Request, res: Response) => {
 // 13a. Read and update the services and weekly hours assigned to a staff member
 router.get('/staff/:id/schedule', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req);
+    const businessId = await getStoreBusinessId(req);
     const staffId = req.params.id;
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidPattern.test(staffId)) {
@@ -1407,7 +1210,7 @@ router.get('/staff/:id/schedule', async (req: Request, res: Response) => {
 router.put('/staff/:id/schedule', async (req: Request, res: Response) => {
   const client = await pool.connect();
   try {
-    const businessId = await getDemoBusinessId(req, false);
+    const businessId = await getStoreBusinessId(req, false);
     const staffId = req.params.id;
     const { serviceIds: inputServiceIds, weeklySchedule: inputSchedule } = req.body || {};
 
@@ -1515,7 +1318,7 @@ router.put('/staff/:id/schedule', async (req: Request, res: Response) => {
 // 13b. Update a staff member's booking availability and employment status
 router.patch('/staff/:id/status', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req, false);
+    const businessId = await getStoreBusinessId(req, false);
     const status = String(req.body.status || '').trim().toLowerCase();
     const allowedStatuses = ['active', 'suspended', 'resigned', 'retired'];
 
@@ -1545,7 +1348,7 @@ router.patch('/staff/:id/status', async (req: Request, res: Response) => {
 // 13c. Update Staff Specialist HRIS & Compensation details
 router.put('/staff/:id', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req, false);
+    const businessId = await getStoreBusinessId(req, false);
     const { id } = req.params;
     const { 
       name, bio, position, employmentType, baseSalary, commissionRate, 
@@ -1605,7 +1408,7 @@ router.put('/staff/:id', async (req: Request, res: Response) => {
 // 13d. HRIS Payroll Records: Get and Record Staff Compensation / Payslip
 router.get('/payroll', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req);
+    const businessId = await getStoreBusinessId(req);
     const payrollRes = await query(`
       SELECT pr.id, pr.staff_id AS "staffId", sp.name AS "staffName", sp.position,
              pr.pay_period_start AS "payPeriodStart", pr.pay_period_end AS "payPeriodEnd",
@@ -1627,7 +1430,7 @@ router.get('/payroll', async (req: Request, res: Response) => {
 
 router.post('/payroll', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req, false);
+    const businessId = await getStoreBusinessId(req, false);
     const { 
       staffId, payPeriodStart, payPeriodEnd, basePay, commissionPay, 
       bonuses, deductions, paymentStatus, notes 
@@ -1668,7 +1471,7 @@ router.post('/payroll', async (req: Request, res: Response) => {
 // 14. Create or Add Service
 router.post('/services', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req, false);
+    const businessId = await getStoreBusinessId(req, false);
     const { name, description, durationMinutes, price, category } = req.body;
     if (!name || !price) {
       return res.status(400).json({ error: 'Service name and price are required' });
@@ -1697,7 +1500,7 @@ router.post('/services', async (req: Request, res: Response) => {
 // Update a store-owned service; changes are reflected immediately in booking and discovery.
 router.put('/services/:id', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req, false);
+    const businessId = await getStoreBusinessId(req, false);
     const { id } = req.params;
     const { name, description, durationMinutes, price, category } = req.body;
     const parsedDuration = Number(durationMinutes);
@@ -1725,7 +1528,7 @@ router.put('/services/:id', async (req: Request, res: Response) => {
 // Archive instead of deleting so existing appointments keep their service history.
 router.delete('/services/:id', async (req: Request, res: Response) => {
   try {
-    const businessId = await getDemoBusinessId(req, false);
+    const businessId = await getStoreBusinessId(req, false);
     const { id } = req.params;
     const serviceRes = await query(
       `UPDATE services SET is_active = false, updated_at = NOW()

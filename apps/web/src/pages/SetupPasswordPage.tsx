@@ -43,7 +43,7 @@ export const SetupPasswordPage: React.FC = () => {
 
       setSuccess(true);
       setTimeout(() => {
-        navigate('/demo/book');
+        navigate('/book');
       }, 1500);
     } catch (err: any) {
       setError(err.message || 'Failed to set password. Link may be invalid or expired.');
@@ -54,15 +54,15 @@ export const SetupPasswordPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-3xl border border-stone-200 p-8 shadow-xl">
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-stone-200 bg-white p-5 shadow-xl sm:p-8">
         <div className="text-center mb-6">
           <div className="w-12 h-12 rounded-2xl bg-stone-900 text-white flex items-center justify-center mx-auto mb-3 shadow">
             <Lock className="w-6 h-6" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900">Set Up Your Account</h1>
           <p className="text-xs text-stone-500 mt-1">
-            {emailParam ? `Welcome ${emailParam}! ` : 'Welcome! '}
-            Create a password to access your interactive Appointmo demo.
+            {emailParam ? <>Welcome <span className="break-all">{emailParam}</span>! </> : 'Welcome! '}
+            Create a password to access your Appointmo.
           </p>
         </div>
 
@@ -70,7 +70,7 @@ export const SetupPasswordPage: React.FC = () => {
           <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-center space-y-2 animate-in fade-in">
             <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
             <h3 className="text-sm font-bold">Password Created Successfully</h3>
-            <p className="text-xs text-stone-600">Redirecting you directly to the interactive demo...</p>
+            <p className="text-xs text-stone-600">Redirecting you directly to the Appointmo...</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
@@ -110,7 +110,7 @@ export const SetupPasswordPage: React.FC = () => {
               disabled={loading || !password || password.length < 8 || password !== confirmPassword || !token}
               className="w-full bg-stone-900 text-white font-semibold py-3.5 rounded-xl hover:bg-stone-800 transition text-xs shadow disabled:opacity-50 flex items-center justify-center space-x-2"
             >
-              <span>{loading ? 'Setting up...' : 'Save Password & Enter Demo'}</span>
+              <span>{loading ? 'Setting up...' : 'Save Password & Continue'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>

@@ -8,8 +8,8 @@ import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { DemoTopNav } from '../components/DemoTopNav';
 import { Pagination } from '../components/Pagination';
+import { StoreOperationalStatusNotice } from '../components/StoreOperationalStatusNotice';
 
 interface Branch {
   id: string;
@@ -29,6 +29,10 @@ interface Business {
   description: string;
   category: string;
   currency: string;
+  timezone?: string;
+  operationalStatus?: 'open' | 'temporarily_closed';
+  temporaryClosureReason?: string | null;
+  expectedReopenAt?: string | null;
   logoUrl?: string | null;
   branchCount: number;
   serviceCount: number;
@@ -64,7 +68,7 @@ export const DiscoveryPage: React.FC = () => {
       .catch(console.error);
   }, []);
 
-  // Fetch businesses when category or search changes
+  // Fetch businesses when filters change, then refresh operational status while the directory stays open.
   useEffect(() => {
     setLoading(true);
     const params = new URLSearchParams();
@@ -75,15 +79,36 @@ export const DiscoveryPage: React.FC = () => {
       params.set('search', searchQuery.trim());
     }
 
-    apiFetch<{ businesses: Business[] }>(`/businesses?${params.toString()}`)
-      .then(res => {
-        setBusinesses(res.businesses || []);
-        if (res.businesses.length > 0 && res.businesses[0].branches.length > 0) {
-          setSelectedBranch({ biz: res.businesses[0], branch: res.businesses[0].branches[0] });
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    const fetchBusinesses = (showLoading = false) => {
+      if (showLoading) setLoading(true);
+      apiFetch<{ businesses: Business[] }>(`/businesses?${params.toString()}`)
+        .then(res => {
+          const nextBusinesses = res.businesses || [];
+          setBusinesses(nextBusinesses);
+          setSelectedBranch((current) => {
+            if (current) {
+              const refreshedBusiness = nextBusinesses.find((business) => business.id === current.biz.id);
+              const refreshedBranch = refreshedBusiness?.branches.find((branch) => branch.id === current.branch.id);
+              if (refreshedBusiness && refreshedBranch) return { biz: refreshedBusiness, branch: refreshedBranch };
+            }
+            const firstBusiness = nextBusinesses.find((business) => business.branches.length > 0);
+            return firstBusiness ? { biz: firstBusiness, branch: firstBusiness.branches[0] } : null;
+          });
+        })
+        .catch(console.error)
+        .finally(() => {
+          if (showLoading) setLoading(false);
+        });
+    };
+
+    fetchBusinesses(true);
+    const refreshInterval = window.setInterval(() => fetchBusinesses(), 30_000);
+    const refreshOnFocus = () => fetchBusinesses();
+    window.addEventListener('focus', refreshOnFocus);
+    return () => {
+      window.clearInterval(refreshInterval);
+      window.removeEventListener('focus', refreshOnFocus);
+    };
   }, [selectedCategory, searchQuery]);
 
   const handleCategorySelect = (cat: string) => {
@@ -112,17 +137,14 @@ export const DiscoveryPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-24 transition-colors">
-      {/* Top Segmented Navigation Bar */}
-      <DemoTopNav currentRole="customer" />
-
       {/* Top Header */}
       <header className="sticky top-0 z-40 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200 dark:border-stone-800">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
+        <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2 sm:px-4">
+          <div className="min-w-0 cursor-pointer" onClick={() => navigate('/')}>
             <AppointmoLogo size="md" subtitle="Discovery Directory" />
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-2 sm:w-auto">
             <ThemeToggle />
             <button
               onClick={() => navigate('/manage')}
@@ -131,7 +153,7 @@ export const DiscoveryPage: React.FC = () => {
               Manage My Booking
             </button>
             <button
-              onClick={() => navigate('/demo/concierge')}
+              onClick={() => navigate('/concierge')}
               className="bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 font-semibold px-3.5 py-1.5 rounded-xl text-xs hover:bg-amber-200 dark:hover:bg-amber-900/80 transition flex items-center space-x-1.5 shadow-sm border border-amber-200 dark:border-amber-800"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
@@ -260,7 +282,7 @@ export const DiscoveryPage: React.FC = () => {
             </div>
             <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">No businesses match your criteria</h3>
             <p className="text-xs text-stone-500 dark:text-stone-400">
-              Try adjusting your search keyword or clearing the category filter to see available demo providers.
+              Try adjusting your search keyword or clearing the category filter to see available service providers.
             </p>
             <button
               onClick={() => {
@@ -301,6 +323,10 @@ export const DiscoveryPage: React.FC = () => {
                         </span>
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">{biz.name}</h3>
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${biz.operationalStatus === 'temporarily_closed' ? 'bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300' : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${biz.operationalStatus === 'temporarily_closed' ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                            {biz.operationalStatus === 'temporarily_closed' ? 'Temporarily closed' : 'Open for bookings'}
+                          </span>
                           {biz.reviewCount >= 3 && Number(biz.rating) >= 4.5 && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
                               <Star className="h-3 w-3 fill-current" /> Top Rated
@@ -318,6 +344,15 @@ export const DiscoveryPage: React.FC = () => {
                   <p className="text-xs text-stone-600 dark:text-stone-400 line-clamp-2 leading-relaxed mb-4">
                     {biz.description}
                   </p>
+
+                  {biz.operationalStatus === 'temporarily_closed' && (
+                    <StoreOperationalStatusNotice
+                      reason={biz.temporaryClosureReason}
+                      expectedReopenAt={biz.expectedReopenAt}
+                      timezone={biz.timezone}
+                      className="mb-4"
+                    />
+                  )}
 
                   {/* Store location preview */}
                   <div className="space-y-1 mb-4 bg-stone-50 dark:bg-stone-800/60 p-3 rounded-xl border border-stone-200 dark:border-stone-700">
@@ -338,14 +373,15 @@ export const DiscoveryPage: React.FC = () => {
 
                 <div className="pt-6 flex gap-2">
                   <button
-                    onClick={() => navigate(`/demo/book?slug=${biz.slug}`)}
-                    className="flex-1 bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-semibold py-3 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center justify-center space-x-1.5"
+                    onClick={() => navigate(`/book?slug=${biz.slug}`)}
+                    disabled={biz.operationalStatus === 'temporarily_closed'}
+                    className="flex-1 bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-semibold py-3 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center justify-center space-x-1.5 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <span>Book Appointment</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <span>{biz.operationalStatus === 'temporarily_closed' ? 'Temporarily Closed' : 'Book Appointment'}</span>
+                    {biz.operationalStatus !== 'temporarily_closed' && <ArrowRight className="w-3.5 h-3.5" />}
                   </button>
                   <button
-                    onClick={() => navigate(`/demo/concierge?business=${biz.slug}`)}
+                    onClick={() => navigate(`/concierge?business=${biz.slug}`)}
                     className="px-3 py-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/80 transition text-xs font-semibold"
                     title="Concierge Match"
                   >
@@ -372,7 +408,7 @@ export const DiscoveryPage: React.FC = () => {
               <div className="flex items-center justify-between bg-white/90 dark:bg-stone-800/90 backdrop-blur-md p-3 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm z-10">
                 <div className="flex items-center space-x-2 text-xs font-semibold text-stone-800 dark:text-stone-200">
                   <MapPin className="w-4 h-4 text-rose-600" />
-                  <span>Fictional Metro Manila Demonstration Map</span>
+                  <span>Metro Manila Service Coverage</span>
                 </div>
                 <span className="text-[10px] text-stone-500 dark:text-stone-400 font-mono">
                   Coordinates Verified (QC, Makati, BGC, Ortigas)
@@ -392,10 +428,13 @@ export const DiscoveryPage: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center space-x-1.5 mb-1">
-                      <div className={`w-2 h-2 rounded-full ${selectedBranch?.branch.id === item.branch.id ? 'bg-amber-400 dark:bg-stone-950' : 'bg-rose-500'}`} />
+                      <div className={`w-2 h-2 rounded-full ${item.biz.operationalStatus === 'temporarily_closed' ? 'bg-rose-500' : selectedBranch?.branch.id === item.branch.id ? 'bg-amber-400 dark:bg-stone-950' : 'bg-emerald-500'}`} />
                       <span className="text-[10px] font-bold uppercase truncate">{item.biz.category}</span>
                     </div>
                     <div className="font-bold text-xs leading-snug line-clamp-1">{item.biz.name}</div>
+                    <div className={`mt-1 text-[9px] font-bold uppercase ${item.biz.operationalStatus === 'temporarily_closed' ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                      {item.biz.operationalStatus === 'temporarily_closed' ? 'Temporarily closed' : 'Open for bookings'}
+                    </div>
                     <div className={`text-[10px] truncate mt-0.5 ${selectedBranch?.branch.id === item.branch.id ? 'text-stone-300 dark:text-stone-800' : 'text-stone-500 dark:text-stone-400'}`}>
                       {item.branch.city}
                     </div>
@@ -419,6 +458,14 @@ export const DiscoveryPage: React.FC = () => {
                     <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">{selectedBranch.biz.name}</h3>
                     <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">{selectedBranch.biz.description}</p>
                   </div>
+
+                  {selectedBranch.biz.operationalStatus === 'temporarily_closed' && (
+                    <StoreOperationalStatusNotice
+                      reason={selectedBranch.biz.temporaryClosureReason}
+                      expectedReopenAt={selectedBranch.biz.expectedReopenAt}
+                      timezone={selectedBranch.biz.timezone}
+                    />
+                  )}
 
                   <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 space-y-2 text-xs">
                     <div className="flex items-start space-x-2">
@@ -450,14 +497,15 @@ export const DiscoveryPage: React.FC = () => {
 
                   <div className="pt-4 space-y-2">
                     <button
-                      onClick={() => navigate(`/demo/book?slug=${selectedBranch.biz.slug}&branchId=${selectedBranch.branch.id}`)}
-                      className="w-full bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-semibold py-3 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center justify-center space-x-2"
+                      onClick={() => navigate(`/book?slug=${selectedBranch.biz.slug}&branchId=${selectedBranch.branch.id}`)}
+                      disabled={selectedBranch.biz.operationalStatus === 'temporarily_closed'}
+                      className="w-full bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 text-xs font-semibold py-3 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center justify-center space-x-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <span>Book at this Branch</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <span>{selectedBranch.biz.operationalStatus === 'temporarily_closed' ? 'Temporarily Closed' : 'Book at this Branch'}</span>
+                      {selectedBranch.biz.operationalStatus !== 'temporarily_closed' && <ArrowRight className="w-3.5 h-3.5" />}
                     </button>
                     <button
-                      onClick={() => navigate(`/demo/concierge?business=${selectedBranch.biz.slug}`)}
+                      onClick={() => navigate(`/concierge?business=${selectedBranch.biz.slug}`)}
                       className="w-full bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 text-xs font-semibold py-2.5 rounded-xl hover:bg-amber-100 dark:hover:bg-amber-900/80 transition flex items-center justify-center space-x-2"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />

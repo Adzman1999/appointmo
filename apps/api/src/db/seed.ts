@@ -1,101 +1,146 @@
-import { query, pool } from './index';
-import { runMigrations } from './migrate';
 import bcrypt from 'bcryptjs';
+import { pool } from './index';
+import { config } from '../config';
+import { runMigrations } from './migrate';
 
-export const seedData = async () => {
-  // Ensure all schema and tables exist
+const localCredentials = {
+  superAdmin: {
+    email: 'superadmin@appointmo.local',
+    password: 'SuperAdmin2026!',
+    name: 'Local Super Administrator',
+  },
+  storeAdmin: {
+    email: 'storeadmin@appointmo.local',
+    password: 'StoreAdmin2026!',
+    name: 'Local Store Administrator',
+  },
+  customer: {
+    email: 'customer@appointmo.local',
+    password: 'Customer2026!',
+    name: 'Local Customer',
+  },
+};
+
+function credentialFromEnvironment(key: string, fallback: string): string {
+  return process.env[key]?.trim() || fallback;
+}
+
+function getSeedAccounts() {
+  if (config.env === 'production') {
+    throw new Error('The local account seed is disabled in production. Create production users through the platform admin flow.');
+  }
+
+  const accounts = {
+    superAdmin: {
+      email: credentialFromEnvironment('SEED_SUPER_ADMIN_EMAIL', localCredentials.superAdmin.email).toLowerCase(),
+      password: credentialFromEnvironment('SEED_SUPER_ADMIN_PASSWORD', localCredentials.superAdmin.password),
+      name: credentialFromEnvironment('SEED_SUPER_ADMIN_NAME', localCredentials.superAdmin.name),
+    },
+    storeAdmin: {
+      email: credentialFromEnvironment('SEED_STORE_ADMIN_EMAIL', localCredentials.storeAdmin.email).toLowerCase(),
+      password: credentialFromEnvironment('SEED_STORE_ADMIN_PASSWORD', localCredentials.storeAdmin.password),
+      name: credentialFromEnvironment('SEED_STORE_ADMIN_NAME', localCredentials.storeAdmin.name),
+    },
+    customer: {
+      email: credentialFromEnvironment('SEED_CUSTOMER_EMAIL', localCredentials.customer.email).toLowerCase(),
+      password: credentialFromEnvironment('SEED_CUSTOMER_PASSWORD', localCredentials.customer.password),
+      name: credentialFromEnvironment('SEED_CUSTOMER_NAME', localCredentials.customer.name),
+    },
+  };
+
+  for (const [role, account] of Object.entries(accounts)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account.email) || !account.name.trim()) {
+      throw new Error(`A valid email and name are required for the local ${role} seed account.`);
+    }
+    if (account.password.length < 12) {
+      throw new Error(`The local ${role} seed password must contain at least 12 characters.`);
+    }
+  }
+
+  return accounts;
+}
+
+export async function seedData(): Promise<void> {
   await runMigrations();
 
-  console.log('Ensuring essential system users and business infrastructure exist without injecting dummy bookings/customers...');
+  const accounts = getSeedAccounts();
+  const passwordHashes = {
+    superAdmin: await bcrypt.hash(accounts.superAdmin.password, 12),
+    storeAdmin: await bcrypt.hash(accounts.storeAdmin.password, 12),
+    customer: await bcrypt.hash(accounts.customer.password, 12),
+  };
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['appointmo:local-seed']);
 
-    // 1. Ensure baseline business exists (e.g. Lumière Beauty Studio) as a live operational store
-    let businessId: string;
-    const existingBiz = await client.query("SELECT id FROM businesses WHERE slug = 'lumiere-beauty-studio'");
+    const businessResult = await client.query(
+      `INSERT INTO businesses (name, slug, description, currency, timezone, status)
+       VALUES ('Lumière Beauty Studio', 'lumiere-beauty-studio', 'Beauty and wellness appointment services.', 'PHP', 'Asia/Manila', 'approved')
+       ON CONFLICT (slug) DO UPDATE SET updated_at = businesses.updated_at
+       RETURNING id`,
+    );
+    const businessId: string = businessResult.rows[0].id;
 
-    if (existingBiz.rows.length > 0) {
-      businessId = existingBiz.rows[0].id;
-    } else {
-      const bizRes = await client.query(`
-        INSERT INTO businesses (name, slug, description, currency, timezone, status)
-        VALUES ('Lumière Beauty Studio', 'lumiere-beauty-studio', 'Premium aesthetic, skincare and wellness studio.', 'PHP', 'Asia/Manila', 'approved')
-        RETURNING id
-      `);
-      businessId = bizRes.rows[0].id;
-    }
+    await client.query(
+      `INSERT INTO branches (business_id, name, address, city, phone, latitude, longitude, location_description)
+       SELECT $1, 'Lumière Studio - Quezon City Branch', 'Quezon City', 'Quezon City', '+63 900 000 0000', 14.6507, 121.0336, 'Local development branch'
+       WHERE NOT EXISTS (SELECT 1 FROM branches WHERE business_id = $1)`,
+      [businessId]
+    );
 
-    // Ensure branch exists
-    const existingBranch = await client.query("SELECT id FROM branches WHERE business_id = $1 LIMIT 1", [businessId]);
-    if (existingBranch.rows.length === 0) {
-      await client.query(`
-        INSERT INTO branches (business_id, name, address, city, phone, latitude, longitude, location_description)
-        VALUES ($1, 'Lumière Studio - Quezon City Branch', 'Suite 404, Innovation Tower, Commercial District', 'Quezon City', '+63 2 8000 0001', 14.6507, 121.0336, 'Near North Triangle')
-      `, [businessId]);
-    }
+    await client.query(
+      `INSERT INTO users (business_id, email, password_hash, role, name, status)
+       VALUES (NULL, $1, $2, 'platform_admin', $3, 'approved')
+       ON CONFLICT (email) DO UPDATE SET
+         business_id = NULL, password_hash = EXCLUDED.password_hash, role = EXCLUDED.role,
+         name = EXCLUDED.name, status = EXCLUDED.status, updated_at = NOW()`,
+      [accounts.superAdmin.email, passwordHashes.superAdmin, accounts.superAdmin.name]
+    );
 
-    // 2. Ensure Super Administrator and Platform Owner accounts exist
-    const superAdminPasswordHash = await bcrypt.hash('SuperAdmin2026!', 10);
-    const legacyAdminHash = await bcrypt.hash('AppointmoAdmin2026!', 10);
+    await client.query(
+      `INSERT INTO users (business_id, email, password_hash, role, name, status)
+       VALUES ($1, $2, $3, 'business_admin', $4, 'approved')
+       ON CONFLICT (email) DO UPDATE SET
+         business_id = EXCLUDED.business_id, password_hash = EXCLUDED.password_hash,
+         role = EXCLUDED.role, name = EXCLUDED.name, status = EXCLUDED.status, updated_at = NOW()`,
+      [businessId, accounts.storeAdmin.email, passwordHashes.storeAdmin, accounts.storeAdmin.name]
+    );
 
-    await client.query(`
-      INSERT INTO users (business_id, email, password_hash, role, name, status)
-      VALUES (NULL, 'superadmin@appointmo.demo', $1, 'platform_admin', 'Super Administrator', 'approved')
-      ON CONFLICT (email) DO UPDATE SET password_hash = $1, role = 'platform_admin', status = 'approved'
-    `, [superAdminPasswordHash]);
+    await client.query(
+      `INSERT INTO users (business_id, email, password_hash, role, name, status)
+       VALUES ($1, $2, $3, 'customer', $4, 'approved')
+       ON CONFLICT (email) DO UPDATE SET
+         business_id = EXCLUDED.business_id, password_hash = EXCLUDED.password_hash,
+         role = EXCLUDED.role, name = EXCLUDED.name, status = EXCLUDED.status, updated_at = NOW()`,
+      [businessId, accounts.customer.email, passwordHashes.customer, accounts.customer.name]
+    );
 
-    await client.query(`
-      INSERT INTO users (business_id, email, password_hash, role, name, status)
-      VALUES (NULL, 'admin@appointmo.demo', $1, 'platform_admin', 'Super Administrator', 'approved')
-      ON CONFLICT (email) DO UPDATE SET password_hash = $1, role = 'platform_admin', status = 'approved'
-    `, [legacyAdminHash]);
-
-    // Ensure store manager account exists
-    const storePasswordHash = await bcrypt.hash('Store2026!', 10);
-    await client.query(`
-      INSERT INTO users (business_id, email, password_hash, role, name, status)
-      VALUES ($1, 'store@appointmo.demo', $2, 'business_admin', 'Lumière Store Manager', 'approved')
-      ON CONFLICT (email) DO UPDATE SET password_hash = $2, role = 'business_admin', business_id = $1, status = 'approved'
-    `, [businessId, storePasswordHash]);
-
-    // 3. Purge dummy synthetic demo customers and dummy seed appointments
-    await client.query(`
-      DELETE FROM appointments 
-      WHERE booking_reference LIKE 'APT-PAST-%' 
-         OR booking_reference LIKE 'APT-UP-%' 
-         OR booking_reference LIKE 'APT-CANC-%'
-    `);
-
-    await client.query(`
-      DELETE FROM users 
-      WHERE email IN ('customer@appointmo.demo', 'customer@example.com')
-         OR email LIKE 'customer%@example.com'
-    `);
-
-    await client.query(`
-      DELETE FROM customers 
-      WHERE email IN ('customer@appointmo.demo', 'customer@example.com')
-         OR email LIKE 'customer%@example.com'
-    `);
+    await client.query(
+      `INSERT INTO customers (business_id, name, email, phone)
+       VALUES ($1, $2, $3, '+63 900 000 0000')
+       ON CONFLICT (business_id, email) DO UPDATE
+       SET name = EXCLUDED.name, updated_at = NOW()`,
+      [businessId, accounts.customer.name, accounts.customer.email]
+    );
 
     await client.query('COMMIT');
-    console.log('✅ Clean state initialized: dummy bookings and fictional demo customers eliminated.');
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Seed transaction failed:', error);
     throw error;
   } finally {
     client.release();
   }
-};
+
+  console.log('Local seed accounts ready: super admin, store admin, and customer. Existing appointment and customer records were preserved.');
+}
 
 if (require.main === module) {
   seedData()
     .then(() => pool.end())
-    .catch((err) => {
-      console.error(err);
+    .catch((error: unknown) => {
+      console.error('Local database seed failed:', error);
       process.exit(1);
     });
 }

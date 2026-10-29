@@ -1,11 +1,13 @@
-# CI/CD Pipeline Documentation
+# CI Workflow
 
 ## GitHub Actions Workflow
-The CI pipeline runs automatically on pull requests and pushes to `main`. It executes inside an isolated Ubuntu runner with a companion PostgreSQL 15 service container.
+The GitHub Actions workflow runs on pull requests targeting `main` and pushes to `main`. It executes on Ubuntu with a PostgreSQL 15 service container. This workflow validates and builds the repository; it does not deploy the app.
 
 ### Pipeline Stages
-1. **Dependency Installation**: Uses `pnpm` with cache.
-2. **Typecheck Workspace**: Runs `tsc --noEmit` across all workspace packages (`@appointmo/shared`, `@appointmo/api`, `@appointmo/web`).
-3. **Unit Tests**: Runs Zod schema and logic tests in `@appointmo/shared`.
-4. **Integration Tests**: Executes Supertest API suite against the test PostgreSQL instance, running real migrations, deterministic seeding, concurrency tests, and demo access flows.
-5. **Production Build**: Compiles web assets via Vite and API TypeScript into `dist`.
+1. **Install dependencies** using pnpm with the pnpm store cache.
+2. **Typecheck** all workspace packages.
+3. **Run shared tests** for schemas and shared logic.
+4. **Run API integration tests** against the PostgreSQL service, including test schema setup and account access, availability, and booking flows.
+5. **Build** the web app and API package.
+
+The workflow currently does not run lint or web tests. Local `pnpm verify` runs all workspace tests and builds after applying migrations to a guarded local `_test` database.

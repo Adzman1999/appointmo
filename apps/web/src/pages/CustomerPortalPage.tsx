@@ -394,8 +394,8 @@ export const CustomerPortalPage: React.FC = () => {
     <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-24 transition-colors">
       {/* Top Navbar */}
       <header className="sticky top-0 z-40 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200 dark:border-stone-800">
-        <div className="max-w-6xl mx-auto px-4 min-h-16 py-2 flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+        <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-x-2 gap-y-2 px-3 py-2 sm:px-4">
+          <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
             <div className="cursor-pointer" onClick={() => navigate('/')}>
               <AppointmoLogo size="sm" showText={false} />
             </div>
@@ -440,7 +440,7 @@ export const CustomerPortalPage: React.FC = () => {
               </button>
 
               {isNotifOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xl z-50 overflow-hidden animate-in fade-in">
+                <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] max-w-80 sm:w-96 sm:max-w-none bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xl z-50 overflow-hidden animate-in fade-in">
                   <div className="p-3.5 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between bg-stone-50 dark:bg-stone-800/60">
                     <div className="flex items-center space-x-2">
                       <span className="font-bold text-xs text-stone-900 dark:text-stone-100">Live Updates</span>
@@ -545,7 +545,7 @@ export const CustomerPortalPage: React.FC = () => {
           </div>
         </div>
         <nav aria-label="Customer account navigation" className="border-t border-stone-200 dark:border-stone-800">
-          <div className="mx-auto grid max-w-6xl grid-cols-4 gap-1 px-2 py-1.5 sm:px-4 sm:py-2">
+          <div className="mx-auto grid max-w-6xl grid-cols-4 gap-1 px-1.5 py-1.5 sm:gap-2 sm:px-4 sm:py-2">
             {customerMenuItems.map((item) => {
               const Icon = item.icon;
               const isSelected = activeTab === item.id;
@@ -647,7 +647,7 @@ export const CustomerPortalPage: React.FC = () => {
         ) : activeTab === 'upcoming' ? (
           <div className="space-y-4">
             {upcoming.length === 0 ? (
-              <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center max-w-md mx-auto space-y-4 shadow-sm">
+              <div className="mx-auto max-w-md space-y-4 rounded-3xl border border-stone-200 bg-white p-6 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900 sm:p-12">
                 <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
                   <Calendar className="w-6 h-6" />
                 </div>
@@ -758,7 +758,7 @@ export const CustomerPortalPage: React.FC = () => {
         ) : activeTab === 'history' ? (
           <div className="space-y-4">
             {allHistoryAppointments.length === 0 ? (
-              <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center max-w-md mx-auto text-xs text-stone-500">
+              <div className="mx-auto max-w-md rounded-3xl border border-stone-200 bg-white p-6 text-center text-xs text-stone-500 shadow-sm dark:border-stone-800 dark:bg-stone-900 sm:p-12">
                 No past or archived appointments found.
               </div>
             ) : (
@@ -823,7 +823,7 @@ export const CustomerPortalPage: React.FC = () => {
         ) : activeTab === 'reviews' ? (
           <div className="space-y-3">
             {reviewableAppointments.length === 0 ? (
-              <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-10 text-center max-w-lg mx-auto space-y-2">
+              <div className="mx-auto max-w-lg space-y-2 rounded-3xl border border-stone-200 bg-white p-6 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900 sm:p-10">
                 <Star className="w-7 h-7 text-amber-500 mx-auto" />
                 <h3 className="font-bold text-stone-900 dark:text-stone-100">No visits to rate</h3>
                 <p className="text-xs text-stone-500">After a completed appointment, you can rate the store and the specialist here.</p>
@@ -884,9 +884,9 @@ export const CustomerPortalPage: React.FC = () => {
             />
             <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 divide-y divide-stone-100 dark:divide-stone-800">
             {notifications.length === 0 ? (
-              <div className="p-12 text-center text-xs text-stone-500">No notifications on file.</div>
+              <div className="p-6 text-center text-xs text-stone-500 sm:p-12">No notifications on file.</div>
             ) : filteredCustomerNotifications.length === 0 ? (
-              <div className="p-12 text-center text-xs text-stone-500">No notifications match your search or filter.</div>
+              <div className="p-6 text-center text-xs text-stone-500 sm:p-12">No notifications match your search or filter.</div>
             ) : (
               paginatedCustomerNotifications.map(n => (
                 <div
@@ -948,7 +948,7 @@ export const CustomerPortalPage: React.FC = () => {
       {/* NOTIFICATION FULL INFO MODAL (Matches Store Admin & Super Admin) */}
       {selectedNotif && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-7 max-w-lg w-full shadow-2xl relative">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-stone-200 bg-white p-4 shadow-2xl relative dark:border-stone-800 dark:bg-stone-900 sm:p-7">
             <div className="flex items-start justify-between pb-4 border-b border-stone-100 dark:border-stone-800">
               <div className="pr-4">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
@@ -980,7 +980,7 @@ export const CustomerPortalPage: React.FC = () => {
               </div>
 
               {(selectedNotif.bookingReference || selectedNotif.serviceName) && (
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
                   {selectedNotif.bookingReference && (
                     <div className="p-3 rounded-xl bg-stone-100 dark:bg-stone-800/80">
                       <span className="text-[10px] uppercase font-bold text-stone-500 dark:text-stone-400 block mb-0.5">
@@ -1036,7 +1036,7 @@ export const CustomerPortalPage: React.FC = () => {
       {/* Appointment Detail Modal */}
       {selectedAppt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 max-w-lg w-full space-y-4 shadow-2xl">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-stone-200 bg-white p-4 shadow-2xl dark:border-stone-800 dark:bg-stone-900 sm:p-6 space-y-4">
             <div className="flex items-start justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
               <div>
                 <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 font-bold">
@@ -1111,7 +1111,7 @@ export const CustomerPortalPage: React.FC = () => {
 
       {ratingAppt && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm">
-          <form onSubmit={handleSubmitReview} className="w-full max-w-md rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 shadow-2xl space-y-5">
+          <form onSubmit={handleSubmitReview} className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-stone-200 bg-white p-4 shadow-2xl dark:border-stone-800 dark:bg-stone-900 sm:p-6 space-y-5">
             <div className="flex items-start justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Share your experience</span>

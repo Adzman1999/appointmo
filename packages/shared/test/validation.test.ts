@@ -1,23 +1,23 @@
 import { describe, it, expect } from 'vitest';
-import { DemoAccessRequestSchema, CreateGuestBookingSchema, ConciergeInquirySchema } from '../src';
+import { AccessRequestSchema, CreateGuestBookingSchema, ConciergeInquirySchema } from '../src';
 
 describe('Shared Zod Schemas Validation', () => {
-  it('validates DemoAccessRequestSchema properly', () => {
+  it('validates AccessRequestSchema properly', () => {
     const valid = {
       fullName: 'Dr. Jane Smith',
-      email: 'jane@smith.demo',
+      email: 'jane@smith.example.com',
       businessName: 'Smith Dermatology',
-      message: 'Demo inquiry',
+      message: 'Access request',
       acceptedPrivacy: true,
     };
-    expect(() => DemoAccessRequestSchema.parse(valid)).not.toThrow();
+    expect(() => AccessRequestSchema.parse(valid)).not.toThrow();
 
     const invalid = {
       fullName: 'A',
       email: 'not-an-email',
       acceptedPrivacy: false,
     };
-    expect(() => DemoAccessRequestSchema.parse(invalid)).toThrow();
+    expect(() => AccessRequestSchema.parse(invalid)).toThrow();
   });
 
   it('validates CreateGuestBookingSchema properly', () => {

@@ -1,27 +1,24 @@
-# Testing Strategy & Execution
+# Testing and Verification
 
-## Test Suites
-1. **Unit Tests (`packages/shared/test/validation.test.ts`)**:
-   - Zod schema input validation
-   - Guest booking payload validation
-   - Concierge inquiry validation
+The workspace has shared schema tests, API integration tests, and a small web test suite. API coverage includes account access, booking, concurrency, availability, discovery, and appointment workflows. API tests seed their own database fixtures through `apps/api/test/support/seedTestDatabase.ts`.
 
-2. **Integration & API Tests (`apps/api/test/api.test.ts`)**:
-   - Database migrations and deterministic seeding
-   - Health check and public business & service listings
-   - Demo access request submission, admin authorization, approval, and token redemption
-   - Quick Booking creation and transactional double-booking prevention (`409 Conflict`)
-   - Secure customer booking lookup and guest cancellation
-   - Concierge recommendation engine scoring and explainability
+For the complete local check, set `TEST_DATABASE_URL` in `apps/api/.env` to a local PostgreSQL database with a name ending in `_test`, create it once, and run:
 
-## Running Tests Locally
-```bash
-# Run shared package tests
-pnpm --filter @appointmo/shared test
-
-# Run API integration tests
-pnpm --filter @appointmo/api test
-
-# Run all tests across workspace
-pnpm test
+```sh
+createdb appointmo_test
+pnpm verify
 ```
+
+The verification script runs workspace typechecks, applies migrations to the test database, runs all workspace test suites, and builds the applications. It overrides `DATABASE_URL` for each child process and refuses remote databases or database names without the `_test` suffix.
+
+Individual commands are available when diagnosing a step:
+
+```sh
+pnpm typecheck
+pnpm db:migrate
+pnpm --filter @appointmo/shared test
+pnpm --filter @appointmo/api test
+pnpm build
+```
+
+The GitHub Actions workflow runs typechecks, shared and API tests, then builds the web and API packages. It does not currently run the web test suite or a lint command.

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { KeyRound, ArrowRight, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
-export const RedeemInvitePage: React.FC = () => {
-  const [token, setToken] = useState('');
+export const AccessInvitationPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const [token, setToken] = useState(searchParams.get('token') || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ export const RedeemInvitePage: React.FC = () => {
     setError(null);
 
     try {
-      const res: any = await apiFetch('/demo-access/redeem', {
+      const res: any = await apiFetch('/access-requests/redeem', {
         method: 'POST',
         body: JSON.stringify({ token: token.trim() }),
       });
@@ -23,7 +24,7 @@ export const RedeemInvitePage: React.FC = () => {
       localStorage.setItem('appointmo_token', res.token);
       localStorage.setItem('appointmo_user', JSON.stringify(res.user));
 
-      navigate('/demo/book');
+      navigate('/book');
     } catch (err: any) {
       setError(err.message || 'Invalid, expired, or revoked invitation token.');
     } finally {
@@ -33,18 +34,18 @@ export const RedeemInvitePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl border border-stone-200 p-8 shadow-sm">
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-8">
         <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center mx-auto mb-4">
           <KeyRound className="w-6 h-6" />
         </div>
 
-        <h1 className="text-xl font-bold text-center text-stone-900 mb-2">Redeem Demo Invitation</h1>
+        <h1 className="text-xl font-bold text-center text-stone-900 mb-2">Accept Appointmo Invitation</h1>
         <p className="text-xs text-stone-500 text-center mb-6 leading-relaxed">
           Enter the invitation token sent by the product administrator after your access request was approved.
         </p>
 
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+          <div className="mb-4 break-words rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
             {error}
           </div>
         )}
@@ -67,7 +68,7 @@ export const RedeemInvitePage: React.FC = () => {
             disabled={loading || !token.trim()}
             className="w-full bg-stone-900 text-white font-medium py-3 rounded-xl hover:bg-stone-800 transition flex items-center justify-center space-x-2 text-sm shadow-sm disabled:opacity-50"
           >
-            <span>{loading ? 'Validating...' : 'Enter Interactive Demo'}</span>
+            <span>{loading ? 'Validating...' : 'Enter Appointmo'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>

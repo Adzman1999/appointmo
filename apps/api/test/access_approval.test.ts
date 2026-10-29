@@ -2,12 +2,12 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { pool, query } from '../src/db';
-import { runMigrations } from '../src/db/migrate';
+import { seedTestDatabase } from './support/seedTestDatabase';
 
 const app = createApp();
 
 beforeAll(async () => {
-  // DB migrations are already invoked deterministically by test/api.test.ts; no concurrent DDL needed
+  await seedTestDatabase();
 });
 
 afterAll(async () => {
@@ -20,7 +20,7 @@ describe('Appointmo Two-Sided Access Architecture (Owner & Approved Users)', () 
   let requestId: string;
   let ownerToken: string;
   let setupToken: string;
-  let userDemoToken: string;
+  let invitedAccessToken: string;
 
   // 1. Public visitors can open the landing page / public endpoints
   it('1. Public visitors can open public endpoints without credentials', async () => {
@@ -29,8 +29,8 @@ describe('Appointmo Two-Sided Access Architecture (Owner & Approved Users)', () 
     expect(res.body.status).toBe('healthy');
   });
 
-  // 2. Unapproved users cannot access the interactive demo
-  it('2. Unapproved users cannot access the interactive demo session check', async () => {
+  // 2. Unapproved users cannot access the Appointmo
+  it('2. Unapproved users cannot access the Appointmo session check', async () => {
     const res = await request(app).get('/api/access/session');
     expect(res.status).toBe(401);
   });
@@ -77,7 +77,7 @@ describe('Appointmo Two-Sided Access Architecture (Owner & Approved Users)', () 
     const jwt = await import('jsonwebtoken');
     const { config } = await import('../src/config');
     const nonOwnerToken = jwt.default.sign(
-      { userId: 'guest_user', email: 'intruder@test.com', role: 'demo_guest' },
+      { userId: 'guest_user', email: 'intruder@test.com', role: 'access_guest' },
       config.jwtSecret,
       { expiresIn: '1h' }
     );
@@ -95,8 +95,8 @@ describe('Appointmo Two-Sided Access Architecture (Owner & Approved Users)', () 
     const loginRes = await request(app)
       .post('/api/owner/login')
       .send({
-        email: 'admin@appointmo.demo',
-        password: 'AppointmoAdmin2026!',
+        email: 'superadmin@appointmo.local',
+        password: 'SuperAdmin2026!',
       });
 
     expect(loginRes.status).toBe(200);
@@ -138,13 +138,13 @@ describe('Appointmo Two-Sided Access Architecture (Owner & Approved Users)', () 
     expect(setupRes.status).toBe(200);
     expect(setupRes.body.token).toBeDefined();
     expect(setupRes.body.user.email).toBe(testEmail);
-    expect(setupRes.body.user.role).toBe('demo_guest');
-    userDemoToken = setupRes.body.token;
+    expect(setupRes.body.user.role).toBe('access_guest');
+    invitedAccessToken = setupRes.body.token;
 
     // Session check confirms access
     const checkRes = await request(app)
       .get('/api/access/session')
-      .set('Authorization', `Bearer ${userDemoToken}`);
+      .set('Authorization', `Bearer ${invitedAccessToken}`);
 
     expect(checkRes.status).toBe(200);
     expect(checkRes.body.active).toBe(true);
@@ -161,7 +161,7 @@ describe('Appointmo Two-Sided Access Architecture (Owner & Approved Users)', () 
   });
 
   // 9. Unapproved / non-existent users cannot log in
-  it('9. Unapproved or pending users cannot log in to access the demo', async () => {
+  it('9. Unapproved or pending users cannot sign in', async () => {
     // Submit request for non-approved user
     await request(app)
       .post('/api/access/request')
@@ -182,8 +182,8 @@ describe('Appointmo Two-Sided Access Architecture (Owner & Approved Users)', () 
     expect(loginRes.status).toBe(401);
   });
 
-  // 10. Rejected users cannot access the demo
-  it('10. Rejected users cannot access the demo', async () => {
+  // 10. Rejected users cannot access the platform
+  it('10. Rejected users cannot access the platform', async () => {
     const rejectedEmail = `rejected.${Date.now()}@example.com`;
     const reqRes = await request(app)
       .post('/api/access/request')
@@ -225,10 +225,10 @@ describe('Appointmo Two-Sided Access Architecture (Owner & Approved Users)', () 
 
     expect(revokeRes.status).toBe(200);
 
-    // Protected demo endpoint now immediately rejects the previous token with 403
+    // Protected access endpoint immediately rejects the previous token with 403
     const sessionCheck = await request(app)
       .get('/api/access/session')
-      .set('Authorization', `Bearer ${userDemoToken}`);
+      .set('Authorization', `Bearer ${invitedAccessToken}`);
 
     expect(sessionCheck.status).toBe(403);
     expect(sessionCheck.body.error).toContain('revoked');
@@ -249,7 +249,7 @@ describe('Appointmo Two-Sided Access Architecture (Owner & Approved Users)', () 
   it('12. Forged client tokens cannot bypass server session validation', async () => {
     const jwt = await import('jsonwebtoken');
     const forgedToken = jwt.default.sign(
-      { userId: 'hacked_id', email: 'victim@appointmo.com', role: 'demo_guest' },
+      { userId: 'hacked_id', email: 'victim@appointmo.com', role: 'access_guest' },
       'appointmo_super_secret_jwt_key_2026_dev',
       { expiresIn: '1h' }
     );
@@ -258,7 +258,7 @@ describe('Appointmo Two-Sided Access Architecture (Owner & Approved Users)', () 
       .get('/api/access/session')
       .set('Authorization', `Bearer ${forgedToken}`);
 
-    // Session hash not in demo_sessions table -> 401
+    // Session hash is not registered in access_sessions -> 401
     expect(checkRes.status).toBe(401);
   });
 
@@ -271,7 +271,7 @@ describe('Appointmo Two-Sided Access Architecture (Owner & Approved Users)', () 
     expect(listRes.status).toBe(200);
     const bodyText = JSON.stringify(listRes.body);
     expect(bodyText).not.toContain('password_hash');
-    expect(bodyText).not.toContain('AppointmoAdmin2026!');
+    expect(bodyText).not.toContain('SuperAdmin2026!');
   });
 
   // 14. Zero access-code or invitation-code flow exists

@@ -1,5 +1,5 @@
-import { query } from '../db';
 import { AvailabilityService, TimeSlot } from './availability';
+import { getBusinessRatingSummary, listServicesWithRatings, listStaffRatingSummaries } from '../repositories/conciergeRepository';
 
 export interface ConciergeRecommendation {
   serviceId: string;
@@ -35,34 +35,13 @@ export class ConciergeService {
     const qLower = params.query.toLowerCase();
 
     // 1. Fetch all active services for business (Synthetic catalogue only)
-    const servicesRes = await query(
-      `SELECT s.id, s.name, s.description, s.duration_minutes, s.price, s.category,
-              COALESCE(service_reviews.rating, 0)::numeric(3, 1) AS service_rating,
-              COALESCE(service_reviews.review_count, 0)::int AS service_review_count
-       FROM services s
-       LEFT JOIN LATERAL (
-         SELECT AVG(r.rating) AS rating, COUNT(*) AS review_count
-         FROM reviews r WHERE r.service_id = s.id
-       ) service_reviews ON true
-       WHERE s.business_id = $1 AND s.is_active = true`,
-      [businessId]
-    );
-    const services = servicesRes.rows;
-    const businessReviewsRes = await query(
-      'SELECT COALESCE(AVG(rating), 0)::numeric(3, 1) AS rating, COUNT(*)::int AS "reviewCount" FROM reviews WHERE business_id = $1',
-      [businessId]
-    );
-    const businessRating = Number(businessReviewsRes.rows[0]?.rating || 0);
-    const businessReviewCount = Number(businessReviewsRes.rows[0]?.reviewCount || 0);
-    const staffReviewsRes = await query(
-      `SELECT staff_id AS "staffId", AVG(staff_rating)::numeric(3, 1) AS rating, COUNT(*)::int AS "reviewCount"
-       FROM reviews
-       WHERE business_id = $1 AND staff_id IS NOT NULL AND staff_rating IS NOT NULL
-       GROUP BY staff_id`,
-      [businessId]
-    );
+    const services = await listServicesWithRatings(businessId);
+    const businessReviews = await getBusinessRatingSummary(businessId);
+    const businessRating = Number(businessReviews?.rating || 0);
+    const businessReviewCount = Number(businessReviews?.reviewCount || 0);
+    const staffReviews = await listStaffRatingSummaries(businessId);
     const staffRatings = new Map<string, { rating: number; reviewCount: number }>(
-      staffReviewsRes.rows.map((row: any) => [row.staffId, { rating: Number(row.rating), reviewCount: Number(row.reviewCount) }])
+      staffReviews.map((row: any) => [row.staffId, { rating: Number(row.rating), reviewCount: Number(row.reviewCount) }])
     );
 
     // Detect user preferences from query text

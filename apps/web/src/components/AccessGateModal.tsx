@@ -108,7 +108,7 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-stone-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-2xl p-5 sm:p-8 overflow-hidden text-stone-900 dark:text-stone-100">
+      <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-stone-200 bg-white p-4 text-stone-900 shadow-2xl dark:border-stone-800 dark:bg-stone-900 sm:p-8">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -121,10 +121,10 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
         <div className="text-center mb-6">
           <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 text-xs font-semibold mb-3">
             <Sparkles className="w-3.5 h-3.5 text-stone-900 dark:text-amber-400" />
-            <span>Interactive Demo</span>
+            <span>Appointmo</span>
           </div>
           <h2 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
-            {tab === 'request' ? 'Request Demo Access' : 'Sign In to Demo'}
+            {tab === 'request' ? 'Request Platform Access' : 'Sign In to Appointmo'}
           </h2>
           <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 max-w-sm mx-auto">
             {tab === 'request'
@@ -299,7 +299,7 @@ export const AccessGateModal: React.FC<AccessGateModalProps> = ({
               disabled={loginLoading || !loginEmail || !loginPassword}
               className="w-full bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-semibold py-3.5 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition text-xs shadow disabled:opacity-50 flex items-center justify-center space-x-2"
             >
-              <span>{loginLoading ? 'Signing in...' : 'Sign In to Interactive Demo'}</span>
+              <span>{loginLoading ? 'Signing in...' : 'Sign In to Appointmo'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 

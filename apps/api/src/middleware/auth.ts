@@ -5,7 +5,7 @@ import { config } from '../config';
 export interface AuthUser {
   userId: string;
   email: string;
-  role: 'owner' | 'platform_admin' | 'business_admin' | 'staff' | 'customer' | 'demo_guest';
+  role: 'owner' | 'platform_admin' | 'business_admin' | 'staff' | 'customer' | 'access_guest';
   businessId?: string;
   sessionId?: string;
   name?: string;

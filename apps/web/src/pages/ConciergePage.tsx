@@ -8,7 +8,6 @@ import {
 import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { DemoTopNav } from '../components/DemoTopNav';
 import { FormalNameFields } from '../components/FormalNameFields';
 import { CountryPhoneInput } from '../components/CountryPhoneInput';
 import { formatFormalName, parseFormalName, validateFullPhoneNumber, normalizePhoneNumber, getCountryByName } from '../lib/countryConfig';
@@ -66,7 +65,7 @@ export const ConciergePage: React.FC = () => {
       } catch (_) {}
     }
 
-    apiFetch('/demo/admin/businesses')
+    apiFetch('/store/admin/businesses')
       .then((res: any) => {
         const list = res.businesses || [];
         setBusinesses(list);
@@ -216,30 +215,27 @@ export const ConciergePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20 transition-colors">
-      {/* Top Segmented Navigation Bar */}
-      <DemoTopNav currentRole="customer" />
-
       {/* Top Bar */}
-      <div className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-4 px-6 mb-8">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-6">
+      <div className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-4 px-3 sm:px-6 mb-8">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-6">
             <div className="cursor-pointer" onClick={() => navigate('/')}>
               <AppointmoLogo size="sm" showText={false} />
             </div>
 
             <div className="h-6 w-px bg-stone-200 dark:bg-stone-800 hidden sm:block"></div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex min-w-0 items-center gap-2">
               <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200">
                 <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               </div>
-              <div>
-                <h1 className="text-base font-bold text-stone-900 dark:text-stone-100">Explainable Concierge Booking</h1>
-                <p className="text-xs text-stone-500 dark:text-stone-400">Multi-business appointment recommendation engine with live slot checking</p>
+              <div className="min-w-0">
+                <h1 className="text-sm font-bold text-stone-900 dark:text-stone-100 sm:text-base">Explainable Concierge Booking</h1>
+                <p className="hidden max-w-[min(60vw,36rem)] truncate text-xs text-stone-500 dark:text-stone-400 sm:block">Multi-business appointment recommendation engine with live slot checking</p>
               </div>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:gap-3">
             <ThemeToggle />
             <button
               onClick={() => navigate('/browse')}
@@ -248,7 +244,7 @@ export const ConciergePage: React.FC = () => {
               Browse Directory
             </button>
             <button
-              onClick={() => navigate('/demo/book')}
+              onClick={() => navigate('/book')}
               className="text-xs font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white px-3 py-1.5 rounded-lg border border-stone-200 dark:border-stone-800 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
             >
               Quick Booking
@@ -370,10 +366,10 @@ export const ConciergePage: React.FC = () => {
                 Manage My Booking &rarr;
               </button>
               <button
-                onClick={() => navigate('/demo/admin')}
+                onClick={() => navigate('/store/admin')}
                 className="px-4 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 text-xs font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 transition"
               >
-                View on Admin Demo Dashboard
+                View in Store Dashboard
               </button>
             </div>
           </div>

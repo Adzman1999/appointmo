@@ -14,7 +14,7 @@ const authenticateIfProvided = (req: Request, res: Response, next: NextFunction)
   return authenticateJwt(req, res, next);
 };
 
-// 1. Get Public Demo Business & Branch Profile
+// 1. Get Public Your Store & Branch Profile
 router.get('/business', async (req: Request, res: Response) => {
   try {
     const { slug } = req.query;
@@ -32,7 +32,10 @@ router.get('/business', async (req: Request, res: Response) => {
     const bizRes = await query(`
       SELECT b.id, b.name, b.slug, b.description, b.category, b.currency, b.timezone, b.logo_url AS "logoUrl",
              b.phone, b.email, b.address, b.city, b.opening_hours AS "openingHours",
-             b.website, b.instagram, COALESCE(b.social_handle, b.instagram) AS "socialHandle", b.tagline, b.status
+             b.website, b.instagram, COALESCE(b.social_handle, b.instagram) AS "socialHandle", b.tagline, b.status,
+             b.operational_status AS "operationalStatus",
+             b.temporary_closure_reason AS "temporaryClosureReason",
+             b.expected_reopen_at AS "expectedReopenAt"
       FROM businesses b
       WHERE b.slug = $1
       LIMIT 1
@@ -88,7 +91,7 @@ router.get('/services', async (req: Request, res: Response) => {
       params.push(slug);
       sql += ` AND b.slug = $${params.length}`;
     } else {
-      sql += ` AND b.id IN (SELECT id FROM businesses WHERE status = 'approved' LIMIT 1)`;
+      sql += ` AND b.id IN (SELECT id FROM businesses WHERE status = 'approved' ORDER BY created_at ASC LIMIT 1)`;
     }
 
     // Branch-specific service filter if branch_services table is populated
@@ -132,7 +135,7 @@ router.get('/staff', async (req: Request, res: Response) => {
       params.push(slug);
       sql += ` AND b.slug = $${params.length}`;
     } else {
-      sql += ` AND b.id IN (SELECT id FROM businesses WHERE status = 'approved' LIMIT 1)`;
+      sql += ` AND b.id IN (SELECT id FROM businesses WHERE status = 'approved' ORDER BY created_at ASC LIMIT 1)`;
     }
 
     sql += ` ORDER BY sp.name ASC`;
@@ -173,7 +176,14 @@ router.get('/availability', async (req: Request, res: Response) => {
       staffId as string | undefined
     );
 
-    res.json({ slots });
+    const businessRes = await query(`
+      SELECT operational_status AS "operationalStatus",
+             temporary_closure_reason AS "temporaryClosureReason",
+             expected_reopen_at AS "expectedReopenAt",
+             timezone
+      FROM businesses WHERE id = $1
+    `, [resolvedBusinessId]);
+    res.json({ slots, business: businessRes.rows[0] || null });
   } catch (err: any) {
     res.status(400).json({ error: err.message || 'Failed to calculate availability' });
   }
@@ -256,7 +266,7 @@ router.post('/concierge', async (req: Request, res: Response) => {
   }
 });
 
-// 7. Secure Customer Booking Lookup (via bookingReference + managementToken OR phone)
+// 7. Secure customer booking lookup using its private management token.
 router.get('/bookings/:reference', async (req: Request, res: Response) => {
   try {
     const { reference } = req.params;
@@ -267,8 +277,6 @@ router.get('/bookings/:reference', async (req: Request, res: Response) => {
     }
 
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    const isDemoToken = token === `${reference}secret` || token === 'demo_secret';
-
     const apptRes = await query(`
       SELECT 
         a.id, a.booking_reference AS "bookingReference", a.status,
@@ -285,8 +293,8 @@ router.get('/bookings/:reference', async (req: Request, res: Response) => {
       JOIN staff_profiles sp ON a.staff_id = sp.id
       JOIN customers c ON a.customer_id = c.id
       JOIN branches br ON a.branch_id = br.id
-      WHERE a.booking_reference = $1 AND (a.management_token_hash = $2 OR $3 = true)
-    `, [reference, tokenHash, isDemoToken]);
+      WHERE a.booking_reference = $1 AND a.management_token_hash = $2
+    `, [reference, tokenHash]);
 
     if (apptRes.rows.length === 0) {
       return res.status(404).json({ error: 'Appointment not found or invalid management token' });
@@ -309,16 +317,14 @@ router.post('/bookings/:reference/cancel', authenticateIfProvided, async (req: R
     }
 
     const tokenHash = crypto.createHash('sha256').update(typeof token === 'string' ? token : '').digest('hex');
-    const isDemoToken = token === `${reference}secret` || token === 'demo_secret';
-
     const apptRes = await query(
       `SELECT a.id, a.status, a.start_time AS "startTime", b.booking_policies AS "bookingPolicies"
        FROM appointments a
        JOIN businesses b ON b.id = a.business_id
        WHERE a.booking_reference = $1 AND (
-         a.management_token_hash = $2 OR $3 = true OR a.booked_by_user_id = $4
+         a.management_token_hash = $2 OR a.booked_by_user_id = $3
        )`,
-      [reference, tokenHash, isDemoToken, req.user?.role === 'customer' ? req.user.userId : null]
+      [reference, tokenHash, req.user?.role === 'customer' ? req.user.userId : null]
     );
 
     if (apptRes.rows.length === 0) {
@@ -400,8 +406,6 @@ router.post('/bookings/:reference/reschedule', async (req: Request, res: Respons
     }
 
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    const isDemoToken = token === `${reference}secret` || token === 'demo_secret';
-
     await client.query('BEGIN');
 
     // 1. Fetch current appointment details
@@ -414,8 +418,8 @@ router.post('/bookings/:reference/reschedule', async (req: Request, res: Respons
       JOIN services s ON a.service_id = s.id
       JOIN customers c ON a.customer_id = c.id
       JOIN businesses b ON b.id = a.business_id
-      WHERE a.booking_reference = $1 AND (a.management_token_hash = $2 OR $3 = true)
-    `, [reference, tokenHash, isDemoToken]);
+      WHERE a.booking_reference = $1 AND a.management_token_hash = $2
+    `, [reference, tokenHash]);
 
     if (apptRes.rows.length === 0) {
       await client.query('ROLLBACK');

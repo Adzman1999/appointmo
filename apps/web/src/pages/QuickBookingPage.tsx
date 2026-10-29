@@ -5,7 +5,7 @@ import { apiFetch } from '../lib/api';
 import { AppointmoLogo } from '../components/AppointmoLogo';
 import { BusinessLogo } from '../components/BusinessLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { DemoTopNav } from '../components/DemoTopNav';
+import { StoreOperationalStatusNotice } from '../components/StoreOperationalStatusNotice';
 import { toast } from 'sonner';
 import { FormalNameFields } from '../components/FormalNameFields';
 import { CountryPhoneInput } from '../components/CountryPhoneInput';
@@ -34,6 +34,10 @@ interface BusinessProfile {
   category: string;
   description: string;
   country?: string;
+  timezone?: string;
+  operationalStatus?: 'open' | 'temporarily_closed';
+  temporaryClosureReason?: string | null;
+  expectedReopenAt?: string | null;
   logoUrl?: string | null;
   branches: Array<{
     id: string;
@@ -117,14 +121,23 @@ export const QuickBookingPage: React.FC = () => {
 
   // 1. Fetch Business Profile
   useEffect(() => {
-    apiFetch<{ business: BusinessProfile }>(`/business?slug=${businessSlug}`)
-      .then(res => {
-        setBusiness(res.business);
-        if (!selectedBranchId && res.business.branches.length > 0) {
-          setSelectedBranchId(res.business.branches[0].id);
-        }
-      })
-      .catch(console.error);
+    const fetchBusiness = () => {
+      apiFetch<{ business: BusinessProfile }>(`/business?slug=${businessSlug}`)
+        .then(res => {
+          setBusiness(res.business);
+          if (!selectedBranchId && res.business.branches.length > 0) {
+            setSelectedBranchId(res.business.branches[0].id);
+          }
+        })
+        .catch(console.error);
+    };
+    fetchBusiness();
+    const refreshInterval = window.setInterval(fetchBusiness, 30_000);
+    window.addEventListener('focus', fetchBusiness);
+    return () => {
+      window.clearInterval(refreshInterval);
+      window.removeEventListener('focus', fetchBusiness);
+    };
   }, [businessSlug]);
 
   // 2. Fetch synthetic services for selected business & branch
@@ -148,9 +161,12 @@ export const QuickBookingPage: React.FC = () => {
     setLoadingSlots(true);
     setSelectedSlot(null);
 
-    apiFetch<{ slots: Slot[] }>(`/availability?serviceId=${selectedService.id}&date=${date}`)
+    apiFetch<{ slots: Slot[]; business?: Pick<BusinessProfile, 'operationalStatus' | 'temporaryClosureReason' | 'expectedReopenAt' | 'timezone'> }>(`/availability?serviceId=${selectedService.id}&date=${date}`)
       .then(res => {
-        setSlots(res.slots);
+        setSlots(res.slots || []);
+        if (res.business) {
+          setBusiness((current) => current ? { ...current, ...res.business } : current);
+        }
       })
       .catch(err => {
         console.error(err);
@@ -159,10 +175,14 @@ export const QuickBookingPage: React.FC = () => {
       .finally(() => {
         setLoadingSlots(false);
       });
-  }, [selectedService, date]);
+  }, [selectedService, date, business?.operationalStatus]);
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (business?.operationalStatus === 'temporarily_closed') {
+      setBookingError('This store is temporarily closed and is not accepting new appointments.');
+      return;
+    }
     if (!selectedService || !selectedSlot) {
       toast.error('Please select both a service and a time slot.');
       return;
@@ -308,13 +328,10 @@ export const QuickBookingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20 transition-colors">
-      {/* Top Segmented Navigation Bar */}
-      <DemoTopNav currentRole="customer" />
-
       {/* Main Header */}
-      <div className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-4 px-6 mb-8 shadow-sm">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-6">
+      <div className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-4 px-3 sm:px-6 mb-8 shadow-sm">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-6">
             <div className="cursor-pointer" onClick={() => navigate('/')}>
               <AppointmoLogo size="sm" showText={false} />
             </div>
@@ -328,16 +345,24 @@ export const QuickBookingPage: React.FC = () => {
                 logoUrl={business?.logoUrl}
                 size="md"
               />
-              <div>
-                <h1 className="text-base font-bold text-stone-900 dark:text-stone-100">{business?.name || 'Appointmo Booking'}</h1>
-                <p className="text-xs text-stone-500 dark:text-stone-400">{business?.category || 'Intelligent Scheduling'}</p>
+              <div className="min-w-0">
+                <h1 className="truncate text-base font-bold text-stone-900 dark:text-stone-100">{business?.name || 'Appointmo Booking'}</h1>
+                <p className="flex flex-wrap items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
+                  <span>{business?.category || 'Intelligent Scheduling'}</span>
+                  {business && (
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${business.operationalStatus === 'temporarily_closed' ? 'bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300' : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${business.operationalStatus === 'temporarily_closed' ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                      {business.operationalStatus === 'temporarily_closed' ? 'Temporarily closed' : 'Open for bookings'}
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
             <ThemeToggle />
             <button
-              onClick={() => navigate(`/demo/concierge?business=${business?.slug || ''}`)}
+              onClick={() => navigate(`/concierge?business=${business?.slug || ''}`)}
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/60 transition shadow-sm"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
@@ -361,13 +386,22 @@ export const QuickBookingPage: React.FC = () => {
             <p className="text-amber-800 dark:text-amber-200/90 text-[11px] mt-0.5 font-medium">Let our Concierge find the ideal service and time slot for your budget.</p>
           </div>
           <button
-            onClick={() => navigate(`/demo/concierge?business=${business?.slug || ''}`)}
+            onClick={() => navigate(`/concierge?business=${business?.slug || ''}`)}
             className="shrink-0 bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold px-3.5 py-2 rounded-xl hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow text-xs flex items-center space-x-1.5"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400 dark:text-stone-950" />
             <span>Try Concierge Booking</span>
           </button>
         </div>
+
+        {business?.operationalStatus === 'temporarily_closed' && (
+          <StoreOperationalStatusNotice
+            reason={business.temporaryClosureReason}
+            expectedReopenAt={business.expectedReopenAt}
+            timezone={business.timezone}
+            className="mb-6"
+          />
+        )}
 
         {/* Confirmation Screen */}
         {completedBooking ? (
@@ -571,12 +605,12 @@ export const QuickBookingPage: React.FC = () => {
                 <div className="flex justify-end pt-4 border-t border-stone-200 dark:border-stone-800">
                   <button
                     type="button"
-                    disabled={!selectedService}
+                    disabled={!selectedService || business?.operationalStatus === 'temporarily_closed'}
                     onClick={() => setCurrentStep(2)}
                     className="px-6 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center space-x-2 disabled:opacity-40"
                   >
-                    <span>Continue to Schedule</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <span>{business?.operationalStatus === 'temporarily_closed' ? 'Temporarily Closed' : 'Continue to Schedule'}</span>
+                    {business?.operationalStatus !== 'temporarily_closed' && <ArrowRight className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
@@ -602,6 +636,14 @@ export const QuickBookingPage: React.FC = () => {
                   )}
                 </div>
 
+                {business?.operationalStatus === 'temporarily_closed' ? (
+                  <StoreOperationalStatusNotice
+                    reason={business.temporaryClosureReason}
+                    expectedReopenAt={business.expectedReopenAt}
+                    timezone={business.timezone}
+                  />
+                ) : (
+                  <>
                 <div className="bg-white dark:bg-stone-800/60 p-4 rounded-2xl border border-stone-200 dark:border-stone-700">
                   <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">Select Appointment Date</label>
                   <input
@@ -621,7 +663,7 @@ export const QuickBookingPage: React.FC = () => {
                     No available openings found for this date. Please try another day or use our{' '}
                     <button
                       type="button"
-                      onClick={() => navigate('/demo/concierge')}
+                      onClick={() => navigate('/concierge')}
                       className="text-stone-900 dark:text-amber-400 font-bold underline"
                     >
                       Concierge
@@ -654,6 +696,8 @@ export const QuickBookingPage: React.FC = () => {
                     </div>
                   </div>
                 )}
+                  </>
+                )}
 
                 <div className="flex justify-between items-center pt-4 border-t border-stone-200 dark:border-stone-800">
                   <button
@@ -665,7 +709,7 @@ export const QuickBookingPage: React.FC = () => {
                   </button>
                   <button
                     type="button"
-                    disabled={!selectedSlot}
+                    disabled={!selectedSlot || business?.operationalStatus === 'temporarily_closed'}
                     onClick={() => setCurrentStep(3)}
                     className="px-6 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-bold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center space-x-2 disabled:opacity-40"
                   >

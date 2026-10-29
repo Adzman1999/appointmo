@@ -2,12 +2,12 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { pool, query } from '../src/db';
-import { seedData } from '../src/db/seed';
+import { seedTestDatabase } from './support/seedTestDatabase';
 
 const app = createApp();
 
 beforeAll(async () => {
-  await seedData();
+  await seedTestDatabase();
 });
 
 afterAll(async () => {
@@ -47,8 +47,8 @@ describe('Full Appointment Workflow, Sorting, Rescheduling & Two-Way Notificatio
     }
   });
 
-  // 2. Customer creates first booking -> Newest First sorting in Admin Demo
-  it('2. Customer creates booking #1 and it immediately appears at the TOP of Admin Demo (created_at DESC)', async () => {
+  // 2. Customer creates first booking -> Newest First sorting in Store Admin
+  it('2. Customer creates booking #1 and it immediately appears at the TOP of Store Admin (created_at DESC)', async () => {
     // Find a weekday in Manila (+08:00)
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + 26);
@@ -82,8 +82,8 @@ describe('Full Appointment Workflow, Sorting, Rescheduling & Two-Way Notificatio
     token1 = bookRes.body.booking.managementToken;
     apptId1 = bookRes.body.booking.appointment.id;
 
-    // Query Admin Demo appointment list
-    const adminList = await request(app).get('/api/demo/admin/appointments');
+    // Query Store Admin appointment list
+    const adminList = await request(app).get('/api/store/admin/appointments');
     expect(adminList.status).toBe(200);
     expect(adminList.body.appointments.length).toBeGreaterThan(0);
 
@@ -123,7 +123,7 @@ describe('Full Appointment Workflow, Sorting, Rescheduling & Two-Way Notificatio
     token2 = bookRes.body.booking.managementToken;
     apptId2 = bookRes.body.booking.appointment.id;
 
-    const adminList = await request(app).get('/api/demo/admin/appointments');
+    const adminList = await request(app).get('/api/store/admin/appointments');
     expect(adminList.status).toBe(200);
 
     // Booking #2 should now be at index 0, and Booking #1 should be index 1
@@ -133,7 +133,7 @@ describe('Full Appointment Workflow, Sorting, Rescheduling & Two-Way Notificatio
 
   // 4. Admin receives notification for new bookings
   it('4. Admin receives persistent notification for new customer bookings', async () => {
-    const notifRes = await request(app).get('/api/demo/admin/notifications');
+    const notifRes = await request(app).get('/api/store/admin/notifications');
     expect(notifRes.status).toBe(200);
     expect(notifRes.body.notifications.length).toBeGreaterThan(0);
 
@@ -153,7 +153,7 @@ describe('Full Appointment Workflow, Sorting, Rescheduling & Two-Way Notificatio
 
   // 6. View Details & Audit History endpoint
   it('6. Admin can view complete appointment details with status audit history', async () => {
-    const detailRes = await request(app).get(`/api/demo/admin/appointments/${apptId1}`);
+    const detailRes = await request(app).get(`/api/store/admin/appointments/${apptId1}`);
     expect(detailRes.status).toBe(200);
     expect(detailRes.body.appointment.customerName).toBe('First Booker');
     expect(detailRes.body.history.length).toBeGreaterThan(0);
@@ -165,21 +165,24 @@ describe('Full Appointment Workflow, Sorting, Rescheduling & Two-Way Notificatio
     const newDate = new Date();
     newDate.setDate(newDate.getDate() + 27);
     if (newDate.getDay() === 0) newDate.setDate(newDate.getDate() + 1);
-    newDate.setHours(14, 0, 0, 0);
-    const newStartTime = newDate.toISOString();
+    const date = newDate.toISOString().slice(0, 10);
+    const availability = await request(app).get(`/api/availability?serviceId=${serviceId}&date=${date}&staffId=${staffId}`);
+    expect(availability.body.slots.length).toBeGreaterThan(0);
+    const afternoonSlot = availability.body.slots.find((slot: any) => new Date(slot.startTime).getHours() >= 13);
+    const newStartTime = afternoonSlot?.startTime || availability.body.slots[0].startTime;
 
     const reschedRes = await request(app)
-      .post(`/api/demo/admin/appointments/${apptId1}/reschedule`)
+      .post(`/api/store/admin/appointments/${apptId1}/reschedule`)
       .send({
         newStartTime,
         reason: 'Customer requested afternoon slot',
       });
 
     expect(reschedRes.status).toBe(200);
-    expect(reschedRes.body.newStartTime).toBe(newStartTime);
+    expect(new Date(reschedRes.body.newStartTime).toISOString()).toBe(new Date(newStartTime).toISOString());
 
     // Verify appointment was updated
-    const apptCheck = await request(app).get(`/api/demo/admin/appointments/${apptId1}`);
+    const apptCheck = await request(app).get(`/api/store/admin/appointments/${apptId1}`);
     expect(apptCheck.body.appointment.startTime).toBe(newStartTime);
 
     // Verify history recorded
@@ -194,10 +197,10 @@ describe('Full Appointment Workflow, Sorting, Rescheduling & Two-Way Notificatio
   // 8. Conflicting reschedule is rejected with 409
   it('8. Rescheduling into an existing conflict is safely rejected with 409', async () => {
     // Attempt to reschedule booking #2 to the exact same slot as booking #1
-    const appt1 = (await request(app).get(`/api/demo/admin/appointments/${apptId1}`)).body.appointment;
+    const appt1 = (await request(app).get(`/api/store/admin/appointments/${apptId1}`)).body.appointment;
 
     const conflictRes = await request(app)
-      .post(`/api/demo/admin/appointments/${apptId2}/reschedule`)
+      .post(`/api/store/admin/appointments/${apptId2}/reschedule`)
       .send({
         newStartTime: appt1.startTime,
         newStaffId: appt1.staffId,
@@ -207,7 +210,7 @@ describe('Full Appointment Workflow, Sorting, Rescheduling & Two-Way Notificatio
     expect(conflictRes.body.error).toContain('conflicts with an existing booking');
 
     // Booking #2 should remain unchanged
-    const appt2Check = await request(app).get(`/api/demo/admin/appointments/${apptId2}`);
+    const appt2Check = await request(app).get(`/api/store/admin/appointments/${apptId2}`);
     expect(appt2Check.body.appointment.startTime).not.toBe(appt1.startTime);
   });
 
@@ -223,12 +226,12 @@ describe('Full Appointment Workflow, Sorting, Rescheduling & Two-Way Notificatio
     expect(cancelRes.status).toBe(200);
 
     // Verify cancelled in Admin view
-    const adminAppt = await request(app).get(`/api/demo/admin/appointments/${apptId2}`);
+    const adminAppt = await request(app).get(`/api/store/admin/appointments/${apptId2}`);
     expect(adminAppt.body.appointment.status).toBe('cancelled');
     expect(adminAppt.body.appointment.cancellationReason).toContain('Schedule conflict');
 
     // Admin receives cancellation notification
-    const adminNotifs = await request(app).get('/api/demo/admin/notifications');
+    const adminNotifs = await request(app).get('/api/store/admin/notifications');
     const cancelNotif = adminNotifs.body.notifications.find((n: any) => n.bookingReference === bookingRef2);
     expect(cancelNotif).toBeDefined();
     expect(cancelNotif.type).toBe('booking_cancelled');
@@ -236,23 +239,23 @@ describe('Full Appointment Workflow, Sorting, Rescheduling & Two-Way Notificatio
 
   // 10. Mark notification read persists across queries
   it('10. Marking notifications as read persists and updates unreadCount', async () => {
-    const beforeRes = await request(app).get('/api/demo/admin/notifications');
+    const beforeRes = await request(app).get('/api/store/admin/notifications');
     const initialUnread = beforeRes.body.unreadCount;
     expect(initialUnread).toBeGreaterThan(0);
 
     const targetNotifId = beforeRes.body.notifications[0].id;
-    const readRes = await request(app).patch(`/api/demo/admin/notifications/${targetNotifId}/read`);
+    const readRes = await request(app).patch(`/api/store/admin/notifications/${targetNotifId}/read`);
     expect(readRes.status).toBe(200);
 
-    const afterRes = await request(app).get('/api/demo/admin/notifications');
+    const afterRes = await request(app).get('/api/store/admin/notifications');
     expect(afterRes.body.unreadCount).toBe(initialUnread - 1);
     // Notification once marked read is auto-removed from unread list
     const updated = afterRes.body.notifications.find((n: any) => n.id === targetNotifId);
     expect(updated).toBeUndefined();
 
     // Mark all as read
-    await request(app).post('/api/demo/admin/notifications/mark-all-read');
-    const finalRes = await request(app).get('/api/demo/admin/notifications');
+    await request(app).post('/api/store/admin/notifications/mark-all-read');
+    const finalRes = await request(app).get('/api/store/admin/notifications');
     expect(finalRes.body.unreadCount).toBe(0);
   });
 

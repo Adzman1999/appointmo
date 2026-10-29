@@ -1,54 +1,45 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { query } from '../db';
 import { config } from '../config';
 import { AuthUser } from './auth';
+import { SessionServiceError, verifyAccessSession } from '../services/sessionService';
 
 /**
- * Verifies demo guest sessions against PostgreSQL `demo_sessions` table
+ * Verifies invited access sessions against PostgreSQL `access_sessions` table
  * This ensures owner-initiated revocation takes effect immediately.
  */
-export const authenticateDemoSession = async (req: Request, res: Response, next: NextFunction) => {
+export const authenticateAccessSession = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Valid invitation access required' });
   }
 
   const token = authHeader.split(' ')[1];
+  let decoded: any;
 
   try {
-    const decoded = jwt.verify(token, config.jwtSecret) as any;
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-
-    // Check database session record if it's a demo guest session
-    if (decoded.role === 'demo_guest') {
-      const sessionRes = await query(`
-        SELECT s.id, s.revoked_at, s.expires_at, r.status AS request_status
-        FROM demo_sessions s
-        JOIN demo_access_requests r ON s.request_id = r.id
-        WHERE s.session_token_hash = $1
-      `, [tokenHash]);
-
-      if (sessionRes.rows.length === 0) {
-        return res.status(401).json({ error: 'Session not recognized or expired' });
-      }
-
-      const session = sessionRes.rows[0];
-      if (session.revoked_at || session.request_status === 'revoked') {
-        return res.status(403).json({ error: 'Access has been revoked' });
-      }
-
-      if (new Date(session.expires_at).getTime() < Date.now()) {
-        return res.status(401).json({ error: 'Access session has expired' });
-      }
-    }
-
-    req.user = decoded;
-    next();
+    decoded = jwt.verify(token, config.jwtSecret) as any;
   } catch (err) {
     return res.status(401).json({ error: 'Invalid or expired session token' });
   }
+
+  if (decoded.role !== 'access_guest') {
+    return res.status(403).json({ error: 'Invited access session required' });
+  }
+
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  try {
+    await verifyAccessSession(tokenHash);
+  } catch (err) {
+    if (err instanceof SessionServiceError) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+    return res.status(401).json({ error: 'Invalid or expired session token' });
+  }
+
+  req.user = decoded;
+  return next();
 };
 
 /**

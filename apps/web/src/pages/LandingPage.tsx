@@ -7,7 +7,6 @@ import { AppointmoLogo } from '../components/AppointmoLogo';
 import { BusinessCreationModal } from '../components/BusinessCreationModal';
 import { BusinessIdeaGenerator } from '../components/BusinessIdeaGenerator';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { DemoTopNav } from '../components/DemoTopNav';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -35,18 +34,15 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 selection:bg-stone-200 dark:selection:bg-stone-800 transition-colors">
-      {/* Top Demo Navigation Bar with Direct Role Switcher */}
-      <DemoTopNav currentRole="customer" />
-
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md border-b border-stone-200 dark:border-stone-800">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
+        <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2 sm:px-4">
+          <div className="min-w-0 flex-1 cursor-pointer" onClick={() => navigate('/')}>
             <AppointmoLogo size="md" subtitle="Intelligent Scheduling" />
           </div>
 
           {/* Action Controls: Theme Toggle, Create Business, Sign In, Sign Up */}
-          <div className="flex items-center space-x-2.5 sm:space-x-3">
+          <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:gap-3">
             <ThemeToggle />
 
             <button

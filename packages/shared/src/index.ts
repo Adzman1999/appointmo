@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const DemoAccessRequestSchema = z.object({
+export const AccessRequestSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
   businessName: z.string().optional().default(''),
@@ -8,10 +8,10 @@ export const DemoAccessRequestSchema = z.object({
   acceptedPrivacy: z.boolean().refine(val => val === true, 'You must accept the privacy notice')
 });
 
-export type DemoAccessRequestInput = z.infer<typeof DemoAccessRequestSchema>;
+export type AccessRequestInput = z.infer<typeof AccessRequestSchema>;
 
-export const DemoAccessStatusSchema = z.enum(['pending', 'approved', 'rejected', 'revoked']);
-export type DemoAccessStatus = z.infer<typeof DemoAccessStatusSchema>;
+export const AccessRequestStatusSchema = z.enum(['pending', 'approved', 'rejected', 'revoked']);
+export type AccessRequestStatus = z.infer<typeof AccessRequestStatusSchema>;
 
 export const AppointmentStatusSchema = z.enum(['pending', 'confirmed', 'completed', 'cancelled', 'rescheduled']);
 export type AppointmentStatus = z.infer<typeof AppointmentStatusSchema>;

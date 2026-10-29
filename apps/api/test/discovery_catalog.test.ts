@@ -2,12 +2,12 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { pool } from '../src/db';
-import { seedData } from '../src/db/seed';
+import { seedTestDatabase } from './support/seedTestDatabase';
 
 const app = createApp();
 
 beforeAll(async () => {
-  await seedData();
+  await seedTestDatabase();
 });
 
 afterAll(async () => {

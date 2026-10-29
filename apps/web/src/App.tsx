@@ -9,7 +9,8 @@ import { CustomerPortalPage } from './pages/CustomerPortalPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { OwnerDashboardPage } from './pages/OwnerDashboardPage';
 import { SetupPasswordPage } from './pages/SetupPasswordPage';
-import { DemoAdminDashboardPage } from './pages/DemoAdminDashboardPage';
+import { AccessInvitationPage } from './pages/AccessInvitationPage';
+import { StoreAdminDashboardPage } from './pages/StoreAdminDashboardPage';
 import { SuperAdminApprovalPage } from './pages/SuperAdminApprovalPage';
 import { Toaster } from 'sonner';
 import { SHOW_PRODUCTION_AUTH } from './config';
@@ -60,14 +61,6 @@ export const App: React.FC = () => {
         <Route path="/browse" element={<DiscoveryPage />} />
         <Route path="/discover" element={<DiscoveryPage />} />
         <Route
-          path="/demo/book"
-          element={
-            <ProtectedCustomerRoute>
-              <QuickBookingPage />
-            </ProtectedCustomerRoute>
-          }
-        />
-        <Route
           path="/book"
           element={
             <ProtectedCustomerRoute>
@@ -75,23 +68,14 @@ export const App: React.FC = () => {
             </ProtectedCustomerRoute>
           }
         />
-        <Route path="/demo/concierge" element={<ConciergePage />} />
         <Route path="/concierge" element={<ConciergePage />} />
 
-        {/* 3. Interactive Admin (Isolated Fictional Demo Business) */}
-        <Route
-          path="/demo/admin"
-          element={
-            <ProtectedOwnerRoute>
-              <DemoAdminDashboardPage />
-            </ProtectedOwnerRoute>
-          }
-        />
+        {/* 3. Store administration */}
         <Route
           path="/admin/dashboard"
           element={
             <ProtectedBusinessDashboardRoute>
-              <DemoAdminDashboardPage />
+              <StoreAdminDashboardPage />
             </ProtectedBusinessDashboardRoute>
           }
         />
@@ -117,6 +101,7 @@ export const App: React.FC = () => {
         {/* 5. Production Authentication (Hidden from public links, but functional) */}
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/setup-password" element={<SetupPasswordPage />} />
+        <Route path="/access/redeem" element={<AccessInvitationPage />} />
         <Route
           path="/owner/access-requests"
           element={

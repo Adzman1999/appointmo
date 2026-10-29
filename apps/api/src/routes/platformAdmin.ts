@@ -99,9 +99,9 @@ router.get('/requests', requireOwnerAuth, async (req: Request, res: Response) =>
              r.requested_at, r.reviewed_at, r.reviewed_by, r.created_at,
              u.id AS user_id,
              s.created_at AS session_started_at
-      FROM demo_access_requests r
+      FROM access_requests r
       LEFT JOIN users u ON LOWER(r.email) = LOWER(u.email)
-      LEFT JOIN demo_sessions s ON r.id = s.request_id AND s.revoked_at IS NULL
+      LEFT JOIN access_sessions s ON r.id = s.request_id AND s.revoked_at IS NULL
     `;
     const params: any[] = [];
 
@@ -117,7 +117,7 @@ router.get('/requests', requireOwnerAuth, async (req: Request, res: Response) =>
     // Summary counts
     const countRes = await query(`
       SELECT status, COUNT(*)::int AS count
-      FROM demo_access_requests
+      FROM access_requests
       GROUP BY status
     `);
 
@@ -153,7 +153,7 @@ async function provisionUserAndSetupToken(accessReq: { id: string; email: string
     const dummyHash = await bcrypt.default.hash(crypto.randomBytes(32).toString('hex'), 10);
     const newUser = await query(`
       INSERT INTO users (email, password_hash, role, name)
-      VALUES ($1, $2, 'demo_guest', $3)
+      VALUES ($1, $2, 'access_guest', $3)
       RETURNING id
     `, [emailNorm, dummyHash, accessReq.full_name]);
     userId = newUser.rows[0].id;
@@ -187,7 +187,7 @@ router.post('/requests/:id/approve', requireOwnerAuth, async (req: Request, res:
   try {
     const { id } = req.params;
 
-    const reqRes = await query('SELECT id, full_name, email, status FROM demo_access_requests WHERE id = $1', [id]);
+    const reqRes = await query('SELECT id, full_name, email, status FROM access_requests WHERE id = $1', [id]);
     if (reqRes.rows.length === 0) {
       return res.status(404).json({ error: 'Request not found' });
     }
@@ -214,7 +214,7 @@ router.post('/requests/:id/approve', requireOwnerAuth, async (req: Request, res:
 
     // 3. Mark request as approved
     await query(`
-      UPDATE demo_access_requests 
+      UPDATE access_requests
       SET status = 'approved', approved_at = NOW(), reviewed_at = NOW(), reviewed_by = $1, updated_at = NOW()
       WHERE id = $2
     `, [req.user?.email || 'owner', id]);
@@ -222,7 +222,7 @@ router.post('/requests/:id/approve', requireOwnerAuth, async (req: Request, res:
     // 4. Record audit log
     await query(`
       INSERT INTO audit_logs (actor_type, actor_id, action, target_type, target_id, details)
-      VALUES ('owner', $1, 'approve_access_request', 'demo_access_requests', $2, $3)
+      VALUES ('owner', $1, 'approve_access_request', 'access_requests', $2, $3)
     `, [req.user?.userId || 'owner', id, JSON.stringify({ email: accessReq.email, isMock: emailResult.isMock })]);
 
     res.json({
@@ -244,7 +244,7 @@ router.post('/requests/:id/resend', requireOwnerAuth, async (req: Request, res: 
   try {
     const { id } = req.params;
 
-    const reqRes = await query('SELECT id, full_name, email, status FROM demo_access_requests WHERE id = $1', [id]);
+    const reqRes = await query('SELECT id, full_name, email, status FROM access_requests WHERE id = $1', [id]);
     if (reqRes.rows.length === 0) {
       return res.status(404).json({ error: 'Request not found' });
     }
@@ -270,7 +270,7 @@ router.post('/requests/:id/resend', requireOwnerAuth, async (req: Request, res: 
 
     await query(`
       INSERT INTO audit_logs (actor_type, actor_id, action, target_type, target_id, details)
-      VALUES ('owner', $1, 'resend_approval_notification', 'demo_access_requests', $2, $3)
+      VALUES ('owner', $1, 'resend_approval_notification', 'access_requests', $2, $3)
     `, [req.user?.userId || 'owner', id, JSON.stringify({ email: accessReq.email })]);
 
     res.json({
@@ -288,20 +288,20 @@ router.post('/requests/:id/resend', requireOwnerAuth, async (req: Request, res: 
 router.post('/requests/:id/reject', requireOwnerAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const reqRes = await query('SELECT id, email, status FROM demo_access_requests WHERE id = $1', [id]);
+    const reqRes = await query('SELECT id, email, status FROM access_requests WHERE id = $1', [id]);
     if (reqRes.rows.length === 0) {
       return res.status(404).json({ error: 'Request not found' });
     }
 
     await query(`
-      UPDATE demo_access_requests
+      UPDATE access_requests
       SET status = 'rejected', reviewed_at = NOW(), reviewed_by = $1, updated_at = NOW()
       WHERE id = $2
     `, [req.user?.email || 'owner', id]);
 
     await query(`
       INSERT INTO audit_logs (actor_type, actor_id, action, target_type, target_id, details)
-      VALUES ('owner', $1, 'reject_access_request', 'demo_access_requests', $2, $3)
+      VALUES ('owner', $1, 'reject_access_request', 'access_requests', $2, $3)
     `, [req.user?.userId || 'owner', id, JSON.stringify({ email: reqRes.rows[0].email })]);
 
     res.json({ message: 'Request rejected successfully' });
@@ -314,23 +314,23 @@ router.post('/requests/:id/reject', requireOwnerAuth, async (req: Request, res: 
 router.post('/requests/:id/revoke', requireOwnerAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const reqRes = await query('SELECT id, email, status FROM demo_access_requests WHERE id = $1', [id]);
+    const reqRes = await query('SELECT id, email, status FROM access_requests WHERE id = $1', [id]);
     if (reqRes.rows.length === 0) {
       return res.status(404).json({ error: 'Request not found' });
     }
 
     const emailNorm = reqRes.rows[0].email.toLowerCase().trim();
 
-    // 1. Mark demo_access_requests status = 'revoked'
+    // 1. Mark access_requests status = 'revoked'
     await query(`
-      UPDATE demo_access_requests
+      UPDATE access_requests
       SET status = 'revoked', updated_at = NOW()
       WHERE id = $1
     `, [id]);
 
-    // 2. Invalidate all active demo_sessions
+    // 2. Invalidate all active access_sessions
     await query(`
-      UPDATE demo_sessions
+      UPDATE access_sessions
       SET revoked_at = NOW()
       WHERE request_id = $1 OR LOWER(email) = $2
     `, [id, emailNorm]);
@@ -344,7 +344,7 @@ router.post('/requests/:id/revoke', requireOwnerAuth, async (req: Request, res: 
     // 4. Audit log
     await query(`
       INSERT INTO audit_logs (actor_type, actor_id, action, target_type, target_id, details)
-      VALUES ('owner', $1, 'revoke_access', 'demo_access_requests', $2, $3)
+      VALUES ('owner', $1, 'revoke_access', 'access_requests', $2, $3)
     `, [req.user?.userId || 'owner', id, JSON.stringify({ email: emailNorm })]);
 
     res.json({ message: `Access revoked and active sessions invalidated for ${emailNorm}` });

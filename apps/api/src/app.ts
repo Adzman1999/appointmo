@@ -5,22 +5,14 @@ import morgan from 'morgan';
 import { config } from './config';
 import { errorHandler } from './middleware/auth';
 import authRoutes from './routes/auth';
-import demoAccessRoutes from './routes/demoAccess';
+import accessRequestRoutes from './routes/accessRequests';
 import bookingRoutes from './routes/booking';
 import adminRoutes from './routes/admin';
-import ownerRoutes from './routes/owner';
+import platformAdminRoutes from './routes/platformAdmin';
 import accessRoutes from './routes/access';
-import demoAdminRoutes from './routes/demoAdmin';
+import storeAdminRoutes from './routes/storeAdmin';
 import discoveryRoutes from './routes/discovery';
 import customerRoutes from './routes/customer';
-import { runMigrations } from './db/migrate';
-
-// Automatically ensure database schema is up-to-date on cold-start (non-blocking)
-if (config.env !== 'test') {
-  runMigrations()
-    .then(() => console.log('✅ Server auto-migration initialized'))
-    .catch((err) => console.error('⚠️ Server auto-migration warning:', err.message));
-}
 
 export const createApp = () => {
   const app = express();
@@ -44,11 +36,12 @@ export const createApp = () => {
 
   // API Routes
   app.use('/api/customer', customerRoutes);
-  app.use('/api/demo/admin', demoAdminRoutes);
-  app.use('/api/owner', ownerRoutes);
+  app.use('/api/store/admin', storeAdminRoutes);
+  app.use('/api/platform-admin', platformAdminRoutes);
+  app.use('/api/owner', platformAdminRoutes); // Compatibility for existing clients.
   app.use('/api/access', accessRoutes);
   app.use('/api/auth', authRoutes);
-  app.use('/api/demo-access', demoAccessRoutes);
+  app.use('/api/access-requests', accessRequestRoutes);
   app.use('/api', discoveryRoutes);
   app.use('/api', bookingRoutes);
   app.use('/api/admin', adminRoutes);

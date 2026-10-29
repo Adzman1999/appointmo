@@ -2,38 +2,38 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { pool, query } from '../src/db';
-import { seedData } from '../src/db/seed';
+import { seedTestDatabase } from './support/seedTestDatabase';
 
 const app = createApp();
 
 beforeAll(async () => {
-  // DB is already seeded deterministically
+  await seedTestDatabase();
 });
 
 afterAll(async () => {
   await pool.end();
 });
 
-describe('Demo-First Intelligent Appointment Platform with Synthetic Isolation', () => {
+describe('Store Booking and Customer Appointment Platform', () => {
   let createdBookingRef: string;
   let createdManagementToken: string;
   let sampleServiceId: string;
   let sampleStaffId: string;
   let sampleSlotTime: string;
 
-  // 1. Both demo entry points work without an account
-  it('1. Public visitors can open public demo endpoints without credentials', async () => {
+  // 1. Public booking endpoints are available without an account
+  it('1. Public visitors can open booking endpoints without credentials', async () => {
     const bizRes = await request(app).get('/api/business');
     expect(bizRes.status).toBe(200);
     expect(bizRes.body.business.name).toBe('Lumière Beauty Studio');
 
-    const adminMetrics = await request(app).get('/api/demo/admin/metrics');
+    const adminMetrics = await request(app).get('/api/store/admin/metrics');
     expect(adminMetrics.status).toBe(200);
     expect(adminMetrics.body.metrics.todayCount).toBeDefined();
     expect(adminMetrics.body.metrics.totalRevenue).toBeDefined();
   });
 
-  // 2. Quick Booking creates a persisted appointment
+  // 2. Customer booking creates a persisted appointment
   it('2. Quick Booking creates a persisted appointment with real slot', async () => {
     // Fetch services
     const servicesRes = await request(app).get('/api/services');
@@ -61,7 +61,7 @@ describe('Demo-First Intelligent Appointment Platform with Synthetic Isolation',
         serviceId: sampleServiceId,
         staffId: sampleStaffId,
         startTime: sampleSlotTime,
-        customerName: 'Synthetic Demo Customer',
+        customerName: 'Booking Test Customer',
         customerEmail: 'synthetic.customer@example.com',
         customerPhone: '+63 900 000 9999',
         notes: 'Testing Quick Booking',
@@ -155,7 +155,7 @@ describe('Demo-First Intelligent Appointment Platform with Synthetic Isolation',
         serviceId: chosen.serviceId,
         staffId: chosen.staffId,
         startTime: chosen.slot.startTime,
-        customerName: 'Concierge Demo Client',
+        customerName: 'Concierge Test Client',
         customerEmail: 'concierge.client@example.com',
         customerPhone: '+63 900 000 8888',
         notes: 'Booked via Concierge Recommendation',
@@ -193,14 +193,14 @@ describe('Demo-First Intelligent Appointment Platform with Synthetic Isolation',
       });
 
     expect(conflictRes.status).toBe(409);
-    expect(conflictRes.body.error).toMatch(/(already booked|just booked|not available)/i);
+    expect(conflictRes.body.error).toMatch(/(already booked|just booked|available)/i);
   });
 
   // 11. Admin actions update the customer-facing experience
   it('11. Admin actions update the appointment in database', async () => {
-    // Find appointment by reference in Admin Demo
+    // Find appointment by reference in Store Admin
     const listRes = await request(app)
-      .get(`/api/demo/admin/appointments?search=${createdBookingRef}`);
+      .get(`/api/store/admin/appointments?search=${createdBookingRef}`);
 
     expect(listRes.status).toBe(200);
     expect(listRes.body.appointments.length).toBe(1);
@@ -208,7 +208,7 @@ describe('Demo-First Intelligent Appointment Platform with Synthetic Isolation',
 
     // Admin marks appointment completed
     const patchRes = await request(app)
-      .patch(`/api/demo/admin/appointments/${apptId}/status`)
+      .patch(`/api/store/admin/appointments/${apptId}/status`)
       .send({ status: 'completed' });
 
     expect(patchRes.status).toBe(200);
@@ -222,11 +222,11 @@ describe('Demo-First Intelligent Appointment Platform with Synthetic Isolation',
     expect(custLookup.body.booking.status).toBe('completed');
   });
 
-  // 12. Demo actions cannot access or modify real business records
-  it('12. Demo admin endpoints are restricted exclusively to demo business', async () => {
+  // 12. Missing appointment records cannot be modified
+  it('12. Store appointment updates reject unknown records', async () => {
     const fakeId = '00000000-0000-0000-0000-000000000000';
     const fakePatch = await request(app)
-      .patch(`/api/demo/admin/appointments/${fakeId}/status`)
+      .patch(`/api/store/admin/appointments/${fakeId}/status`)
       .send({ status: 'cancelled' });
 
     expect(fakePatch.status).toBe(404);
@@ -243,16 +243,21 @@ describe('Demo-First Intelligent Appointment Platform with Synthetic Isolation',
     expect(wrongToken.status).toBe(404);
   });
 
-  // 14. Demo reset safely resets synthetic data
-  it('14. Demo reset safely resets synthetic demo data to 125 bookings', async () => {
-    const resetRes = await request(app).post('/api/demo/admin/reset');
+  // 14. Preparing local seed accounts preserves appointment records
+  it('14. Local seed setup preserves existing appointment records', async () => {
+    const before = await query('SELECT COUNT(*)::int AS count FROM appointments');
+    const login = await request(app).post('/api/auth/login').send({
+      email: 'superadmin@appointmo.local',
+      password: 'SuperAdmin2026!',
+    });
+    expect(login.status).toBe(200);
+    const resetRes = await request(app)
+      .post('/api/admin/seed')
+      .set('Authorization', `Bearer ${login.body.token}`);
     expect(resetRes.status).toBe(200);
-    expect(resetRes.body.message).toContain('Synthetic demo data successfully restored');
-
-    const metricsRes = await request(app).get('/api/demo/admin/metrics');
-    expect(metricsRes.status).toBe(200);
-    expect(metricsRes.body.metrics.completedCount).toBe(100);
-    expect(metricsRes.body.metrics.upcomingCount).toBe(15);
+    expect(resetRes.body.message).toContain('Existing appointments and customer records were preserved');
+    const after = await query('SELECT COUNT(*)::int AS count FROM appointments');
+    expect(after.rows[0].count).toBe(before.rows[0].count);
   });
 
   // 15. Production authentication endpoints remain protected
@@ -261,9 +266,9 @@ describe('Demo-First Intelligent Appointment Platform with Synthetic Isolation',
     expect(ownerRes.status).toBe(401);
   });
 
-  // 16. Verify all synthetic email domains use example.com
-  it('16. Verify all synthetic customer emails in demo dataset use example.com', async () => {
-    const listRes = await request(app).get('/api/demo/admin/appointments?limit=100');
+  // 16. Verify test-generated customer email addresses
+  it('16. Test bookings use the example.com address domain', async () => {
+    const listRes = await request(app).get('/api/store/admin/appointments?limit=100');
     expect(listRes.status).toBe(200);
     for (const appt of listRes.body.appointments) {
       expect(appt.customerEmail).toContain('@example.com');

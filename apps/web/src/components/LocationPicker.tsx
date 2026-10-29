@@ -311,12 +311,12 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
         <div className="fixed inset-0 z-[100] bg-stone-900/85 backdrop-blur-md flex flex-col p-2 sm:p-4 animate-in fade-in">
           <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-2xl flex-1 flex flex-col overflow-hidden">
             {/* Fullscreen Header Controls */}
-            <div className="p-3.5 sm:p-4 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between gap-3 bg-stone-50 dark:bg-stone-800/60">
-              <div className="flex items-center space-x-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 bg-stone-50 p-3.5 dark:border-stone-800 dark:bg-stone-800/60 sm:p-4">
+              <div className="flex min-w-0 flex-1 items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold">
                   <MapPin className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h4 className="font-bold text-sm text-stone-900 dark:text-stone-100">Pin Store Location</h4>
                   <p className="text-[11px] text-stone-500 dark:text-stone-400 hidden sm:block">
                     Swipe or drag the map. The pin stays fixed right in the center target.
@@ -324,7 +324,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <button
                   type="button"
                   onClick={openExternalGoogleMaps}
@@ -341,7 +341,8 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                   className="px-4 py-2 rounded-xl bg-stone-900 dark:bg-amber-400 text-white dark:text-stone-950 font-semibold text-xs hover:bg-stone-800 dark:hover:bg-amber-300 transition shadow flex items-center space-x-1.5 shrink-0"
                 >
                   <Check className="w-4 h-4" />
-                  <span>Apply Location &amp; Return</span>
+                  <span className="hidden sm:inline">Apply Location &amp; Return</span>
+                  <span className="sm:hidden">Apply</span>
                 </button>
               </div>
             </div>
@@ -487,8 +488,8 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
         <>
           {/* Normal View Search Input Bar */}
           <div className="relative">
-            <div className="flex gap-1.5">
-              <div className="relative flex-1">
+              <div className="flex flex-wrap gap-1.5 sm:flex-nowrap">
+              <div className="relative min-w-[180px] flex-1">
                 <input
                   type="text"
                   placeholder="Search address, mall, landmark (e.g. BGC High Street, SM Mall of Asia)..."

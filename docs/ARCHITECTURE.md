@@ -1,17 +1,30 @@
 # Appointmo Architecture
 
-## Overview
-Appointmo is an intelligent appointment booking SaaS platform structured as a TypeScript monorepo using pnpm workspaces:
-- `packages/shared`: Shared TypeScript types, Zod schemas, domain models.
-- `apps/api`: REST API built with Node.js, Express, and PostgreSQL (`pg`). Supports both standalone server mode and Vercel serverless execution.
-- `apps/web`: Single-Page Application (SPA) built with React 18, Vite, Tailwind CSS, TanStack Query, and Lucide icons.
+Appointmo is a TypeScript monorepo managed with pnpm:
 
-```
-Request → Router → Authentication/Authorization Middleware → Controller/Service → Repository → PostgreSQL
+- `packages/shared`: shared schemas, types, and domain models.
+- `apps/api`: Express REST API and PostgreSQL access.
+- `apps/web`: React single-page application built with Vite.
+
+The API request flow is:
+
+```text
+Request → Router → Middleware → Controller → Service → Repository → PostgreSQL
 ```
 
-## Security & Access Control
-1. **Contact-First Gatekeeping**: Visitors submit a demo access request. Access is granted only when the platform owner approves the request, generating a cryptographically secure, single-use invitation token.
-2. **Session Verification**: The invitation token is redeemed for a signed JWT session (`role: demo_guest`), allowing entry into the interactive demo.
-3. **Guest Booking Privacy**: Guest appointments are decoupled from mandatory account creation. Each booking receives a cryptographically random booking reference and secret management token hash, preventing predictable ID enumeration.
-4. **Concurrency & Double-Booking Protection**: Bookings are performed inside PostgreSQL transactions using pessimistic row locking (`FOR UPDATE`) across overlapping time ranges.
+The API is grouped by product area under `/api`: authentication and access, public business discovery, booking and availability, customer records, store administration, and platform administration. The compatibility prefix `/api/owner` points to the platform administration routes. The web app is a React SPA; its route definitions live in `apps/web/src/App.tsx`.
+
+## Access and booking security
+
+- Customer and store accounts use signed JWTs. Platform owner sign-in can use the configured owner credentials or a platform-admin account.
+- Access requests are reviewed by a platform administrator. The invitation API stores token hashes and limits invitations to one use. Revocation marks session records inactive; `GET /api/access/session` verifies the stored session hash.
+- Booking records retain hashed management tokens. Authenticated customer routes provide appointment management, notifications, and reviews.
+- Appointment creation runs in a PostgreSQL transaction with conflict protection for overlapping staff schedules.
+
+## Web app routes
+
+- Public: `/`, `/discover` (also `/browse`), `/concierge`.
+- Customer booking: `/book`, `/customer/portal` (also `/manage`).
+- Store operations: `/admin/dashboard`.
+- Account access: `/admin/login`, `/setup-password`, `/access/redeem`.
+- Platform administration: `/owner/access-requests`, `/superadmin` (also `/admin/platform`).

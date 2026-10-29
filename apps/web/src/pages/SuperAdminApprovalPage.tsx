@@ -393,11 +393,11 @@ export const SuperAdminApprovalPage: React.FC = () => {
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors pb-20">
       {/* Super Admin Top Header */}
       <header className="sticky top-0 z-40 bg-white/85 dark:bg-stone-900/85 backdrop-blur-md border-b border-stone-200 dark:border-stone-800">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+        <div className="max-w-7xl mx-auto flex min-h-16 flex-col justify-center gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-0">
+          <div className="flex min-w-0 items-center space-x-3">
             <AppointmoLogo size="sm" showText={false} />
             <div>
-              <div className="flex items-center space-x-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="font-bold text-sm text-stone-900 dark:text-stone-100">Super Admin Gateway</span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300">
                   Super Admin Role
@@ -407,7 +407,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2.5">
+          <div className="flex items-center justify-end gap-2.5 self-end sm:self-auto">
             <ThemeToggle />
 
             {/* Notification Bell with Click-Outside Ref */}
@@ -427,7 +427,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
 
               {/* Notification Dropdown */}
               {isNotifOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xl z-50 overflow-hidden animate-in fade-in">
+                <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] max-w-80 sm:w-96 sm:max-w-none bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xl z-50 overflow-hidden animate-in fade-in">
                   <div className="p-3.5 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between bg-stone-50 dark:bg-stone-800/60">
                     <div className="flex items-center space-x-2">
                       <span className="font-bold text-xs text-stone-900 dark:text-stone-100">Super Admin Alerts</span>
@@ -523,7 +523,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
           </div>
 
           {/* Quick Metrics */}
-          <div className="flex items-center space-x-2.5">
+          <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:grid-cols-3 sm:gap-2.5">
             <div className="px-4 py-2 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-center">
               <div className="text-lg font-bold text-amber-900 dark:text-amber-200">{pendingStoresCount}</div>
               <div className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Pending Stores</div>
@@ -540,10 +540,10 @@ export const SuperAdminApprovalPage: React.FC = () => {
         </div>
 
         {/* Primary View Tab Switcher */}
-        <div className="flex items-center space-x-3 border-b border-stone-200 dark:border-stone-800 pb-3">
+        <div className="grid grid-cols-1 gap-2 border-b border-stone-200 pb-3 dark:border-stone-800 sm:grid-cols-2 sm:gap-3">
           <button
             onClick={() => setActiveTab('stores')}
-            className={`flex items-center space-x-2 px-5 py-2.5 rounded-2xl font-bold text-xs transition ${
+            className={`flex min-w-0 items-center justify-center gap-2 rounded-2xl px-3 py-2.5 text-center text-xs font-bold transition sm:px-5 ${
               activeTab === 'stores'
                 ? 'bg-amber-500 text-white shadow-md'
                 : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800'
@@ -560,7 +560,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('customers')}
-            className={`flex items-center space-x-2 px-5 py-2.5 rounded-2xl font-bold text-xs transition ${
+            className={`flex min-w-0 items-center justify-center gap-2 rounded-2xl px-3 py-2.5 text-center text-xs font-bold transition sm:px-5 ${
               activeTab === 'customers'
                 ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-md'
                 : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800'
@@ -631,12 +631,12 @@ export const SuperAdminApprovalPage: React.FC = () => {
 
             {/* Stores List */}
             {loadingStores ? (
-              <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center text-xs text-stone-500 space-y-2">
+              <div className="rounded-3xl border border-stone-200 bg-white p-6 text-center text-xs text-stone-500 shadow-sm dark:border-stone-800 dark:bg-stone-900 sm:p-12 space-y-2">
                 <RefreshCw className="w-6 h-6 animate-spin mx-auto text-amber-500" />
                 <p>Loading stores and profiles...</p>
               </div>
             ) : filteredStores.length === 0 ? (
-              <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center space-y-2">
+              <div className="rounded-3xl border border-stone-200 bg-white p-6 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900 sm:p-12 space-y-2">
                 <Building2 className="w-10 h-10 text-stone-400 mx-auto" />
                 <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">No Store Requests Found</h3>
                 <p className="text-xs text-stone-500">There are currently no store registration submissions matching this filter.</p>
@@ -945,12 +945,12 @@ export const SuperAdminApprovalPage: React.FC = () => {
 
             {/* Customers Table / Cards */}
             {loadingCustomers ? (
-              <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center text-xs text-stone-500 space-y-2">
+              <div className="rounded-3xl border border-stone-200 bg-white p-6 text-center text-xs text-stone-500 shadow-sm dark:border-stone-800 dark:bg-stone-900 sm:p-12 space-y-2">
                 <RefreshCw className="w-6 h-6 animate-spin mx-auto text-amber-500" />
                 <p>Loading customer accounts...</p>
               </div>
             ) : filteredCustomers.length === 0 ? (
-              <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center space-y-2">
+              <div className="rounded-3xl border border-stone-200 bg-white p-6 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900 sm:p-12 space-y-2">
                 <Users className="w-10 h-10 text-stone-400 mx-auto" />
                 <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">No Customer Accounts Found</h3>
                 <p className="text-xs text-stone-500">No customer profiles match your current search and filter criteria.</p>
@@ -1091,7 +1091,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
       {/* Approve Store Modal */}
       {approveModalItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-lg w-full shadow-2xl">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-stone-200 bg-white p-4 shadow-2xl dark:border-stone-800 dark:bg-stone-900 sm:p-8">
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
               <div className="flex items-center space-x-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 flex items-center justify-center">
@@ -1180,7 +1180,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
       {/* Customer Status Governance Modal */}
       {customerModalData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 max-w-md w-full shadow-2xl">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-stone-200 bg-white p-4 shadow-2xl dark:border-stone-800 dark:bg-stone-900 sm:p-8">
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800 mb-4">
               <div className="flex items-center space-x-2.5">
                 <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
@@ -1282,7 +1282,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
       {/* Modern Confirmation Popup Modal (Light & Dark Mode) */}
       {confirmModalConfig.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-7 max-w-md w-full shadow-2xl space-y-4">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-stone-200 bg-white p-4 shadow-2xl dark:border-stone-800 dark:bg-stone-900 sm:p-7 space-y-4">
             <div className="flex items-start space-x-3.5">
               <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
                 confirmModalConfig.variant === 'danger'
@@ -1338,7 +1338,7 @@ export const SuperAdminApprovalPage: React.FC = () => {
       {/* Notification Full Info Modal */}
       {selectedNotif && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-7 max-w-lg w-full shadow-2xl space-y-5 animate-in zoom-in-95">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-stone-200 bg-white p-4 shadow-2xl dark:border-stone-800 dark:bg-stone-900 sm:p-7 space-y-5 animate-in zoom-in-95">
             <div className="flex items-start justify-between gap-3 border-b border-stone-100 dark:border-stone-800 pb-4">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center shrink-0 shadow-sm">

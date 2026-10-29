@@ -264,7 +264,7 @@ export const BusinessCreationModal: React.FC<BusinessCreationModalProps> = ({
     });
 
     try {
-      const res: any = await apiFetch('/demo/admin/create-business', {
+      const res: any = await apiFetch('/store/admin/create-business', {
         method: 'POST',
         body: JSON.stringify({
           name: createName.trim(),
